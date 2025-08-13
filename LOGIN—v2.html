@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Ozarch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#0b0f14; --muted:#98a1ac; --accent:#8b5cf6; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      min-height:100vh;font-family:Inter,system-ui, Arial, sans-serif;
+      background:linear-gradient(180deg,#071018 0%, var(--bg) 100%);
+      color:#e6eef6;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;padding:0 16px;
+    }
+    .panel{
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:14px;padding:32px;width:100%;
+      max-width:360px;text-align:center;
+      box-shadow:0 8px 40px rgba(0,0,0,0.4);
+      margin-bottom:40px;
+    }
+    h1{font-size:20px;margin-bottom:8px}
+    p{font-size:14px;color:var(--muted);margin-bottom:20px}
+    input{
+      width:100%;padding:12px 14px;border-radius:8px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.3);color:#fff;font-size:14px;
+      margin-bottom:16px;
+    }
+    button{
+      width:100%;padding:12px;border:none;border-radius:8px;
+      background:var(--accent);color:#fff;font-weight:600;font-size:14px;
+      cursor:pointer;transition:background 0.2s;
+    }
+    button:hover{background:#7c3aed}
+    .message{margin-top:12px;font-size:13px;min-height:18px;color:#ff7676;}
+
+    #listaCanais{display:none;width:100%;max-width:960px;margin-bottom:40px;}
+    .canal-lista{
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+      gap:15px;padding:20px;background:#0d0f1a;
+      border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,0.4);
+    }
+    .canal{
+      background:#1b1f2f;border-radius:10px;overflow:hidden;
+      cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);
+      transition:transform 0.2s ease, box-shadow 0.2s ease;color:white;
+    }
+    .canal:hover{transform:scale(1.03);box-shadow:0 6px 18px rgba(0,0,0,0.4);}
+    .canal img{width:100%;height:100px;object-fit:cover;display:block;}
+    .canal-nome{padding:10px;text-align:center;font-size:15px;font-weight:600;}
+
+    .overlay{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.95);display:none;justify-content:center;
+      align-items:center;z-index:9999;flex-direction:column;padding:0;
+    }
+    .overlay iframe{
+      width:90%;max-width:1000px;aspect-ratio:16/9;
+      border:none;background:black;
+    }
+    footer{width:100%;text-align:center;color:var(--muted);
+      font-size:13px;margin-bottom:16px;user-select:none;}
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div class="panel" id="loginPanel">
+    <h1>Transponder</h1>
+    <p>Insira seu código de acesso</p>
+    <input type="text" id="accessCode" placeholder="Código de acesso" autocomplete="off" />
+    <button id="accessBtn">Entrar</button>
+    <div class="message" id="messageBox"></div>
+  </div>
+
+  <!-- LISTA DE CANAIS -->
+  <div id="listaCanais">
+    <div class="canal-lista" id="canalContainer"></div>
+  </div>
+
+  <!-- PLAYER OVERLAY -->
+  <div class="overlay" id="overlayPlayer" onclick="fecharPlayer()">
+      <iframe id="playerFull" allowfullscreen onclick="event.stopPropagation()"></iframe>
+  </div>
+
+  <footer>©2025 Ozarch</footer>
+
+  <script>
+    const ACCESS_LIST_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/acesso.txt';
+    const CANAIS_URL = 'canais.json';
+
+    const messageBox = document.getElementById('messageBox');
+    const loginPanel = document.getElementById('loginPanel');
+    const listaCanais = document.getElementById('listaCanais');
+    const accessCodeInput = document.getElementById('accessCode');
+    const canalContainer = document.getElementById('canalContainer');
+
+    function showMessage(msg, color='#ff7676'){
+      messageBox.textContent = msg;
+      messageBox.style.color = color;
+    }
+
+    document.getElementById('accessBtn').addEventListener('click', async () => {
+      const code = accessCodeInput.value.trim();
+      if(code === ''){
+        showMessage('Por favor, insira um código.');
+        return;
+      }
+
+      try {
+        const url = ACCESS_LIST_URL + '?t=' + Date.now();
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error();
+        const text = await response.text();
+        const codes = text.split(/\r?\n/).map(c => c.trim()).filter(c => c !== '');
+
+        if (codes.includes(code)) {
+          showMessage('Acesso liberado!', '#4ade80');
+          setTimeout(() => {
+            mostrarListaCanais();
+          }, 800);
+        } else {
+          showMessage('Código inválido. Tente novamente.');
+        }
+      } catch (err) {
+        showMessage('Erro ao acessar a lista de códigos. Tente mais tarde.');
+        console.error(err);
+      }
+    });
+
+    function mostrarListaCanais(){
+      loginPanel.style.display = 'none';
+      listaCanais.style.display = 'block';
+      carregarCanais();
+    }
+
+    function carregarCanais(){
+      fetch(CANAIS_URL + '?t=' + Date.now())
+        .then(res => {
+          if(!res.ok) throw new Error("Erro ao carregar canais");
+          return res.json();
+        })
+        .then(canais => {
+          canalContainer.innerHTML = '';
+          canais.forEach(canal => {
+            const div = document.createElement('div');
+            div.className = 'canal';
+            div.onclick = () => abrirPlayer(canal.url);
+            div.innerHTML = `
+              <img src="${canal.logo}" alt="${canal.id}">
+              <div class="canal-nome">${canal.id}</div>
+            `;
+            canalContainer.appendChild(div);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          canalContainer.innerHTML = '<p style="color:red">Erro ao carregar canais.</p>';
+        });
+    }
+
+    const playerFull = document.getElementById('playerFull');
+    const overlay = document.getElementById('overlayPlayer');
+
+    function abrirPlayer(url) {
+        playerFull.src = url;
+        overlay.style.display = 'flex';
+    }
+
+    function fecharPlayer() {
+        playerFull.src = '';
+        overlay.style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>

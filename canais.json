@@ -1,0 +1,22 @@
+[
+  {
+    "id": "ESPN",
+    "logo": "https://embedtv.digital/assets/images/espn.png",
+    "url": "ESPN.html"
+  },
+  {
+    "id": "PREMIERE",
+    "logo": "https://embedtv.digital/assets/images/premiere.png",
+    "url": "PREMIERE.html"
+  },
+  {
+    "id": "SPORTV",
+    "logo": "https://embedtv.digital/assets/images/sportv.png",
+    "url": "SPORTV.html"
+  },
+  {
+    "id": "BAND SPORTS",
+    "logo": "https://embedtv.digital/assets/images/bandsports.png",
+    "url": "BAND-SPORTS.html"
+  }
+]
