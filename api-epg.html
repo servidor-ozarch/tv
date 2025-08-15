@@ -18,6 +18,7 @@ const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 // Detecta parâmetros ?canal=xxx&dia=xxx
 // ========================
 const urlParams = new URLSearchParams(location.search);
+const canal = urlParams.get('canal') || 'premiere_clubes';
 const dia = urlParams.get('dia') || dias[new Date().getDay()];
 
 // ========================
