@@ -12,8 +12,10 @@
   frame-ancestors 'self';
   navigate-to 'self';
   form-action 'none';
-  img-src 'self';
-  connect-src 'self' https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io;
+  frame-src https://rdcplay.live;
+  media-src https://rdcplay.live;
+  img-src 'self' data: https://rdcplay.live;
+  connect-src 'self' https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io https://rdcplay.live;
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
 ">
@@ -22,10 +24,19 @@
   html, body {
     margin: 0;
     height: 100%;
-    overflow: hidden;
-    font-family: system-ui, sans-serif;
+    overflow: hidden; /* Remove barras de rolagem */
     background: black;
+    font-family: system-ui, sans-serif;
     color: #eee;
+  }
+  iframe {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100vh; /* tela cheia */
+    border: none;
   }
   .denied {
     position: fixed; inset: 0;
@@ -41,6 +52,15 @@
 </style>
 </head>
 <body>
+
+<!-- Player oculto inicialmente -->
+<div id="player" hidden>
+  <iframe
+    src="https://rdcplay.live/prime/premiereclubes.html"
+    allow="autoplay; encrypted-media; picture-in-picture"
+    allowfullscreen>
+  </iframe>
+</div>
 
 <!-- Mensagem de acesso negado -->
 <div id="denied" class="denied">
@@ -65,13 +85,14 @@
     const token = (params.get('token')||'').trim();
 
     if(validTokens.includes(token)){
-      // Redireciona automaticamente para o player na mesma aba
-      window.location.href = 'https://rdcplay.live/prime/premiereclubes.html';
+      // Esconde mensagem e exibe player na mesma página
+      document.getElementById('denied').hidden = true;
+      document.getElementById('player').hidden = false;
     }
-    // Se token inválido, permanece na mensagem de acesso negado
+    // Se token inválido, permanece mostrando mensagem
   } catch(e) {
-    console.error('Erro ao validar token:', e);
     // Permanece na mensagem de acesso negado
+    console.error('Erro ao validar token:', e);
   }
 })();
 </script>
