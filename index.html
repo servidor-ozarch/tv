@@ -67,12 +67,11 @@
     allow="autoplay; encrypted-media; picture-in-picture"
     allowfullscreen
     sandbox="allow-scripts allow-same-origin allow-presentation"
-    referrerpolicy="no-referrer"
-    frameborder="0">
+    referrerpolicy="no-referrer">
   </iframe>
 </div>
 
-<!-- Mensagem de acesso negado (visível até validar token) -->
+<!-- Mensagem de acesso negado -->
 <div id="denied" class="denied">
   <h1>⚠️ ACESSO NEGADO</h1>
   <p>O operador fechou o acesso deste canal até o próximo jogo.<br>
@@ -89,11 +88,15 @@
 
   if (!token) return; // permanece negado
 
-  fetch('https://servidor-ozarch.github.io/tv/tokens.txt', {cache:'no-store'})
+  // URL absoluta do tokens.txt (ajuste se mudar pasta!)
+  const tokensUrl = "https://servidor-ozarch.github.io/tv/tokens.txt";
+
+  fetch(tokensUrl, { cache: 'no-store' })
     .then(r => r.ok ? r.text() : '')
     .then(txt => {
       const list = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
       if (list.includes(token)) {
+        // mostra player dentro da mesma página
         document.getElementById('denied').hidden = true;
         document.getElementById('player').hidden = false;
       }
