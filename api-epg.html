@@ -1,9 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programação TV → Firebase</title>
 </head>
 <body>
 <script>
@@ -22,7 +22,7 @@ const canal = urlParams.get('canal') || 'premiere_clubes';
 const dia = urlParams.get('dia') || dias[new Date().getDay()];
 
 // ========================
-// Formata Data e Hora separadamente
+// Formatação de data e hora
 // ========================
 function formatData(dt){
   if(!dt) return '';
@@ -42,7 +42,7 @@ function formatHora(dt){
 }
 
 // ========================
-// Função de parse HTML
+// Parse HTML da programação
 // ========================
 function parseGrade(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -80,6 +80,24 @@ function parseGrade(html){
 }
 
 // ========================
+// Envia JSON para Firebase
+// ========================
+async function enviarParaFirebase(canal, dia, jsonData) {
+  try {
+    const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json`;
+    const resp = await fetch(url, {
+      method: 'PUT', // substitui os dados existentes
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jsonData)
+    });
+    if(!resp.ok) throw new Error('Falha ao enviar para Firebase: ' + resp.status);
+    console.log('Dados enviados para Firebase!');
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+// ========================
 // Função principal
 // ========================
 async function getProgramacao(canal, dia){
@@ -89,15 +107,26 @@ async function getProgramacao(canal, dia){
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const html = await resp.text();
     const itens = parseGrade(html);
+
+    // Exibe no corpo da página (opcional)
     document.body.textContent = JSON.stringify(itens, null, 2);
-  }catch(err){
+
+    // Envia para Firebase
+    enviarParaFirebase(canal, dia, itens);
+
+    // Chama interface nativa (se existir)
+    if (window.JsonInterface && window.JsonInterface.salvarJson) {
+      window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
+    }
+
+  } catch(err){
     console.error(err);
     document.body.textContent = JSON.stringify({error:"Falha ao carregar programação", details: err.message});
   }
 }
 
 // ========================
-// Atualização em tempo real
+// Atualização automática a cada 60s
 // ========================
 getProgramacao(canal, dia);
 setInterval(()=> getProgramacao(canal, dia), 60000);
