@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<script>
+// ========================
+// Configuração
+// ========================
+const API_PROXY = "https://api.allorigins.win/raw?url=";
+const BASE_URL = "https://tvinside.com.br/programacao_tv/";
+const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+
+// ========================
+// Detecta parâmetros ?canal=xxx&dia=xxx
+// ========================
+const urlParams = new URLSearchParams(location.search);
+const canal = urlParams.get('canal') || 'premiere_clubes';
+const dia = urlParams.get('dia') || dias[new Date().getDay()];
+
+// ========================
+// Formata Data e Hora separadamente
+// ========================
+function formatData(dt){
+  if(!dt) return '';
+  const d = new Date(dt);
+  const day = String(d.getDate()).padStart(2,'0');
+  const month = String(d.getMonth()+1).padStart(2,'0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatHora(dt){
+  if(!dt) return '';
+  const d = new Date(dt);
+  const hours = String(d.getHours()).padStart(2,'0');
+  const minutes = String(d.getMinutes()).padStart(2,'0');
+  return `${hours}:${minutes}`;
+}
+
+// ========================
+// Função de parse HTML
+// ========================
+function parseGrade(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const regs = Array.from(doc.querySelectorAll('.registro.programa_data'));
+  const now = Date.now();
+
+  return regs.map(el=>{
+    const titleEl = el.querySelector('.titulo');
+    const catEl   = el.querySelector('.evento_box small');
+    const sinopseEl = el.querySelector('.descricao_programa'); 
+    const classificacaoEl = el.querySelector('.classificacao'); 
+    const faixaEl = el.querySelector('.faixa_etaria'); 
+
+    const dti = el.getAttribute('dti');
+    const dtf = el.getAttribute('dtf');
+
+    const startDate = dti ? new Date(dti.replace(' ','T')) : null;
+    const endDate   = dtf ? new Date(dtf.replace(' ','T')) : null;
+
+    const isNow = (startDate && endDate && now >= startDate.getTime() && now < endDate.getTime()) || el.classList.contains('check_noar');
+
+    return {
+      data_inicio: formatData(startDate),
+      hora_inicio: formatHora(startDate),
+      data_fim: formatData(endDate),
+      hora_fim: formatHora(endDate),
+      titulo: titleEl ? titleEl.textContent.trim() : '',
+      categoria: catEl ? catEl.textContent.trim() : '',
+      sinopse: sinopseEl ? sinopseEl.textContent.trim() : '',
+      classificacao: classificacaoEl ? classificacaoEl.textContent.trim() : '',
+      faixa: faixaEl ? faixaEl.textContent.trim() : '',
+      isNow
+    };
+  }).filter(x=>x.data_inicio && x.titulo);
+}
+
+// ========================
+// Função para salvar JSON automaticamente
+// ========================
+function baixarJSON(itens) {
+  const jsonStr = JSON.stringify(itens, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "EPG.json";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ========================
+// Função principal
+// ========================
+async function getProgramacao(canal, dia){
+  try{
+    const url = `${BASE_URL}${canal}/${dia}`;
+    const resp = await fetch(API_PROXY + encodeURIComponent(url));
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const html = await resp.text();
+    const itens = parseGrade(html);
+
+    // Mostra JSON na página (opcional)
+    document.body.textContent = JSON.stringify(itens, null, 2);
+
+    // Baixa automaticamente
+    baixarJSON(itens);
+
+  }catch(err){
+    console.error(err);
+    document.body.textContent = JSON.stringify({error:"Falha ao carregar programação", details: err.message});
+  }
+}
+
+// ========================
+// Atualização em tempo real
+// ========================
+getProgramacao(canal, dia);
+setInterval(()=> getProgramacao(canal, dia), 60000);
+</script>
+</body>
+</html>
