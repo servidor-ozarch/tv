@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>PREMIERE</title>
 
-<!-- CSP: incluí hosts usados nas tentativas -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   base-uri 'none';
@@ -17,26 +16,37 @@
   media-src https://rdcplay.live;
   img-src 'self' data: https://rdcplay.live;
   connect-src 'self' https://rdcplay.live https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io;
-  script-src 'self' 'unsafe-inline' https://servidor-ozarch.github.io https://raw.githubusercontent.com;
+  script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
 ">
 
 <style>
-  :root{--bg:#000;--muted:#9aa4b2;--danger:#ef4444;--ok:#10b981;}
-  html,body{height:100%;margin:0;background:#000;color:#eee;font-family:system-ui,Segoe UI,Roboto,Arial}
-  iframe{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;height:100vh;border:0}
-  .denied{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;background:radial-gradient(circle at top,#111,#000)}
-  .denied h1{font-size:1.6rem;color:var(--danger);margin:0 0 10px}
-  .denied p{color:var(--muted);max-width:620px;margin:0}
-  /* overlay debug (pequeno, clicável para abrir/fechar) */
-  #dbg { position: fixed; right: 10px; bottom: 10px; width: 300px; max-height: 60vh; overflow:auto;
-         background: rgba(16,18,22,0.9); border:1px solid rgba(255,255,255,0.04); padding:8px; border-radius:10px;
-         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#cbd5e1; z-index:9999; }
-  #dbg h4{margin:0 0 6px 0;font-weight:700;font-size:12px}
-  #dbg pre{white-space:pre-wrap;margin:0;color:#cbd5e1}
-  #dbg .ok{color:var(--ok)} #dbg .err{color:var(--danger)}
-  #dbg-toggle{ position:fixed; right:10px; bottom:10px; z-index:10000; width:40px;height:40px;border-radius:8px;
-              display:grid;place-items:center;background:#111;border:1px solid rgba(255,255,255,0.04); color:#fff; cursor:pointer;}
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+    background: black;
+    color: #eee;
+  }
+  iframe {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%; height: 100vh;
+    border: none;
+  }
+  .denied {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: radial-gradient(circle at top, #111, #000);
+    padding: 20px;
+  }
+  .denied h1 { font-size: 1.6rem; color: #ef4444; margin-bottom:10px; }
+  .denied p { font-size: 1rem; color: #aaa; max-width: 600px; }
 </style>
 </head>
 <body>
@@ -46,164 +56,40 @@
   <iframe
     src="https://rdcplay.live/prime/premiereclubes.html"
     allow="autoplay; encrypted-media; picture-in-picture"
-    allowfullscreen
-    sandbox="allow-scripts allow-same-origin allow-presentation"
-    referrerpolicy="no-referrer">
+    allowfullscreen>
   </iframe>
 </div>
 
 <!-- Mensagem de acesso negado -->
 <div id="denied" class="denied">
   <h1>⚠️ ACESSO NEGADO</h1>
-  <p>Acesso fechado até o próximo jogo.<br>Novos tokens serão liberados nos <b>stores do WhatsApp</b>.</p>
+  <p>Acesso fechado até o próximo jogo.<br>
+     Novos tokens serão liberados nos <b>stores do WhatsApp</b>.</p>
 </div>
-
-<!-- Overlay de debug (inicia aberto) -->
-<div id="dbg">
-  <h4>DEBUG - Validação de Token</h4>
-  <pre id="dbg-log">Iniciando...</pre>
-</div>
-<button id="dbg-toggle" title="Mostrar/ocultar debug">⋯</button>
 
 <script>
 (async function(){
-  // --- Configurações (ajuste se mudar pasta/repositorio) ---
-  const ORIGIN = 'https://servidor-ozarch.github.io';
-  const BASE_PATH = '/tv'; // pasta onde index.html e tokens.txt / tokens.js vivem
-  const TOKENS_TXT_PAGES = `${ORIGIN}${BASE_PATH}/tokens.txt`;            // tentativa direta no Pages
-  const TOKENS_RAW_GH = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.txt'; // raw github
-  const PROXY_ALLORIGINS = (u)=> 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
-  const TOKENS_JS_PAGES = `${ORIGIN}${BASE_PATH}/tokens.js`; // tentativa de script externo
-  const FALLBACK_EMBED_TOKENS = [ "7f3d9a8e2b4c6d1f5a0e3c9b7d6f4a2b" ]; // emergência
+  const TOKEN_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.txt';
+  const PROXY = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(TOKEN_URL);
 
-  // --- UI debug helpers ---
-  const dbgLogEl = document.getElementById('dbg-log');
-  const dbgToggle = document.getElementById('dbg-toggle');
-  dbgToggle.addEventListener('click', ()=> {
-    const dbg = document.getElementById('dbg');
-    dbg.style.display = (dbg.style.display === 'none') ? 'block' : 'none';
-  });
-  function dbg(msg, type='info'){
-    console.log('[TOKEN-DBG]', msg);
-    const mark = (type==='err') ? 'ERR' : (type==='ok' ? 'OK' : 'INF');
-    dbgLogEl.textContent = `${new Date().toISOString()} [${mark}] ${msg}\n` + dbgLogEl.textContent;
-  }
+  try {
+    const res = await fetch(PROXY);
+    if(!res.ok) throw new Error('Falha ao buscar tokens via proxy');
 
-  // --- obtém token da URL ---
-  const params = new URLSearchParams(window.location.search);
-  const token = (params.get('token')||'').trim();
-  if(!token){
-    dbg('Token ausente na URL. Parando validação.', 'err');
-    return;
-  }
-  dbg('Token recebido: ' + token.slice(0,6) + '••••' + token.slice(-4), 'info');
+    const text = await res.text();
+    const validTokens = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 
-  // --- função util: parse text tokens ---
-  function parseTextTokens(text){
-    return text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  }
+    const params = new URLSearchParams(window.location.search);
+    const token = (params.get('token')||'').trim();
 
-  // --- tentativa 1: buscar tokens.txt no próprio Pages (mesmo origin) ---
-  async function tryPagesTxt(){
-    try{
-      dbg('Tentativa 1: fetch direto do Pages: ' + TOKENS_TXT_PAGES);
-      const r = await fetch(TOKENS_TXT_PAGES, {cache:'no-store'});
-      if(!r.ok) { dbg('Resposta Pages tokens.txt: HTTP ' + r.status, 'err'); return null; }
-      const text = await r.text();
-      dbg('Recebido tokens (Pages) — tamanho: ' + text.length, 'ok');
-      return parseTextTokens(text);
-    }catch(e){ dbg('Erro fetch Pages tokens.txt: ' + e.message, 'err'); return null; }
-  }
-
-  // --- tentativa 2: buscar tokens.txt via proxy AllOrigins apontando para Pages (caso Pages sirva diferente) ---
-  async function tryProxyToPages(){
-    try{
-      const url = PROXY_ALLORIGINS(TOKENS_TXT_PAGES);
-      dbg('Tentativa 2: proxy->Pages: ' + url);
-      const r = await fetch(url, {cache:'no-store'});
-      if(!r.ok){ dbg('Proxy->Pages HTTP ' + r.status, 'err'); return null; }
-      const text = await r.text();
-      dbg('Recebido tokens (proxy->Pages) — tamanho: ' + text.length, 'ok');
-      return parseTextTokens(text);
-    }catch(e){ dbg('Erro proxy->Pages: ' + e.message, 'err'); return null; }
-  }
-
-  // --- tentativa 3: proxy para raw.githubusercontent (caso você mantenha no repo sem Pages) ---
-  async function tryProxyToRaw(){
-    try{
-      const url = PROXY_ALLORIGINS(TOKENS_RAW_GH);
-      dbg('Tentativa 3: proxy->raw.github: ' + url);
-      const r = await fetch(url, {cache:'no-store'});
-      if(!r.ok){ dbg('Proxy->raw HTTP ' + r.status, 'err'); return null; }
-      const text = await r.text();
-      dbg('Recebido tokens (proxy->raw) — tamanho: ' + text.length, 'ok');
-      return parseTextTokens(text);
-    }catch(e){ dbg('Erro proxy->raw: ' + e.message, 'err'); return null; }
-  }
-
-  // --- tentativa 4: carregar tokens.js via <script> dinâmico (se existir) ---
-  function tryLoadTokensJs(){
-    return new Promise((resolve)=>{
-      dbg('Tentativa 4: tentar carregar script tokens.js: ' + TOKENS_JS_PAGES);
-      const existing = document.querySelector('script[data-tokens-js]');
-      if(existing){ dbg('tokens.js já injetado anteriormente', 'info'); return resolve(window.validTokens || null); }
-      const s = document.createElement('script');
-      s.src = TOKENS_JS_PAGES;
-      s.async = true;
-      s.setAttribute('data-tokens-js','1');
-      s.onload = ()=> {
-        dbg('tokens.js carregado via <script>', 'ok');
-        resolve(Array.isArray(window.validTokens) ? window.validTokens.slice() : null);
-      };
-      s.onerror = (e)=> {
-        dbg('Falha ao carregar tokens.js (script): ' + TOKENS_JS_PAGES, 'err');
-        resolve(null);
-      };
-      document.head.appendChild(s);
-    });
-  }
-
-  // --- executar tentativas em sequência ---
-  const attempts = [ tryPagesTxt, tryProxyToPages, tryProxyToRaw, tryLoadTokensJs ];
-  let validTokens = null;
-  for(const fn of attempts){
-    try{
-      const res = await fn();
-      if(Array.isArray(res) && res.length>0){
-        validTokens = res;
-        dbg('Tokens encontrados — total: ' + validTokens.length, 'ok');
-        break;
-      } else {
-        dbg('Nenhum token obtido nesta tentativa.', 'info');
-      }
-    } catch(err){
-      dbg('Erro interno na tentativa: ' + (err && err.message ? err.message : err), 'err');
-    }
-  }
-
-  // --- fallback embutido ---
-  if(!Array.isArray(validTokens)){
-    dbg('Falha em todas as tentativas. Usando fallback embutido (emergência).', 'err');
-    validTokens = FALLBACK_EMBED_TOKENS.slice();
-  }
-
-  // --- validação final ---
-  try{
-    dbg('Verificando se token fornecido existe na lista...');
-    const found = validTokens.includes(token);
-    if(found){
-      dbg('Token válido — exibindo player', 'ok');
+    if(validTokens.includes(token)){
       document.getElementById('denied').hidden = true;
       document.getElementById('player').hidden = false;
-    } else {
-      dbg('Token NÃO encontrado na lista (negado).', 'err');
-      // Mostrar também, para facilitar, os primeiros 6 tokens encontrados (não expõe todos)
-      dbg('Exemplo tokens[0..5]: ' + validTokens.slice(0,6).map(t=>t.slice(0,6)+'•••').join(', '), 'info');
     }
-  }catch(e){
-    dbg('Erro ao validar token: ' + e.message, 'err');
+  } catch(e) {
+    // Se ocorrer algum erro, permanece mostrando mensagem de acesso negado
+    console.error('Erro ao validar token:', e);
   }
-
 })();
 </script>
 
