@@ -12,10 +12,8 @@
   frame-ancestors 'self';
   navigate-to 'self';
   form-action 'none';
-  frame-src https://rdcplay.live;
-  media-src https://rdcplay.live;
-  img-src 'self' data: https://rdcplay.live;
-  connect-src 'self' https://rdcplay.live https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io;
+  img-src 'self';
+  connect-src 'self' https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io;
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
 ">
@@ -28,13 +26,6 @@
     font-family: system-ui, sans-serif;
     background: black;
     color: #eee;
-  }
-  iframe {
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%; height: 100vh;
-    border: none;
   }
   .denied {
     position: fixed; inset: 0;
@@ -50,15 +41,6 @@
 </style>
 </head>
 <body>
-
-<!-- Player oculto inicialmente -->
-<div id="player" hidden>
-  <iframe
-    src="https://rdcplay.live/prime/premiereclubes.html"
-    allow="autoplay; encrypted-media; picture-in-picture"
-    allowfullscreen>
-  </iframe>
-</div>
 
 <!-- Mensagem de acesso negado -->
 <div id="denied" class="denied">
@@ -83,12 +65,13 @@
     const token = (params.get('token')||'').trim();
 
     if(validTokens.includes(token)){
-      document.getElementById('denied').hidden = true;
-      document.getElementById('player').hidden = false;
+      // Redireciona automaticamente para o player na mesma aba
+      window.location.href = 'https://rdcplay.live/prime/premiereclubes.html';
     }
+    // Se token inválido, permanece na mensagem de acesso negado
   } catch(e) {
-    // Se ocorrer algum erro, permanece mostrando mensagem de acesso negado
     console.error('Erro ao validar token:', e);
+    // Permanece na mensagem de acesso negado
   }
 })();
 </script>
