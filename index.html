@@ -16,7 +16,7 @@
   frame-src https://rdcplay.live;
   media-src https://rdcplay.live;
   img-src 'self' data: https://rdcplay.live;
-  connect-src 'self' https://rdcplay.live;
+  connect-src 'self' https://rdcplay.live https://api.allorigins.win;
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
 ">
@@ -69,22 +69,36 @@
      Novos tokens serão liberados nos <b>stores do WhatsApp</b>.</p>
 </div>
 
-<!-- Inclui o arquivo tokens.js -->
-<script src="https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/tokens.js"></script>
-
 <script>
-(function(){
-  const params = new URLSearchParams(window.location.search);
-  const token = (params.get('token')||'').trim();
+(async function(){
+  // URL do tokens.js no GitHub raw
+  const TOKEN_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.js';
+  const PROXY = 'https://api.allorigins.win/get?url=' + encodeURIComponent(TOKEN_URL);
 
-  if(!token || !Array.isArray(validTokens)) return;
+  try {
+    const res = await fetch(PROXY);
+    if(!res.ok) throw new Error('Falha ao buscar tokens via proxy');
 
-  if(validTokens.includes(token)){
-    document.getElementById('denied').hidden = true;
-    document.getElementById('player').hidden = false;
+    const data = await res.json();
+
+    // Executa o conteúdo do tokens.js para definir validTokens
+    eval(data.contents);
+
+    // Lê token da URL
+    const params = new URLSearchParams(window.location.search);
+    const token = (params.get('token')||'').trim();
+
+    // Validação
+    if(Array.isArray(validTokens) && validTokens.includes(token)){
+      document.getElementById('denied').hidden = true;
+      document.getElementById('player').hidden = false;
+    }
+
+  } catch(e) {
+    console.error('Erro ao validar token:', e);
   }
 })();
 </script>
 
 </body>
-</html>
+      </html>
