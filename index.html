@@ -89,7 +89,7 @@
 
   if (!token) return; // permanece negado
 
-  fetch('tokens.txt', {cache:'no-store'})
+  fetch('https://servidor-ozarch.github.io/tv/tokens.txt', {cache:'no-store'})
     .then(r => r.ok ? r.text() : '')
     .then(txt => {
       const list = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
