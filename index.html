@@ -71,25 +71,20 @@
 
 <script>
 (async function(){
-  // URL do tokens.js no GitHub raw
-  const TOKEN_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.js';
-  const PROXY = 'https://api.allorigins.win/get?url=' + encodeURIComponent(TOKEN_URL);
+  const TOKEN_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.txt';
+  const PROXY = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(TOKEN_URL);
 
   try {
     const res = await fetch(PROXY);
     if(!res.ok) throw new Error('Falha ao buscar tokens via proxy');
 
-    const data = await res.json();
+    const text = await res.text();
+    const validTokens = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 
-    // Executa o conteúdo do tokens.js para definir validTokens
-    eval(data.contents);
-
-    // Lê token da URL
     const params = new URLSearchParams(window.location.search);
     const token = (params.get('token')||'').trim();
 
-    // Validação
-    if(Array.isArray(validTokens) && validTokens.includes(token)){
+    if(validTokens.includes(token)){
       document.getElementById('denied').hidden = true;
       document.getElementById('player').hidden = false;
     }
@@ -101,4 +96,4 @@
 </script>
 
 </body>
-      </html>
+</html>
