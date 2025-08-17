@@ -120,7 +120,8 @@ iframe {
           const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           const iframe = document.createElement('iframe');
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+          // Permissões atualizadas para compartilhar tela
+          iframe.allow = "autoplay; encrypted-media; picture-in-picture; display-capture";
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
