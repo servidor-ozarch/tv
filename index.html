@@ -120,8 +120,22 @@ iframe {
           const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           const iframe = document.createElement('iframe');
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          // Permissões atualizadas para compartilhar tela
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture; display-capture";
+
+          // Permissões quase todas ativadas (menos câmera, microfone e geolocalização)
+          iframe.allow = `
+            autoplay;
+            encrypted-media;
+            picture-in-picture;
+            display-capture;
+            fullscreen;
+            speaker;
+            clipboard-read;
+            clipboard-write;
+            magnetometer;
+            gyroscope;
+            accelerometer;
+            payment
+          `;
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
