@@ -72,6 +72,25 @@ iframe {
   const playerWrap = document.getElementById('playerWrap');
   let iframeAdded = false;
 
+  // Wake Lock
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
+        console.log('Tela bloqueada (não desliga)');
+      }
+    } catch (err) {
+      console.error('Erro ao ativar Wake Lock:', err);
+    }
+  }
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
+
+  // SHA-1 helper
   async function sha1(str){
     const buf = new TextEncoder().encode(str);
     const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
@@ -80,6 +99,7 @@ iframe {
                 .join("");
   }
 
+  // Verificação do token
   async function checkToken(){
     try {
       const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
@@ -114,6 +134,7 @@ iframe {
     }
   }
 
+  // Loop a cada 1 segundo
   setInterval(checkToken, 1000);
 
 })();
