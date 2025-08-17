@@ -82,23 +82,22 @@ iframe {
       if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
       const data = await res.json();
 
-      console.log("Tokens do Firebase:", data); // depuração
+      console.log("Tokens do Firebase:", data);
 
       // Extrai todos os tokens como strings
       let validTokens = [];
       if(typeof data === 'object' && data !== null){
         Object.values(data).forEach(item => {
-          if(item && typeof item.token === 'string') validTokens.push(item.token.trim());
+          if(item && item.token !== undefined) validTokens.push(String(item.token).trim());
         });
       }
 
       if(validTokens.includes(token)){
         if(!iframeAdded){
           deniedEl.style.display = 'none';
-          const iframe = document.createElement('iframe');
-          // Reconstruir PLAYER_URL com camuflagem SHA-1
           const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
           const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
+          const iframe = document.createElement('iframe');
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
           iframe.allow = "autoplay; encrypted-media; picture-in-picture";
           iframe.allowFullscreen = true;
