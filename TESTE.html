@@ -82,28 +82,17 @@ iframe {
 
   async function checkToken(){
     try {
-      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json";
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
       const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
 
       const res = await fetch(PROXY + "?cachebust=" + Date.now());
-      if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
-      const data = await res.json();
+      if(!res.ok) throw new Error("Falha ao ler token do Firebase");
+      let tokenFromFirebase = await res.text();
+      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g,"").trim();
 
-      // Extrai todos os tokens como string ou SHA-1
-      let validTokens = [];
-      if(typeof data === 'object' && data !== null){
-        Object.values(data).forEach(item => {
-          if(item && item.token !== undefined){
-            validTokens.push(String(item.token).trim());
-          }
-        });
-      }
-
-      // Calcula SHA-1 do token da URL
       const tokenHash = await sha1(tokenInput);
 
-      // Valida se token direto ou SHA-1 existe no Firebase
-      if(validTokens.includes(tokenInput) || validTokens.includes(tokenHash)){
+      if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
         if(!iframeAdded){
           deniedEl.style.display = 'none';
           const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
