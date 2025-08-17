@@ -2,124 +2,149 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PREMIERE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Player Seguro</title>
+<style>
+html, body {
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:system-ui,sans-serif;
+}
+#playerWrap {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100vh;
+  z-index:100;
+}
+iframe {
+  width:100%;
+  height:100%;
+  border:0;
+}
+#denied {
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+  color:#fff;
+  z-index:200;
+  text-align:center;
+}
+.hide {display:none}
+</style>
 </head>
 <body>
+
+<div id="denied">
+  <h1>⚠️ ACESSO NEGADO</h1>
+  <p>Acesso fechado até o próximo jogo.<br>Insira um token válido.</p>
+</div>
+
+<!-- ========================= -->
+<!-- Blocos camuflados do PLAYER (SHA-1) -->
+<!-- ========================= -->
+<div id="3b7a814a7e7a8e3b5c5a8f3d7a9c8e1b2f0a9d" class="hide">https</div>
+<div id="c5d9e7b3a8f1e4d2c6b9a8e3f5d7c1e9b2a4f" class="hide">://</div>
+<div id="e8d7c1b9a6f5e4d3c2b8a9e7f6d5c4b3a2e1" class="hide">rdc</div>
+<div id="a2b4c6d8e0f1a3b5c7d9e2f4a6b8c0d1e3f" class="hide">play</div>
+<div id="7e5d3c1b9a8e6f4d2c0b8a7e5d3c1b9a6f4d" class="hide">.live</div>
+<div id="f1e3d5c7b9a2e4d6c8b0a1e3d5c7b9a2e4d6" class="hide">/prime/</div>
+<div id="9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f" class="hide">premiereclubes</div>
+<div id="4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d" class="hide">.html</div>
+
+<!-- ========================= -->
+<!-- Blocos camuflados do TOKEN (SHA-1 reais + falsos) -->
+<!-- ========================= -->
+<div id="a3f5c1b7d8e2f4c9b0d1e6a7f8b2c3d4e5f6a7b8" class="hide">/s</div>
+<div id="b7c9d2e1f3a5b8c0d6e7f1a2b3c4d5e6f7a8b9c0" class="hide">erv</div>
+<div id="c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0" class="hide">idor</div>
+<div id="d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0" class="hide">-oz</div>
+<div id="e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0" class="hide">arch</div>
+<div id="f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0" class="hide">/tv</div>
+<div id="g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0" class="hide">/main</div>
+<div id="h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0" class="hide">/tokens</div>
+<div id="i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0" class="hide">.txt</div>
+<!-- blocos falsos -->
+<div id="fake1" class="hide">xyz</div>
+<div id="fake2" class="hide">123</div>
+<div id="fake3" class="hide">abc</div>
+
+<div id="playerWrap"></div>
+
 <script>
-// Chave em Base64 fornecida
-const keyBase64 = "MzA2NDIxOTM=";
-const key = atob(keyBase64); // "30642193"
+(async function(){
+  function getBlock(id){ return document.getElementById(id).innerText; }
 
-// Função de descriptografia XOR + Base64
-function decrypt(base64Data, key){
-  const str = atob(base64Data);
-  let result = '';
-  for(let i=0;i<str.length;i++){
-    result += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  // Reconstrução URL do player
+  const playerOrder = [
+    "3b7a814a7e7a8e3b5c5a8f3d7a9c8e1b2f0a9d",
+    "c5d9e7b3a8f1e4d2c6b9a8e3f5d7c1e9b2a4f",
+    "e8d7c1b9a6f5e4d3c2b8a9e7f6d5c4b3a2e1",
+    "a2b4c6d8e0f1a3b5c7d9e2f4a6b8c0d1e3f",
+    "7e5d3c1b9a8e6f4d2c0b8a7e5d3c1b9a6f4d",
+    "f1e3d5c7b9a2e4d6c8b0a1e3d5c7b9a2e4d6",
+    "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f",
+    "4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d"
+  ];
+  const PLAYER_URL = playerOrder.map(getBlock).join("");
+
+  // Reconstrução URL do token (somente blocos reais)
+  const tokenOrder = [
+    "a3f5c1b7d8e2f4c9b0d1e6a7f8b2c3d4e5f6a7b8",
+    "b7c9d2e1f3a5b8c0d6e7f1a2b3c4d5e6f7a8b9c0",
+    "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
+    "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0",
+    "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0",
+    "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0",
+    "g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0",
+    "h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0",
+    "i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0"
+  ];
+  const TOKEN_URL = tokenOrder.map(getBlock).join("");
+
+  // Token da URL
+  const params = new URLSearchParams(window.location.search);
+  const token = (params.get('token')||'').trim();
+
+  const deniedEl = document.getElementById('denied');
+  const playerWrap = document.getElementById('playerWrap');
+
+  if(!token) return; // mantém negado
+
+  // Valida token
+  let validTokens = [];
+  try {
+    const r = await fetch(TOKEN_URL, {cache:'no-store'});
+    if(r.ok){
+      const txt = await r.text();
+      validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    }
+  } catch(e){
+    console.error("Erro ao buscar lista de tokens:", e);
   }
-  return result;
-}
 
-// Página inteira criptografada
-const encryptedHTML = "MzA2NDIxOTM=PCFET0NUWVBFIGh0bWw+DQo8aHRtbCBsYW5nPSJwdC1iciI+DQo8aGVhZD4NCjxtZXRh
-IGNoYXJzZXQ9InV0Zi04IiAvPg0KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRl
-dmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLCBtYXhpbXVtLXNjYWxlPTEsIHVzZXItc2NhbGFibGU9
-bm8iIC8+DQo8dGl0bGU+UFJFTUlFUkU8L3RpdGxlPg0KPG1ldGEgaHR0cC1lcXVpdj0iQ29udGVudC1T
-ZWN1cml0eS1Qb2xpY3kiIGNvbnRlbnQ9Ig0KICBkZWZhdWx0LXNyYyAnc2VsZic7DQogIGZyYW1lLXNy
-YyBodHRwczovL3JkY3BsYXkubGl2ZSBodHRwczovL1lPVVJfUFJPWFlfRE9NQUlOOw0KICBjb25uZWN0
-LXNyYyAnc2VsZicgaHR0cHM6Ly9hcGkuYWxsb3JpZ2lucy53aW4gaHR0cHM6Ly9yYXcuZ2l0aHVidXNl
-cmNvbnRlbnQuY29tIGh0dHBzOi8vc2Vydmlkb3Itb3phcmNoLmdpdGh1Yi5pbzsNCiAgc2NyaXB0LXNy
-YyAnc2VsZicgJ3Vuc2FmZS1pbmxpbmUnOw0KICBzdHlsZS1zcmMgJ3NlbGYnICd1bnNhZmUtaW5saW5l
-JzsNCiI+DQo8c3R5bGU+DQogIGh0bWwsYm9keXtoZWlnaHQ6MTAwJTttYXJnaW46MDtiYWNrZ3JvdW5k
-OiMwMDA7Y29sb3I6I2ZmZjtmb250LWZhbWlseTpzeXN0ZW0tdWksc2Fucy1zZXJpZjtvdmVyZmxvdzpo
-aWRkZW59DQogIC5jZW50ZXJ7cG9zaXRpb246Zml4ZWQ7aW5zZXQ6MDtkaXNwbGF5OmZsZXg7YWxpZ24t
-aXRlbXM6Y2VudGVyO2p1c3RpZnktY29udGVudDpjZW50ZXJ9DQogIC5kZW5pZWR7ZGlzcGxheTpmbGV4
-O2ZsZXgtZGlyZWN0aW9uOmNvbHVtbjtnYXA6MTBweDthbGlnbi1pdGVtczpjZW50ZXI7dGV4dC1hbGln
-bjpjZW50ZXI7cGFkZGluZzoyMHB4fQ0KICAuZGVuaWVkIGgxe2NvbG9yOiNlZjQ0NDQ7bWFyZ2luOjAg
-MCA2cHh9DQogIC5idG4ge2JhY2tncm91bmQ6IzExMTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMjU1LDI1
-NSwyNTUsLjA2KTtwYWRkaW5nOjEwcHggMTRweDtib3JkZXItcmFkaXVzOjEwcHg7Y29sb3I6I2ZmZjtj
-dXJzb3I6cG9pbnRlcn0NCiAgLmJ0bi5wcmltYXJ5e2JhY2tncm91bmQ6bGluZWFyLWdyYWRpZW50KCMx
-MGI5ODEsIzA1OTY2OSk7Ym9yZGVyOm5vbmV9DQogIC5mYWxsYmFjayB7cG9zaXRpb246Zml4ZWQ7bGVm
-dDoxMnB4O2JvdHRvbToxMnB4O3otaW5kZXg6OTk5OTtiYWNrZ3JvdW5kOnJnYmEoMCwwLDAsLjYpO3Bh
-ZGRpbmc6MTBweDtib3JkZXItcmFkaXVzOjEwcHg7Ym9yZGVyOjFweCBzb2xpZCByZ2JhKDI1NSwyNTUs
-MjU1LC4wNCl9DQogIGlmcmFtZS5mdWxsew0KICAgIHBvc2l0aW9uOmZpeGVkOyB0b3A6NTAlOyBsZWZ0
-OjUwJTsgdHJhbnNmb3JtOnRyYW5zbGF0ZSgtNTAlLC01MCUpOw0KICAgIHdpZHRoOjEwMCU7IGhlaWdo
-dDoxMDB2aDsgYm9yZGVyOjA7IGJhY2tncm91bmQ6IzAwMDsNCiAgfQ0KPC9zdHlsZT4NCjwvaGVhZD4N
-Cjxib2R5Pg0KDQo8IS0tIMOBcmVhIGluY2ljaWFsOiBtZW5zYWdlbSBuZWdhZG8gKG1vc3RyYWRhIGVu
-cXVhbnRvIHZhbGlkYSkgLS0+DQo8ZGl2IGlkPSJkZW5pZWQiIGNsYXNzPSJjZW50ZXIgZGVuaWVkIj4N
-CiAgPGgxPuKdpCDigqxBQ0VTU08gTkVHQURPPC9oMT4NCiAgPHA+QWNlc3NvIGZlY2hhZG8gYXTqIG8g
-cHLDs3hpbW8gam9nby48YnIgLz5Ob3ZvcyB0b2tlbnMgc2Vyw6NvIGxpYmVyYWRvcyBub3MgPGI+c3Rv
-cmVzIGRvIFdoYXRzQXBwPC9iPi48L3A+DQo8L2Rpdj4NCg0KPCEtLSBjb250YWluZXIgZG8gcGxheWVy
-IHNlcsOhIGluamV0YWRvIGFxdWkgLS0+DQo8ZGl2IGlkPSJwbGF5ZXJXcmFwIj48L2Rpdj4NCg0KPCEt
-LSBmYWxsYmFjayBVSSAoaGlkZGVuIGF0w6kgbmVjZXNzw6FyaW8pIC0tPg0KPGRpdiBpZD0iZmFsbGJh
-Y2siIGNsYXNzPSJmYWxsYmFjayIgc3R5bGU9ImRpc3BsYXk6bm9uZSI+DQogIDxkaXYgc3R5bGU9Im1h
-cmdpbi1ib3R0b206OHB4Ij5Ow6NvIGZvaSBwb3Nzw612ZWwgZW1idXRpciBvIHBsYXllciDigJQgZXNj
-b2xoYSB1bWEgb3DDp8Ojbzo8L2Rpdj4NCiAgPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4O2dhcDo4cHgi
-Pg0KICAgIDxidXR0b24gaWQ9Im9wZW5TYW1lIiBjbGFzcz0iYnRuIHByaW1hcnkiPkFicmlyIHBsYXll
-ciAobWVzbWEgYWJhKTwvYnV0dG9uPg0KICAgIDxidXR0b24gaWQ9Im9wZW5OZXciIGNsYXNzPSJidG4i
-PkFicmlyIGVtIG5vdmEgYWJhPC9idXR0b24+DQogIDwvZGl2Pg0KICA8ZGl2IHN0eWxlPSJtYXJnaW4t
-dG9wOjhweDtmb250LXNpemU6MTJweDtjb2xvcjojY2NjIj5TZSBxdWlzZXIgZW1iZWRkaW5nLCBjb25m
-aWd1cmUgdW0gcHJveHkgcmV2ZXJzbyAoZXguOiBDbG91ZGZsYXJlIFdvcmtlcikuPC9kaXY+DQo8L2Rp
-dj4NCg0KPHNjcmlwdD4NCihhc3luYyBmdW5jdGlvbigpew0KICAvLyBDT05GSUcNCiAgY29uc3QgVE9L
-RU5fVVJMID0gJ2h0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9zZXJ2aWRvci1vemFyY2gv
-dHYvbWFpbi90b2tlbnMudHh0JzsNCiAgY29uc3QgUFJPWFkgPSAnaHR0cHM6Ly9hcGkuYWxsb3JpZ2lu
-cy53aW4vcmF3P3VybD0nICsgZW5jb2RlVVJJQ29tcG9uZW50KFRPS0VOX1VSTCk7DQogIGNvbnN0IFBM
-QVlFUl9VUkwgPSAnaHR0cHM6Ly9yZGNwbGF5LmxpdmUvcHJpbWUvcHJlbWllcmVjbHViZXMuaHRtbCc7
-DQogIGNvbnN0IFBST1hZX1BMQVlFUl9VUkwgPSBudWxsOyAvLyBvcGNpb25hbDogJ2h0dHBzOi8vc2V1
-LXByb3h5LmV4YW1wbGUuY29tL3BsYXllcj91PScgKyBlbmNvZGVVUklDb21wb25lbnQoUExBWUVSX1VS
-TCkNCiAgY29uc3QgVElNRU9VVF9NUyA9IDQwMDA7DQoNCiAgLy8gaGVscGVyOiBzaG93IGRlbmllZC8g
-cGxheWVyIC8gZmFsbGJhY2sNCiAgY29uc3QgZGVuaWVkRWwgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJ
-ZCgnZGVuaWVkJyk7DQogIGNvbnN0IHBsYXllcldyYXAgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgn
-cGxheWVyV3JhcCcpOw0KICBjb25zdCBmYWxsYmFjayA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdm
-YWxsYmFjaycpOw0KICBjb25zdCBidG5TYW1lID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ29wZW5T
-YW1lJyk7DQogIGNvbnN0IGJ0bk5ldyA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdvcGVuTmV3Jyk7
-DQoNCiAgLy8gZXh0cmFpIHRva2VuDQogIGNvbnN0IHBhcmFtcyA9IG5ldyBVUkxTZWFyY2hQYXJhbXMo
-d2luZG93LmxvY2F0aW9uLnNlYXJjaCk7DQogIGNvbnN0IHRva2VuID0gKHBhcmFtcy5nZXQoJ3Rva2Vu
-Jyl8fCcnKS50cmltKCk7DQogIGlmKCF0b2tlbikgcmV0dXJuOyAvLyBwZXJtYW5lY2UgbmVnYWRvDQoN
-CiAgLy8gcGVnYSB0b2tlbnMgdmlhIHByb3h5DQogIGxldCB2YWxpZFRva2VucyA9IFtdOw0KICB0cnkg
-ew0KICAgIGNvbnN0IHIgPSBhd2FpdCBmZXRjaChQUk9YWSwge2NhY2hlOiduby1zdG9yZSd9KTsNCiAg
-ICBpZihyLm9rKXsNCiAgICAgIGNvbnN0IHR4dCA9IGF3YWl0IHIudGV4dCgpOw0KICAgICAgdmFsaWRU
-b2tlbnMgPSB0eHQuc3BsaXQoL1xyP1xuLykubWFwKHM9PnMudHJpbSgpKS5maWx0ZXIoQm9vbGVhbik7
-DQogICAgfQ0KICB9IGNhdGNoKGUpIHsNCiAgICAvLyBmYWxoaGE6IGZhbGxiYWNrIHZhemlvICh0b2tl
-biBuw6NvIHZhbGlkYWRvKQ0KICB9DQoNCiAgaWYoIXZhbGlkVG9rZW5zLmluY2x1ZGVzKHRva2VuKSl7
-DQogICAgLy8gaW52YWxpZCB0b2tlbjoga2VlcCBkZW5pZWQgdmlzaWJsZQ0KICAgIHJldHVybjsNCiAg
-fQ0KDQogIC8vIHRva2VuIHbDoWxpZG8gLT4gdGVudGEgZW1idXRpciBpZnJhbWUNCiAgZGVuaWVkRWwu
-c3R5bGUuZGlzcGxheSA9ICdub25lJzsNCg0KICAvLyBjcmlhIGlmcmFtZQ0KICBjb25zdCBpZnJhbWUg
-PSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdpZnJhbWUnKTsNCiAgaWZyYW1lLmNsYXNzTmFtZSA9ICdm
-dWxsJzsNCiAgaWZyYW1lLnNyYyA9IFBST1hZX1BMQVlFUl9VUkwgfHwgUExBWUVSX1VSTDsNCiAgaWZy
-YW1lLmFsbG93ID0gJ2F1dG9wbGF5OyBlbmNyeXB0ZWQtbWVkaWE7IHBpY3R1cmUtaW4tcGljdHVyZSc7
-DQogIGlmcmFtZS5hbGxvd0Z1bGxzY3JlZW4gPSB0cnVlOw0KICAvLyBOT8OBIHDDqSBzYW5kYm94L3Jl
-ZmVycmVycG9saWN5IGFxdWkgcGFyYSBldml0YXIgYmxvcXVlaW9zIGFkaWNpb25haXMNCg0KICAvLyBh
-cHBlbmQgYnV0IGhpZGRlbiB1bnRpbCB3ZSBjb25maXJtIGxvYWQNCiAgcGxheWVyV3JhcC5hcHBlbmRD
-aGlsZChpZnJhbWUpOw0KDQogIC8vIERldGVjdGEgY2FycmVnYW1lbnRvIHVzYW5kbyBsb2FkICsgdGlt
-ZW91dA0KICBsZXQgbG9hZGVkID0gZmFsc2U7DQogIGNvbnN0IG9uTG9hZCA9ICgpPT4geyBsb2FkZWQg
-PSB0cnVlOyBjbGVhclRpbWVvdXQodGltZW91dCk7IC8qIGlmcmFtZSB2aXPDrXZlbCBqw6EgKi8gfTsN
-CiAgaWZyYW1lLmFkZEV2ZW50TGlzdGVuZXIoJ2xvYWQnLCBvbkxvYWQpOw0KDQogIGNvbnN0IHRpbWVv
-dXQgPSBzZXRUaW1lb3V0KCgpPT57DQogICAgaWYoIWxvYWRlZCl7DQogICAgICAvLyBzZSBwcm94eV9w
-bGF5ZXJfdXJsIGVzdGl2ZXIgZGlzcG9uw612ZWwsIHRlbnRhIHRyb2NhciBwb3IgcHJveHkgKG9wY2lv
-bmFsKQ0KICAgICAgaWYoUFJPWFlfUExBWUVSX1VSTCAmJiBpZnJhbWUuc3JjICE9PSBQUk9YWV9QTEFZ
-RVJfVVJMKXsNCiAgICAgICAgaWZyYW1lLnNyYyA9IFBST1hZX1BMQVlFUl9VUkw7DQogICAgICAgIC8v
-IHJlaW5pY2lhIHRpbWVyIGN1cnRvDQogICAgICAgIHNldFRpbWVvdXQoKCk9PnsNCiAgICAgICAgICBp
-ZighbG9hZGVkKSBzaG93RmFsbGJhY2soKTsNCiAgICAgICAgfSwgMzAwMCk7DQogICAgICAgIHJldHVy
-bjsNCiAgICAgIH0NCiAgICAgIHNob3dGYWxsYmFjaygpOw0KICAgIH0NCiAgfSwgVElNRU9VVF9NUyk7
-DQoNCiAgZnVuY3Rpb24gc2hvd0ZhbGxiYWNrKCl7DQogICAgLy8gcmVtb3ZlIGlmcmFtZSAob3UgZGVp
-eGEsIG1hcyBtb3N0cmEgZmFsbGJhY2spDQogICAgdHJ5IHsgaWZyYW1lLnJlbW92ZSgpOyB9IGNhdGNo
-KGUpe30NCiAgICBmYWxsYmFjay5zdHlsZS5kaXNwbGF5ID0gJ2Jsb2NrJzsNCiAgfQ0KDQogIC8vIGZh
-bGxiYWNrIGJ1dHRvbnMNCiAgYnRuU2FtZS5hZGRFdmVudExpc3RlbmVyKCdjbGljaycsICgpPT4gew0K
-ICAgIC8vIGFicmUgbmEgbWVzbWEgYWJhIChvIHBsYXllciBvcmlnaW5hbCkNCiAgICBsb2NhdGlvbi5o
-cmVmID0gUExBWUVSX1VSTCArIChQTEFZRVJfVVJMLmluY2x1ZGVzKCc/JykgPyAnJicgOiAnPycpICsg
-J3Rva2VuPScgKyBlbmNvZGVVUklDb21wb25lbnQodG9rZW4pOw0KICB9KTsNCiAgYnRuTmV3LmFkZEV2
-ZW50TGlzdGVuZXIoJ2NsaWNrJywgKCk9PiB7DQogICAgd2luZG93Lm9wZW4oUExBWUVSX1VSTCArIChQ
-TEFZRVJfVVJMLmluY2x1ZGVzKCc/JykgPyAnJicgOiAnPycpICsgJ3Rva2VuPScgKyBlbmNvZGVVUklD
-b21wb25lbnQodG9rZW4pLCAnX2JsYW5rJyk7DQogIH0pOw0KDQp9KSgpOw0KPC9zY3JpcHQ+DQo8L2Jv
-ZHk+DQogIDwvaHRtbD4=";
+  if(!validTokens.includes(token)) return; // token inválido
 
-// Descriptografa e injeta no documento
-const decryptedHTML = decrypt(encryptedHTML, key);
-document.open();
-document.write(decryptedHTML);
-document.close();
+  // Token válido → libera player
+  deniedEl.style.display = 'none';
+
+  const iframe = document.createElement('iframe');
+  iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
+  iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+  iframe.allowFullscreen = true;
+
+  playerWrap.appendChild(iframe);
+})();
 </script>
+
 </body>
 </html>
