@@ -74,7 +74,6 @@ iframe {
 
   async function checkToken(){
     try {
-      // Proxy CORS para acessar Firebase
       const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json";
       const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
 
@@ -82,9 +81,7 @@ iframe {
       if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
       const data = await res.json();
 
-      console.log("Tokens do Firebase:", data);
-
-      // Extrai todos os tokens como strings
+      // Extrai todos os tokens como string
       let validTokens = [];
       if(typeof data === 'object' && data !== null){
         Object.values(data).forEach(item => {
@@ -114,7 +111,7 @@ iframe {
     }
   }
 
-  // Loop de verificação a cada 1 segundo
+  // Loop a cada 1 segundo
   setInterval(checkToken, 1000);
 
 })();
