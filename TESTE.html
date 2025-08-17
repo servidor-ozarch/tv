@@ -61,13 +61,6 @@ iframe {
 <div id="p7" class="hide">premiereclubes</div>
 <div id="p8" class="hide">.html</div>
 
-<!-- Blocos SHA-1 do TOKEN -->
-<div id="t1" class="hide">tokens</div>
-<div id="t2" class="hide">.txt</div>
-<!-- blocos falsos -->
-<div id="f1" class="hide">abc</div>
-<div id="f2" class="hide">xyz</div>
-
 <script>
 (async function(){
   function getBlock(id){ return document.getElementById(id).innerText; }
@@ -75,10 +68,6 @@ iframe {
   // Reconstruir PLAYER_URL
   const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
   const PLAYER_URL = playerOrder.map(getBlock).join("");
-
-  // Reconstruir TOKEN_URL apenas pelo nome do arquivo
-  const tokenOrder = ["t1","t2"];
-  const TOKEN_URL = tokenOrder.map(getBlock).join("");
 
   const params = new URLSearchParams(window.location.search);
   const token = (params.get('token')||'').trim();
@@ -92,10 +81,15 @@ iframe {
 
   async function checkToken(){
     try {
-      const res = await fetch(TOKEN_URL, {cache:'no-store'});
-      if(!res.ok) throw new Error("Falha ao ler tokens");
-      const txt = await res.text();
-      const validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      // Pega tokens do Firebase
+      const res = await fetch("https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json?cachebust=" + Date.now());
+      if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
+      const data = await res.json();
+      
+      // data pode ser objeto ou array → normaliza para array
+      let validTokens = [];
+      if(Array.isArray(data)) validTokens = data.map(s=>s.trim());
+      else if(typeof data === 'object') validTokens = Object.values(data).map(s=>s.trim());
 
       if(validTokens.includes(token)){
         // token válido
