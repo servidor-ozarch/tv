@@ -101,6 +101,8 @@ iframe {
 
   // Verificação do token
   async function checkToken(){
+    if(iframeAdded) return; // já validado, não faz mais nada
+
     try {
       const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
       const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
@@ -113,24 +115,22 @@ iframe {
       const tokenHash = await sha1(tokenInput);
 
       if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
-        if(!iframeAdded){
-          deniedEl.style.display = 'none';
-          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
-          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
-          const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-          iframe.allowFullscreen = true;
-          playerWrap.appendChild(iframe);
-          iframeAdded = true;
-        }
+        deniedEl.style.display = 'none';
+        const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
+        const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
+        const iframe = document.createElement('iframe');
+        iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
+        iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+        iframe.allowFullscreen = true;
+        playerWrap.appendChild(iframe);
+        iframeAdded = true; // marca que já validou
       } else {
         location.reload();
       }
 
     } catch(e){
       console.error("Erro ao verificar token:", e);
-      location.reload();
+      if(!iframeAdded) location.reload();
     }
   }
 
