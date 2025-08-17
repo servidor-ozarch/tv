@@ -68,7 +68,7 @@ iframe {
 <!-- ========================= -->
 <div id="t1" class="hide">tokens</div>
 <div id="t2" class="hide">.txt</div>
-<!-- blocos falsos para confundir -->
+<!-- blocos falsos -->
 <div id="f1" class="hide">abc</div>
 <div id="f2" class="hide">xyz</div>
 
@@ -92,29 +92,45 @@ iframe {
 
   if(!token) return; // mantém negado
 
-  // Fetch do token local (mesma pasta que a página)
-  let validTokens = [];
-  try {
-    const r = await fetch(TOKEN_URL, {cache:'no-store'});
-    if(r.ok){
-      const txt = await r.text();
-      validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  let iframeAdded = false;
+
+  async function checkToken(){
+    try {
+      const res = await fetch(TOKEN_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error("Falha ao ler tokens");
+      const txt = await res.text();
+      const validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+
+      if(validTokens.includes(token)){
+        // token válido
+        if(!iframeAdded){
+          deniedEl.style.display = 'none';
+          const iframe = document.createElement('iframe');
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
+          iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+          iframe.allowFullscreen = true;
+          playerWrap.appendChild(iframe);
+          iframeAdded = true;
+        }
+        return true;
+      } else {
+        // token inválido → mantém negado
+        deniedEl.style.display = 'flex';
+        return false;
+      }
+    } catch(e){
+      console.error("Erro ao verificar token:", e);
+      deniedEl.style.display = 'flex';
+      return false;
     }
-  } catch(e){
-    console.error("Erro ao buscar lista de tokens:", e);
   }
 
-  if(!validTokens.includes(token)) return; // token inválido
+  // Loop de verificação a cada 1 segundo
+  const interval = setInterval(async ()=>{
+    const ok = await checkToken();
+    if(ok) clearInterval(interval);
+  }, 1000);
 
-  // Token válido → libera player
-  deniedEl.style.display = 'none';
-
-  const iframe = document.createElement('iframe');
-  iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
-  iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-  iframe.allowFullscreen = true;
-
-  playerWrap.appendChild(iframe);
 })();
 </script>
 
