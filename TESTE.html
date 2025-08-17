@@ -81,15 +81,17 @@ iframe {
 
   async function checkToken(){
     try {
-      // Pega tokens do Firebase
+      // Pega tokens do Firebase (evita cache)
       const res = await fetch("https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json?cachebust=" + Date.now());
       if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
       const data = await res.json();
-      
-      // data pode ser objeto ou array → normaliza para array
+
+      console.log("Tokens do Firebase:", data); // para depuração
+
+      // Normaliza tokens para array
       let validTokens = [];
       if(Array.isArray(data)) validTokens = data.map(s=>s.trim());
-      else if(typeof data === 'object') validTokens = Object.values(data).map(s=>s.trim());
+      else if(typeof data === 'object' && data !== null) validTokens = Object.values(data).map(s=>s.trim());
 
       if(validTokens.includes(token)){
         // token válido
