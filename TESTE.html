@@ -1,149 +1,308 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Player Seguro</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>IPTV Streaming</title>
 <style>
-html, body {
-  margin:0;
-  padding:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-  font-family:system-ui,sans-serif;
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    touch-action: manipulation;
 }
-#playerWrap {
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100vh;
-  z-index:100;
+
+/* Toolbar */
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: rgba(20,20,20,0.95);
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 20;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
-iframe {
-  width:100%;
-  height:100%;
-  border:0;
+
+.toolbar button {
+    background: #ff002b;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.3s;
 }
-#denied {
-  position:fixed;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  background:#000;
-  color:#fff;
-  z-index:200;
-  text-align:center;
+
+.toolbar button:hover {
+    background: #ff3355;
 }
-.hide {display:none}
+
+/* Drawer lateral */
+.sidebar {
+    width: 250px;
+    background: rgba(20, 20, 20, 0.95);
+    padding: 70px 15px 20px 15px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: transform 0.5s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 10;
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+}
+
+.sidebar h1 {
+    font-size: 20px;
+    color: #ff002b;
+    margin-bottom: 15px;
+    text-align: left;
+    margin-left: 10px;
+}
+
+/* Canal compacto com barra de programação */
+.channel-item {
+    display: flex;
+    flex-direction: column;
+    background: #1c1c1c;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border 0.3s, box-shadow 0.3s;
+}
+
+.channel-item:hover {
+    border: 2px solid #ff002b;
+    box-shadow: 0 0 12px rgba(255,0,43,0.4);
+}
+
+.channel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.channel-header img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+
+.channel-header span {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.program-bar {
+    position: relative;
+    height: 8px;
+    background: #111;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.program-bar span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: #ff002b;
+    width: 30%;
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+/* Área principal (contêiner do player) */
+.content {
+    position: absolute;
+    top: 50px; 
+    left: 100%; 
+    width: 100%;
+    height: calc(100% - 50px - 30px); /* Subtrai Toolbar + Rodapé */
+    background: #111;
+    transition: all 0.5s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    z-index: 15; /* acima do Drawer, abaixo do rodapé */
+}
+
+.content.visible {
+    left: 0;
+    width: 100%;
+    opacity: 1;
+}
+
+.content.hidden {
+    left: 100%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preview {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    background: #000;
+    border-radius: 12px;
+    border: 2px solid #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 16; /* garante que iframe fique acima do contêiner */
+}
+
+.preview iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Rodapé fixo */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 30px;
+    background: rgba(20,20,20,0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    font-size: 12px;
+    z-index: 25;
+    pointer-events: none;
+}
 </style>
 </head>
 <body>
 
-<div id="denied">
-  <h1>⚠️ ACESSO NEGADO</h1>
-  <p>Acesso fechado até o próximo jogo.<br>Insira um token válido.</p>
+<div class="toolbar">
+    <button id="toggleDrawer">☰</button>
 </div>
 
-<div id="playerWrap"></div>
+<div class="sidebar" id="sidebar">
+    <h1>• AGORA</h1>
+</div>
 
-<!-- Blocos SHA-1 do PLAYER -->
-<div id="p1" class="hide">https</div>
-<div id="p2" class="hide">://</div>
-<div id="p3" class="hide">rdc</div>
-<div id="p4" class="hide">play</div>
-<div id="p5" class="hide">.live</div>
-<div id="p6" class="hide">/prime/</div>
-<div id="p7" class="hide">premiereclubes</div>
-<div id="p8" class="hide">.html</div>
+<div class="content hidden" id="content">
+    <div class="preview" id="preview">
+        Selecione um canal para assistir
+    </div>
+</div>
+
+<div class="footer">
+    ©2025 APP ZEUS WEB - Por Ozarch
+</div>
 
 <script>
-(async function(){
+const sidebar = document.getElementById('sidebar');
+const content = document.getElementById('content');
+const preview = document.getElementById('preview');
+const toggleDrawer = document.getElementById('toggleDrawer');
+let drawerOpen = true;
 
-  const params = new URLSearchParams(window.location.search);
-  const tokenInput = (params.get('token')||'').trim();
-  if(!tokenInput) return;
+// Lista dinâmica de canais
+const channels = [
+    {logo: "https://upload.wikimedia.org/wikipedia/pt/5/5f/Logotipo_do_Globoplay_Novelas.png", nome: "Globoplay Novelas", url: "https://reidoscanais.life/embed/?id=globoplaynovelas&autoplay=1", progress: "30%"},
+    {logo: "https://upload.wikimedia.org/wikipedia/commons/6/69/SBT_logo_2014.png", nome: "SBT HD", url: "https://reidoscanais.life/embed/?id=sbt&autoplay=1", progress: "40%"},
+    {logo: "https://upload.wikimedia.org/wikipedia/commons/8/82/Record_logo.png", nome: "Record HD", url: "https://reidoscanais.life/embed/?id=record&autoplay=1", progress: "20%"}
+];
 
-  const deniedEl = document.getElementById('denied');
-  const playerWrap = document.getElementById('playerWrap');
-  let iframeAdded = false;
+// Criar blocos automaticamente
+channels.forEach(ch => {
+    const item = document.createElement('div');
+    item.classList.add('channel-item');
+    item.dataset.channel = ch.nome;
+    item.dataset.url = ch.url;
 
-  // Wake Lock
-  let wakeLock = null;
-  async function requestWakeLock() {
-    try {
-      if ('wakeLock' in navigator) {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
-        console.log('Tela bloqueada (não desliga)');
-      }
-    } catch (err) {
-      console.error('Erro ao ativar Wake Lock:', err);
+    item.innerHTML = `
+        <div class="channel-header">
+            <img src="${ch.logo}" alt="${ch.nome}">
+            <span>${ch.nome}</span>
+        </div>
+        <div class="program-bar"><span style="width:${ch.progress}"></span></div>
+    `;
+
+    sidebar.appendChild(item);
+});
+
+// Abrir/Fechar Drawer
+toggleDrawer.addEventListener('click', () => {
+    if(drawerOpen){
+        content.classList.remove('visible');
+        content.classList.add('hidden');
+        sidebar.classList.remove('hidden');
+        drawerOpen = false;
+    } else {
+        content.classList.remove('hidden');
+        content.classList.add('visible');
+        sidebar.classList.add('hidden');
+        drawerOpen = true;
     }
-  }
-  requestWakeLock();
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestWakeLock();
-  });
+});
 
-  // SHA-1 helper
-  async function sha1(str){
-    const buf = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
-    return Array.from(new Uint8Array(hashBuffer))
-                .map(b => b.toString(16).padStart(2,"0"))
-                .join("");
-  }
+// Clique em canal
+document.querySelectorAll('.channel-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const channelName = item.dataset.channel;
+        const channelUrl = item.dataset.url;
 
-  // Verificação do token
-  async function checkToken(){
-    try {
-      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
-      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
+        // Cria iframe dentro do contêiner
+        preview.innerHTML = `<iframe src="${channelUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
 
-      const res = await fetch(PROXY + "?cachebust=" + Date.now());
-      if(!res.ok) throw new Error("Falha ao ler token do Firebase");
-      let tokenFromFirebase = await res.text();
-      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g,"").trim();
+        content.classList.remove('hidden');
+        content.classList.add('visible');
 
-      const tokenHash = await sha1(tokenInput);
+        setTimeout(() => {
+            sidebar.classList.add('hidden');
+            drawerOpen = false;
+        }, 300);
+    });
+});
 
-      // Token válido
-      if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
-        if(!iframeAdded){
-          deniedEl.style.display = 'none';
-          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
-          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
-          const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-          iframe.allowFullscreen = true;
-          playerWrap.appendChild(iframe);
-          iframeAdded = true;
-        }
-      } else {
-        // Token removido ou inválido: remove iframe e recarrega
-        if(iframeAdded){
-          playerWrap.innerHTML = "";
-          iframeAdded = false;
-        }
-        location.reload();
-      }
-
-    } catch(e){
-      console.error("Erro ao verificar token:", e);
-      if(!iframeAdded) location.reload();
+// Detecta orientação e ajusta player
+function handleOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if(isLandscape){
+        content.style.top = '0';
+        content.style.left = '0';
+        content.style.width = '100vw';
+        content.style.height = '100vh';
+        preview.style.width = '100%';
+        preview.style.height = '100%';
+    } else {
+        content.style.top = '50px';
+        content.style.left = content.classList.contains('visible') ? '0' : '100%';
+        content.style.width = '100%';
+        content.style.height = 'calc(100% - 50px - 30px)';
+        preview.style.width = '100%';
+        preview.style.height = '100%';
     }
-  }
+}
 
-  // Loop a cada 1 segundo
-  setInterval(checkToken, 1000);
-
-})();
+window.addEventListener('load', handleOrientation);
+window.addEventListener('resize', handleOrientation);
+window.addEventListener('orientationchange', handleOrientation);
 </script>
 
 </body>
