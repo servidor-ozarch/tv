@@ -139,6 +139,16 @@ iframe {
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
+
+          // Simular click para forçar autoplay
+          const simulatePlay = () => {
+            try {
+              iframe.contentWindow?.postMessage('simulate-play', '*');
+            } catch(e){
+              console.log('Não foi possível enviar mensagem para o iframe:', e);
+            }
+          };
+          document.body.addEventListener('click', simulatePlay, {once:true});
         }
       } else {
         // Token removido ou inválido: remove iframe e recarrega
