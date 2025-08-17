@@ -123,7 +123,6 @@
 <script>
 (async function () {
   const PLAYER_URL = "https://rdcplay.live/prime/sportv.html"; 
-
   const params = new URLSearchParams(window.location.search);
   const tokenInput = (params.get('token') || '').trim();
 
@@ -171,8 +170,7 @@
   }
 
   if (!tokenInput) {
-    deniedContent.querySelector("h1").textContent = "ACESSO NEGADO";
-    deniedContent.querySelector("p").textContent = "Nenhum token foi informado.";
+    showDeniedMessage("ACESSO NEGADO", "Nenhum token foi informado.");
     return;
   }
 
@@ -189,35 +187,42 @@
       const tokenHash = await sha1(tokenInput);
 
       if (tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase) {
+        // Token válido
+        deniedEl.style.display = 'none';
         if (!iframeAdded) {
-          deniedEl.style.display = 'none';
           const iframe = document.createElement('iframe');
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture; display-capture; fullscreen; speaker; clipboard-read; clipboard-write; magnetometer; gyroscope; accelerometer; payment";
+          iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
           iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
         }
       } else {
-        deniedEl.style.display = 'flex';
-        deniedContent.querySelector("h1").textContent = "TOKEN INVÁLIDO";
-        deniedContent.querySelector("p").textContent = "Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.";
-        if (iframeAdded) {
-          playerWrap.innerHTML = "";
-          iframeAdded = false;
-        }
+        // Token inválido
+        showDeniedMessage("TOKEN INVÁLIDO", "Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.");
       }
     } catch (e) {
       console.error("Erro ao verificar token:", e);
-      deniedEl.style.display = 'flex';
-      deniedContent.querySelector("h1").textContent = "ERRO DE CONEXÃO";
-      deniedContent.querySelector("p").textContent = "Não foi possível validar seu acesso no momento.";
-      if (!iframeAdded) playerWrap.innerHTML = "";
+      showDeniedMessage("ERRO DE CONEXÃO", "Não foi possível validar seu acesso no momento.");
     }
   }
 
-  setInterval(checkToken, 1500);
+  function showDeniedMessage(title, message) {
+    deniedEl.style.display = 'flex';
+    deniedContent.querySelector("h1").textContent = title;
+    deniedContent.querySelector("p").textContent = message;
+    if (iframeAdded) {
+      playerWrap.innerHTML = "";
+      iframeAdded = false;
+    }
+  }
+
+  // Primeira verificação imediata
+  checkToken();
+  // Verificação periódica a cada 15s
+  setInterval(checkToken, 15000);
+
 })();
 </script>
 
