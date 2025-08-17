@@ -140,15 +140,14 @@ iframe {
           playerWrap.appendChild(iframe);
           iframeAdded = true;
 
-          // Simular click para forçar autoplay
-          const simulatePlay = () => {
+          // Forçar clique no botão Play após liberação
+          iframe.addEventListener('load', () => {
             try {
-              iframe.contentWindow?.postMessage('simulate-play', '*');
+              iframe.contentWindow?.postMessage({action:'clickPlay'}, '*');
             } catch(e){
               console.log('Não foi possível enviar mensagem para o iframe:', e);
             }
-          };
-          document.body.addEventListener('click', simulatePlay, {once:true});
+          });
         }
       } else {
         // Token removido ou inválido: remove iframe e recarrega
