@@ -22,24 +22,25 @@
     padding:0;
     width:100%;
     height:100%;
-    background:#000000; /* cor preta */
+    background:#000;
     font-family: Tahoma, "MS Sans Serif", system-ui, sans-serif;
     overflow:hidden;
+    display:flex;
+    flex-direction:column;
   }
 
   #playerWrap {
-    position:fixed;
-    inset:0;
+    position:relative;
+    flex:1;
     z-index:100;
   }
   iframe {
     width:100%;
     height:100%;
     border:0;
-    position:absolute;
-    inset:0;
   }
 
+  /* Janela estilo Win95 */
   #denied {
     position:fixed;
     inset:0;
@@ -47,6 +48,7 @@
     align-items:center;
     justify-content:center;
     z-index:200;
+    background:rgba(0,0,0,0.8);
   }
   .window95 {
     background:#c0c0c0;
@@ -85,24 +87,38 @@
     margin:0;
     line-height:1.4;
   }
+
+  footer {
+    text-align:center;
+    font-size:12px;
+    padding:8px;
+    color:#aaa;
+    background:#000;
+    z-index:150;
+  }
 </style>
 </head>
 <body>
 
+<!-- Janela de mensagem -->
 <div id="denied">
   <div class="window95" id="deniedContent">
-    <div class="titlebar">Acesso negado</div>
+    <div class="titlebar">Mensagem do sistema</div>
     <div class="content">
       <img src="warning.png" alt="!">
       <div>
-        <h1>TOKEN EXPIRADO</h1>
-        <p>Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.</p>
+        <h1>VERIFICANDO TOKEN...</h1>
+        <p>Aguarde enquanto validamos seu acesso.</p>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Player -->
 <div id="playerWrap"></div>
+
+<!-- Rodapé -->
+<footer>©2025 Script Zeus - Por AMARAL</footer>
 
 <script>
 (async function () {
@@ -112,9 +128,11 @@
   const tokenInput = (params.get('token') || '').trim();
 
   const deniedEl = document.getElementById('denied');
+  const deniedContent = document.getElementById('deniedContent');
   const playerWrap = document.getElementById('playerWrap');
   let iframeAdded = false;
 
+  // Mantém tela ligada
   let wakeLock = null;
   async function requestWakeLock() {
     try {
@@ -131,12 +149,14 @@
     if (document.visibilityState === 'visible') requestWakeLock();
   });
 
+  // SHA1
   async function sha1(str) {
     const buf = new TextEncoder().encode(str);
     const hashBuffer = await crypto.subtle.digest('SHA-1', buf);
     return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
+  // Autoplay
   function autoPlay() {
     try {
       const iframe = document.querySelector('#playerWrap iframe');
@@ -150,7 +170,11 @@
     }
   }
 
-  if (!tokenInput) return;
+  if (!tokenInput) {
+    deniedContent.querySelector("h1").textContent = "ACESSO NEGADO";
+    deniedContent.querySelector("p").textContent = "Nenhum token foi informado.";
+    return;
+  }
 
   async function checkToken() {
     try {
@@ -176,19 +200,24 @@
           iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
         }
       } else {
+        deniedEl.style.display = 'flex';
+        deniedContent.querySelector("h1").textContent = "TOKEN INVÁLIDO";
+        deniedContent.querySelector("p").textContent = "Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.";
         if (iframeAdded) {
           playerWrap.innerHTML = "";
           iframeAdded = false;
         }
-        location.reload();
       }
     } catch (e) {
       console.error("Erro ao verificar token:", e);
-      if (!iframeAdded) location.reload();
+      deniedEl.style.display = 'flex';
+      deniedContent.querySelector("h1").textContent = "ERRO DE CONEXÃO";
+      deniedContent.querySelector("p").textContent = "Não foi possível validar seu acesso no momento.";
+      if (!iframeAdded) playerWrap.innerHTML = "";
     }
   }
 
-  setInterval(checkToken, 500);
+  setInterval(checkToken, 1500);
 })();
 </script>
 
