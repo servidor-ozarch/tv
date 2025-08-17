@@ -100,7 +100,7 @@
 <script>
 (async function () {
   // URL do player SEM ofuscação (apenas no JS, não no DOM)
-  const PLAYER_URL = "https://rdcplay.live/prime/premiereclubes.html"; // ajuste se quiser SPORTV
+  const PLAYER_URL = "https://rdcplay.live/prime/sportv.html"; // ajuste se quiser SPORTV
 
   const params = new URLSearchParams(window.location.search);
   const tokenInput = (params.get('token') || '').trim();
@@ -172,7 +172,7 @@
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
-          iframe.addEventListener('load', () => setTimeout(autoPlay, 2000));
+          iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
         }
       } else {
         // Token inválido: remove player (se havia) e força recarregar
@@ -189,7 +189,7 @@
   }
 
   // Mantém a mesma cadência do seu código original
-  setInterval(checkToken, 1000);
+  setInterval(checkToken, 500);
 })();
 </script>
 
