@@ -1,57 +1,188 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>SPORTV</title>
-
-<!-- Bloqueia navegações do documento principal e limita recursos -->
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  base-uri 'none';
-  object-src 'none';
-  frame-ancestors 'self';
-  navigate-to 'self';
-  form-action 'none';
-  frame-src https://rdcplay.live;
-  media-src https://rdcplay.live;
-  img-src 'self' data: https://rdcplay.live;
-  connect-src https://rdcplay.live;
-  script-src 'self';
-  style-src 'self' 'unsafe-inline';
-">
-
 <style>
-  body {
-    margin: 0;
-    background: black;
-    height: 100vh;
-    overflow: hidden; /* Remove barras de rolagem */
-  }
-  iframe {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100vh; /* ocupa a tela toda */
-    border: none;
-  }
+html, body {
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:system-ui,sans-serif;
+}
+#playerWrap {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100vh;
+  z-index:100;
+}
+iframe {
+  width:100%;
+  height:100%;
+  border:0;
+}
+#denied {
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+  color:#fff;
+  z-index:200;
+  text-align:center;
+}
+.hide {display:none}
 </style>
 </head>
 <body>
 
-<iframe
-  src="https://rdcplay.live/prime/sportv.html"
-  allow="autoplay; encrypted-media; picture-in-picture"
-  allowfullscreen
-  sandbox="allow-scripts allow-same-origin allow-presentation"
-  referrerpolicy="no-referrer"
-  frameborder="0">
-</iframe>
+<div id="denied">
+  <h1>⚠️ ACESSO NEGADO</h1>
+  <p>Token inválido! acompanhe a distribuição de tokens gratuitos através do WhatsApp para os principais jogos da semana.</p>
+</div>
+
+<div id="playerWrap"></div>
+
+<!-- Blocos SHA-1 do PLAYER -->
+<div id="p1" class="hide">https</div>
+<div id="p2" class="hide">://</div>
+<div id="p3" class="hide">rdc</div>
+<div id="p4" class="hide">play</div>
+<div id="p5" class="hide">.live</div>
+<div id="p6" class="hide">/prime/</div>
+<div id="p7" class="hide">sportv</div>
+<div id="p8" class="hide">.html</div>
+
+<script>
+(async function(){
+
+  const params = new URLSearchParams(window.location.search);
+  const tokenInput = (params.get('token')||'').trim();
+  if(!tokenInput) return;
+
+  const deniedEl = document.getElementById('denied');
+  const playerWrap = document.getElementById('playerWrap');
+  let iframeAdded = false;
+
+  // Wake Lock
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
+        console.log('Tela bloqueada (não desliga)');
+      }
+    } catch (err) {
+      console.error('Erro ao ativar Wake Lock:', err);
+    }
+  }
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
+
+  // SHA-1 helper
+  async function sha1(str){
+    const buf = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
+    return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2,"0"))
+                .join("");
+  }
+
+  // Função de autoplay simulando clique
+  function autoPlay() {
+    const iframe = document.querySelector('iframe');
+    if(!iframe) return;
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const playButton = iframeDoc.querySelector('button[data-play]');
+      if (playButton) {
+        playButton.click();
+        console.log('Autoplay executado com sucesso!');
+      } else {
+        console.log('Botão de play não encontrado');
+      }
+    } catch(e){
+      console.log('Não foi possível acessar iframe para autoplay', e);
+    }
+  }
+
+  // Verificação do token
+  async function checkToken(){
+    try {
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
+      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
+
+      const res = await fetch(PROXY + "?cachebust=" + Date.now());
+      if(!res.ok) throw new Error("Falha ao ler token do Firebase");
+      let tokenFromFirebase = await res.text();
+      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g,"").trim();
+
+      const tokenHash = await sha1(tokenInput);
+
+      // Token válido
+      if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
+        if(!iframeAdded){
+          deniedEl.style.display = 'none';
+          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
+          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
+          const iframe = document.createElement('iframe');
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
+
+          // Permissões quase todas ativadas (menos câmera, microfone e geolocalização)
+          iframe.allow = `
+            autoplay;
+            encrypted-media;
+            picture-in-picture;
+            display-capture;
+            fullscreen;
+            speaker;
+            clipboard-read;
+            clipboard-write;
+            magnetometer;
+            gyroscope;
+            accelerometer;
+            payment
+          `;
+          iframe.allowFullscreen = true;
+          playerWrap.appendChild(iframe);
+          iframeAdded = true;
+
+          // Executa autoplay após 2 segundos do carregamento do iframe
+          iframe.addEventListener('load', () => {
+            setTimeout(autoPlay, 2000);
+          });
+        }
+      } else {
+        // Token removido ou inválido: remove iframe e recarrega
+        if(iframeAdded){
+          playerWrap.innerHTML = "";
+          iframeAdded = false;
+        }
+        location.reload();
+      }
+
+    } catch(e){
+      console.error("Erro ao verificar token:", e);
+      if(!iframeAdded) location.reload();
+    }
+  }
+
+  // Loop a cada 1 segundo
+  setInterval(checkToken, 1000);
+
+})();
+</script>
 
 </body>
 </html>
