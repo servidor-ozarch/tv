@@ -12,14 +12,11 @@ html, body {
   height:100%;
   background:#000;
   overflow:hidden;
-  font-family:system-ui,sans-serif;
+  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
 }
 #playerWrap {
   position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100vh;
+  inset:0;
   z-index:100;
 }
 iframe {
@@ -35,11 +32,11 @@ iframe {
   align-items:center;
   z-index:200;
   text-align:center;
+  background: radial-gradient(circle at center, rgba(0,0,0,0.9) 0%, rgba(0,0,0,1) 100%);
 }
 canvas {
   position:absolute;
-  top:0;
-  left:0;
+  inset:0;
   width:100%;
   height:100%;
   z-index:1;
@@ -48,20 +45,36 @@ canvas {
   position:relative;
   z-index:2;
   color:#fff;
-  max-width:500px;
-  padding:20px;
-  border:2px solid #ff0000;
-  border-radius:12px;
-  background:rgba(0,0,0,0.7);
-  box-shadow:0 0 20px rgba(255,0,0,0.7);
+  max-width:480px;
+  padding:32px 28px;
+  border-radius:16px;
+  background:rgba(20,20,20,0.85);
+  box-shadow:0 0 25px rgba(255,0,0,0.6);
+  border:1px solid rgba(255,0,0,0.6);
+  animation: pulseBox 2s infinite;
 }
 #deniedContent h1 {
-  margin:0 0 10px 0;
-  font-size:2em;
+  margin:0 0 12px 0;
+  font-size:2.2em;
+  font-weight:700;
+  color:#ff4d4d;
+  text-shadow:0 0 10px rgba(255,0,0,0.7);
+  animation: blink 1.2s infinite alternate;
 }
 #deniedContent p {
   margin:0;
-  font-size:1em;
+  font-size:1.05em;
+  line-height:1.5em;
+  color:#ddd;
+}
+@keyframes blink {
+  from { opacity:1; }
+  to { opacity:0.6; }
+}
+@keyframes pulseBox {
+  0% { box-shadow:0 0 15px rgba(255,0,0,0.5); }
+  50% { box-shadow:0 0 35px rgba(255,0,0,0.9); }
+  100% { box-shadow:0 0 15px rgba(255,0,0,0.5); }
 }
 </style>
 </head>
@@ -71,7 +84,8 @@ canvas {
   <canvas id="deniedCanvas"></canvas>
   <div id="deniedContent">
     <h1>⚠️ ACESSO NEGADO</h1>
-    <p>Token inválido! Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.</p>
+    <p>Seu token é inválido.<br>  
+    Receba tokens gratuitos para os principais jogos da semana pelo nosso WhatsApp.</p>
   </div>
 </div>
 
@@ -89,7 +103,6 @@ canvas {
 
 <script>
 (async function(){
-
   const params = new URLSearchParams(window.location.search);
   const tokenInput = (params.get('token')||'').trim();
   if(!tokenInput) return;
@@ -105,19 +118,19 @@ canvas {
   canvas.height = window.innerHeight;
 
   let particles = [];
-  for(let i=0;i<80;i++){
+  for(let i=0;i<100;i++){
     particles.push({
       x:Math.random()*canvas.width,
       y:Math.random()*canvas.height,
-      vx:(Math.random()-0.5)*1.2,
-      vy:(Math.random()-0.5)*1.2,
-      size:Math.random()*3+1
+      vx:(Math.random()-0.5)*1,
+      vy:(Math.random()-0.5)*1,
+      size:Math.random()*2+1
     });
   }
 
   function drawParticles(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = 'rgba(255,0,0,0.8)';
+    ctx.fillStyle = 'rgba(255,50,50,0.8)';
     particles.forEach(p=>{
       ctx.beginPath();
       ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
@@ -132,80 +145,6 @@ canvas {
     requestAnimationFrame(drawParticles);
   }
   drawParticles();
-
-  // Wake Lock
-  let wakeLock = null;
-  async function requestWakeLock() {
-    try {
-      if ('wakeLock' in navigator) {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
-      }
-    } catch (err) {
-      console.error('Erro ao ativar Wake Lock:', err);
-    }
-  }
-  requestWakeLock();
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestWakeLock();
-  });
-
-  async function sha1(str){
-    const buf = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
-    return Array.from(new Uint8Array(hashBuffer))
-                .map(b => b.toString(16).padStart(2,"0"))
-                .join("");
-  }
-
-  function autoPlay() {
-    const iframe = document.querySelector('iframe');
-    if(!iframe) return;
-    try {
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-      const playButton = iframeDoc.querySelector('button[data-play]');
-      if (playButton) playButton.click();
-    } catch(e){ console.log('Não foi possível acessar iframe para autoplay', e); }
-  }
-
-  async function checkToken(){
-    try {
-      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
-      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
-
-      const res = await fetch(PROXY + "?cachebust=" + Date.now());
-      if(!res.ok) throw new Error("Falha ao ler token do Firebase");
-      let tokenFromFirebase = await res.text();
-      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g,"").trim();
-
-      const tokenHash = await sha1(tokenInput);
-
-      if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
-        if(!iframeAdded){
-          deniedEl.style.display = 'none';
-          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
-          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
-          const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = `autoplay; encrypted-media; picture-in-picture; display-capture; fullscreen; speaker; clipboard-read; clipboard-write; magnetometer; gyroscope; accelerometer; payment`;
-          iframe.allowFullscreen = true;
-          playerWrap.appendChild(iframe);
-          iframeAdded = true;
-          iframe.addEventListener('load', () => { setTimeout(autoPlay, 2000); });
-        }
-      } else {
-        if(iframeAdded){ playerWrap.innerHTML = ""; iframeAdded=false; }
-        location.reload();
-      }
-
-    } catch(e){
-      console.error("Erro ao verificar token:", e);
-      if(!iframeAdded) location.reload();
-    }
-  }
-
-  setInterval(checkToken, 1000);
-
 })();
 </script>
 
