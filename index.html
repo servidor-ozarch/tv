@@ -40,6 +40,34 @@ iframe {
   text-align:center;
 }
 .hide {display:none}
+#playFallback {
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:10px 20px;
+  background:#f00;
+  color:#fff;
+  border-radius:5px;
+  cursor:pointer;
+  z-index:300;
+  display:none;
+  font-weight:bold;
+}
+#loading {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:250;
+  color:#fff;
+  font-size:18px;
+}
 </style>
 </head>
 <body>
@@ -49,7 +77,9 @@ iframe {
   <p>Token inválido! acompanhe a distribuição de tokens gratuitos através do WhatsApp para os principais jogos da semana.</p>
 </div>
 
+<div id="loading">Carregando player...</div>
 <div id="playerWrap"></div>
+<div id="playFallback">CLIQUE PARA INICIAR A TRANSMISSÃO</div>
 
 <!-- Blocos SHA-1 do PLAYER -->
 <div id="p1" class="hide">https</div>
@@ -70,7 +100,10 @@ iframe {
 
   const deniedEl = document.getElementById('denied');
   const playerWrap = document.getElementById('playerWrap');
+  const loadingEl = document.getElementById('loading');
+  const playFallback = document.getElementById('playFallback');
   let iframeAdded = false;
+  let playerStarted = false;
 
   // Wake Lock
   let wakeLock = null;
@@ -99,22 +132,98 @@ iframe {
                 .join("");
   }
 
-  // Função de autoplay simulando clique
+  // Verifica se o player está rodando
+  function isPlaying() {
+    const iframe = document.querySelector('iframe');
+    if(!iframe) return false;
+    
+    try {
+      // Tenta verificar via API de vídeo
+      const video = iframe.contentDocument?.querySelector('video');
+      if(video) {
+        return !video.paused && video.readyState > 2;
+      }
+      
+      // Verifica elementos visuais do player
+      const pauseBtn = iframe.contentDocument?.querySelector('[data-pause]');
+      if(pauseBtn && getComputedStyle(pauseBtn).display !== 'none') {
+        return true;
+      }
+    } catch(e) {
+      // Cross-origin, não podemos verificar diretamente
+      return playerStarted; // Assume que está rodando se já tentamos iniciar
+    }
+    
+    return false;
+  }
+
+  // Função de autoplay melhorada
   function autoPlay() {
+    if(isPlaying()) return;
+    
     const iframe = document.querySelector('iframe');
     if(!iframe) return;
+    
+    console.log('Tentando autoplay...');
+    playerStarted = true;
+    
+    // Tentativa 1: Usando a API de vídeo diretamente
     try {
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-      const playButton = iframeDoc.querySelector('button[data-play]');
-      if (playButton) {
-        playButton.click();
-        console.log('Autoplay executado com sucesso!');
-      } else {
-        console.log('Botão de play não encontrado');
+      const video = iframe.contentDocument?.querySelector('video');
+      if(video) {
+        video.muted = true; // Necessário para autoplay em muitos navegadores
+        const playPromise = video.play();
+        
+        if(playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('Autoplay via API de vídeo funcionou!');
+              loadingEl.style.display = 'none';
+              // Tenta desmutar após iniciar
+              setTimeout(() => { video.muted = false; }, 1000);
+            })
+            .catch(e => {
+              console.log('Autoplay bloqueado:', e);
+              showFallback();
+            });
+          return;
+        }
       }
-    } catch(e){
-      console.log('Não foi possível acessar iframe para autoplay', e);
+    } catch(e) {
+      console.log('Não foi possível acessar vídeo diretamente:', e);
     }
+    
+    // Tentativa 2: Simulando clique no botão de play
+    try {
+      const playButton = iframe.contentDocument?.querySelector('[data-play], .play-button, .btn-play');
+      if(playButton) {
+        playButton.click();
+        console.log('Autoplay via clique simulando funcionou!');
+        loadingEl.style.display = 'none';
+        return;
+      }
+    } catch(e) {
+      console.log('Não foi possível simular clique (cross-origin):', e);
+    }
+    
+    // Tentativa 3: Usando postMessage (se o player suportar)
+    try {
+      iframe.contentWindow?.postMessage('{"event":"command","func":"play","args":""}', '*');
+      console.log('Comando play via postMessage enviado');
+      loadingEl.style.display = 'none';
+    } catch(e) {
+      console.log('Erro ao enviar postMessage:', e);
+    }
+    
+    // Se todas as tentativas falharem
+    showFallback();
+  }
+
+  // Mostra o botão de fallback
+  function showFallback() {
+    console.log('Mostrando fallback para interação do usuário');
+    playFallback.style.display = 'block';
+    loadingEl.style.display = 'none';
   }
 
   // Verificação do token
@@ -134,42 +243,63 @@ iframe {
       if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
         if(!iframeAdded){
           deniedEl.style.display = 'none';
+          loadingEl.style.display = 'flex';
+          
           const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
           const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           const iframe = document.createElement('iframe');
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
 
-          // Permissões quase todas ativadas (menos câmera, microfone e geolocalização)
+          // Permissões para autoplay e recursos
           iframe.allow = `
             autoplay;
             encrypted-media;
             picture-in-picture;
-            display-capture;
             fullscreen;
-            speaker;
-            clipboard-read;
-            clipboard-write;
-            magnetometer;
-            gyroscope;
             accelerometer;
-            payment
+            gyroscope
           `;
           iframe.allowFullscreen = true;
+          
+          // Evento de load do iframe com múltiplas tentativas de autoplay
+          iframe.addEventListener('load', () => {
+            console.log('Iframe carregado, tentando autoplay...');
+            
+            // Tentativas em intervalos diferentes
+            const retryTimes = [500, 1000, 2000, 3000, 5000];
+            retryTimes.forEach(time => {
+              setTimeout(autoPlay, time);
+            });
+            
+            // Verifica periodicamente se o player está rodando
+            const checkInterval = setInterval(() => {
+              if(isPlaying()) {
+                clearInterval(checkInterval);
+                loadingEl.style.display = 'none';
+              } else if(time === retryTimes[retryTimes.length-1]) {
+                showFallback();
+                clearInterval(checkInterval);
+              }
+            }, 1000);
+          });
+          
           playerWrap.appendChild(iframe);
           iframeAdded = true;
-
-          // Executa autoplay após 2 segundos do carregamento do iframe
-          iframe.addEventListener('load', () => {
-            setTimeout(autoPlay, 2000);
+          
+          // Botão de fallback
+          playFallback.addEventListener('click', () => {
+            autoPlay();
+            playFallback.style.display = 'none';
           });
         }
       } else {
-        // Token removido ou inválido: remove iframe e recarrega
+        // Token inválido
         if(iframeAdded){
           playerWrap.innerHTML = "";
           iframeAdded = false;
         }
-        location.reload();
+        deniedEl.style.display = 'flex';
+        loadingEl.style.display = 'none';
       }
 
     } catch(e){
@@ -178,8 +308,18 @@ iframe {
     }
   }
 
-  // Loop a cada 1 segundo
-  setInterval(checkToken, 1000);
+  // Inicia a verificação do token
+  checkToken();
+  
+  // Verifica periodicamente o token
+  setInterval(checkToken, 60000); // A cada 1 minuto
+
+  // Tenta autoplay quando o usuário interagir com a página
+  document.addEventListener('click', () => {
+    if(!isPlaying()) {
+      autoPlay();
+    }
+  }, { once: true });
 
 })();
 </script>
