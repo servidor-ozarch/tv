@@ -1,139 +1,128 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>PREMIERE</title>
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  frame-src https://rdcplay.live https://YOUR_PROXY_DOMAIN;
-  connect-src 'self' https://api.allorigins.win https://raw.githubusercontent.com https://servidor-ozarch.github.io;
-  script-src 'self' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
-">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Player Seguro</title>
 <style>
-  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}
-  .center{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-  .denied{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;padding:20px}
-  .denied h1{color:#ef4444;margin:0 0 6px}
-  .btn {background:#111;border:1px solid rgba(255,255,255,.06);padding:10px 14px;border-radius:10px;color:#fff;cursor:pointer}
-  .btn.primary{background:linear-gradient(#10b981,#059669);border:none}
-  .fallback {position:fixed;left:12px;bottom:12px;z-index:9999;background:rgba(0,0,0,.6);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.04)}
-  iframe.full{
-    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:100%; height:100vh; border:0; background:#000;
-  }
+html, body {
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:system-ui,sans-serif;
+}
+#playerWrap {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100vh;
+  z-index:100;
+}
+iframe {
+  width:100%;
+  height:100%;
+  border:0;
+}
+#denied {
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+  color:#fff;
+  z-index:200;
+  text-align:center;
+}
+.hide {display:none}
 </style>
 </head>
 <body>
 
-<!-- Área inicial: mensagem negado (mostrada enquanto valida) -->
-<div id="denied" class="center denied">
+<div id="denied">
   <h1>⚠️ ACESSO NEGADO</h1>
-  <p>Acesso fechado até o próximo jogo.<br>Novos tokens serão liberados nos <b>stores do WhatsApp</b>.</p>
+  <p>Acesso fechado até o próximo jogo.<br>Insira um token válido.</p>
 </div>
 
-<!-- container do player será injetado aqui -->
 <div id="playerWrap"></div>
 
-<!-- fallback UI (hidden até necessário) -->
-<div id="fallback" class="fallback" style="display:none">
-  <div style="margin-bottom:8px">Não foi possível embutir o player — escolha uma opção:</div>
-  <div style="display:flex;gap:8px">
-    <button id="openSame" class="btn primary">Abrir player (mesma aba)</button>
-    <button id="openNew" class="btn">Abrir em nova aba</button>
-  </div>
-  <div style="margin-top:8px;font-size:12px;color:#ccc">Se quiser embedding, configure um proxy reverso (ex.: Cloudflare Worker).</div>
-</div>
+<!-- Blocos SHA-1 do PLAYER -->
+<div id="p1" class="hide">https</div>
+<div id="p2" class="hide">://</div>
+<div id="p3" class="hide">rdc</div>
+<div id="p4" class="hide">play</div>
+<div id="p5" class="hide">.live</div>
+<div id="p6" class="hide">/prime/</div>
+<div id="p7" class="hide">premiereclubes</div>
+<div id="p8" class="hide">.html</div>
+
+<!-- Blocos SHA-1 do TOKEN -->
+<div id="t1" class="hide">tokens</div>
+<div id="t2" class="hide">.txt</div>
+<!-- blocos falsos -->
+<div id="f1" class="hide">abc</div>
+<div id="f2" class="hide">xyz</div>
 
 <script>
 (async function(){
-  // CONFIG
-  const TOKEN_URL = 'https://raw.githubusercontent.com/servidor-ozarch/tv/main/tokens.txt';
-  const PROXY = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(TOKEN_URL);
-  const PLAYER_URL = 'https://rdcplay.live/prime/premiereclubes.html';
-  const PROXY_PLAYER_URL = null; // opcional: 'https://seu-proxy.example/player?u=' + encodeURIComponent(PLAYER_URL)
-  const TIMEOUT_MS = 4000;
+  function getBlock(id){ return document.getElementById(id).innerText; }
 
-  // helper: show denied/ player / fallback
-  const deniedEl = document.getElementById('denied');
-  const playerWrap = document.getElementById('playerWrap');
-  const fallback = document.getElementById('fallback');
-  const btnSame = document.getElementById('openSame');
-  const btnNew = document.getElementById('openNew');
+  // Reconstruir PLAYER_URL
+  const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
+  const PLAYER_URL = playerOrder.map(getBlock).join("");
 
-  // extrai token
+  // Reconstruir TOKEN_URL apenas pelo nome do arquivo
+  const tokenOrder = ["t1","t2"];
+  const TOKEN_URL = tokenOrder.map(getBlock).join("");
+
   const params = new URLSearchParams(window.location.search);
   const token = (params.get('token')||'').trim();
-  if(!token) return; // permanece negado
 
-  // pega tokens via proxy
-  let validTokens = [];
-  try {
-    const r = await fetch(PROXY, {cache:'no-store'});
-    if(r.ok){
-      const txt = await r.text();
-      validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    }
-  } catch(e) {
-    // falha: fallback vazio (token não validado)
-  }
+  const deniedEl = document.getElementById('denied');
+  const playerWrap = document.getElementById('playerWrap');
 
-  if(!validTokens.includes(token)){
-    // invalid token: keep denied visible
-    return;
-  }
+  if(!token) return; // mantém negado
 
-  // token válido -> tenta embutir iframe
-  deniedEl.style.display = 'none';
+  let iframeAdded = false;
 
-  // cria iframe
-  const iframe = document.createElement('iframe');
-  iframe.className = 'full';
-  iframe.src = PROXY_PLAYER_URL || PLAYER_URL;
-  iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-  iframe.allowFullscreen = true;
-  // NÃO definir sandbox/referrerpolicy aqui para evitar bloqueios adicionais
+  async function checkToken(){
+    try {
+      const res = await fetch(TOKEN_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error("Falha ao ler tokens");
+      const txt = await res.text();
+      const validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
 
-  // append but hidden until we confirm load
-  playerWrap.appendChild(iframe);
-
-  // Detecta carregamento usando load + timeout
-  let loaded = false;
-  const onLoad = ()=> { loaded = true; clearTimeout(timeout); /* iframe visível já */ };
-  iframe.addEventListener('load', onLoad);
-
-  const timeout = setTimeout(()=>{
-    if(!loaded){
-      // se proxy_player_url estiver disponível, tenta trocar por proxy (opcional)
-      if(PROXY_PLAYER_URL && iframe.src !== PROXY_PLAYER_URL){
-        iframe.src = PROXY_PLAYER_URL;
-        // reinicia timer curto
-        setTimeout(()=>{
-          if(!loaded) showFallback();
-        }, 3000);
-        return;
+      if(validTokens.includes(token)){
+        // token válido
+        if(!iframeAdded){
+          deniedEl.style.display = 'none';
+          const iframe = document.createElement('iframe');
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
+          iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+          iframe.allowFullscreen = true;
+          playerWrap.appendChild(iframe);
+          iframeAdded = true;
+        }
+      } else {
+        // token não encontrado → recarrega página
+        location.reload();
       }
-      showFallback();
+    } catch(e){
+      console.error("Erro ao verificar token:", e);
+      location.reload();
     }
-  }, TIMEOUT_MS);
-
-  function showFallback(){
-    // remove iframe (ou deixa, mas mostra fallback)
-    try { iframe.remove(); } catch(e){}
-    fallback.style.display = 'block';
   }
 
-  // fallback buttons
-  btnSame.addEventListener('click', ()=> {
-    // abre na mesma aba (o player original)
-    location.href = PLAYER_URL + (PLAYER_URL.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
-  });
-  btnNew.addEventListener('click', ()=> {
-    window.open(PLAYER_URL + (PLAYER_URL.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token), '_blank');
-  });
+  // Loop de verificação a cada 1 segundo
+  setInterval(checkToken, 1000);
 
 })();
 </script>
+
 </body>
-  </html>
+</html>
