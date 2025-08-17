@@ -99,6 +99,24 @@ iframe {
                 .join("");
   }
 
+  // Função de autoplay simulando clique
+  function autoPlay() {
+    const iframe = document.querySelector('iframe');
+    if(!iframe) return;
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const playButton = iframeDoc.querySelector('button[data-play]');
+      if (playButton) {
+        playButton.click();
+        console.log('Autoplay executado com sucesso!');
+      } else {
+        console.log('Botão de play não encontrado');
+      }
+    } catch(e){
+      console.log('Não foi possível acessar iframe para autoplay', e);
+    }
+  }
+
   // Verificação do token
   async function checkToken(){
     try {
@@ -140,13 +158,9 @@ iframe {
           playerWrap.appendChild(iframe);
           iframeAdded = true;
 
-          // Forçar clique no botão Play após liberação
+          // Executa autoplay após 2 segundos do carregamento do iframe
           iframe.addEventListener('load', () => {
-            try {
-              iframe.contentWindow?.postMessage({action:'clickPlay'}, '*');
-            } catch(e){
-              console.log('Não foi possível enviar mensagem para o iframe:', e);
-            }
+            setTimeout(autoPlay, 2000);
           });
         }
       } else {
