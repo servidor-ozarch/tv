@@ -10,102 +10,188 @@
     padding:0;
     width:100%;
     height:100%;
-    background:#008080;
-    font-family: Tahoma, sans-serif;
+    background:#008080; /* Win95 vibe */
+    font-family: Tahoma, "MS Sans Serif", system-ui, sans-serif;
+    overflow:hidden;
+  }
+
+  /* Container do player ocupa a tela toda quando liberado */
+  #playerWrap {
+    position:fixed;
+    inset:0;
+    z-index:100;
+  }
+  iframe {
+    width:100%;
+    height:100%;
+    border:0;
+    position:absolute;
+    inset:0;
+  }
+
+  /* Overlay estilo Windows 95 */
+  #denied {
+    position:fixed;
+    inset:0;
     display:flex;
     align-items:center;
     justify-content:center;
+    z-index:200;
   }
-
-  /* Janela estilo Windows 95 */
   .window95 {
     background:#c0c0c0;
+    width:380px;
     border:2px solid #fff;
-    box-shadow:inset -2px -2px #808080, inset 2px 2px #fff;
-    width:320px;
+    box-shadow:inset -2px -2px #808080, inset 2px 2px #fff, 3px 3px #000;
   }
   .titlebar {
-    background:linear-gradient(to right, #000080, #1084d0);
+    background:#000080;
     color:#fff;
     font-weight:bold;
-    padding:3px 5px;
+    padding:4px 6px;
     font-size:13px;
   }
   .content {
-    padding:15px;
+    display:flex;
+    gap:12px;
+    padding:16px;
+    font-size:13px;
+    color:#000;
     background:#c0c0c0;
     border-top:2px solid #fff;
     box-shadow:inset -2px -2px #808080, inset 2px 2px #fff;
-    font-size:13px;
-    display:flex;
-    align-items:flex-start;
-    gap:10px;
   }
   .content img {
     width:32px;
     height:32px;
+    flex:0 0 32px;
   }
-  .buttons {
-    text-align:right;
-    padding:8px;
-    border-top:2px solid #fff;
-    box-shadow:inset -2px -2px #808080, inset 2px 2px #fff;
+  .content h1 {
+    margin:0 0 8px 0;
+    font-size:18px;
+    font-weight:bold;
   }
-  .btn95 {
-    background:#c0c0c0;
-    border:2px solid #fff;
-    box-shadow:inset -2px -2px #808080, inset 2px 2px #fff;
-    padding:2px 20px;
-    font-size:13px;
-  }
-
-  /* Iframe ocupa toda a tela quando player abre */
-  iframe {
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    border:none;
+  .content p {
+    margin:0;
+    line-height:1.4;
   }
 </style>
 </head>
 <body>
-  <!-- Janela estilo Win95 -->
-  <div class="window95" id="msgBox">
-    <div class="titlebar">Mensagem do Sistema</div>
+
+<!-- Overlay Windows 95 com a sua mensagem ORIGINAL -->
+<div id="denied">
+  <div class="window95" id="deniedContent">
+    <div class="titlebar">Acesso negado</div>
     <div class="content">
+      <!-- ícone local -->
       <img src="warning.png" alt="!">
       <div>
-        <p>Insira seu token de acesso para assistir ao canal:</p>
-        <input type="text" id="tokenInput" style="width:100%">
+        <h1>⚠️ ACESSO NEGADO</h1>
+        <p>Token inválido! Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.</p>
       </div>
     </div>
-    <div class="buttons">
-      <button class="btn95" onclick="checkToken()">OK</button>
-    </div>
   </div>
+</div>
+
+<!-- Onde o player é injetado -->
+<div id="playerWrap"></div>
 
 <script>
-  // URL fixa do player (sem ofuscação)
-  const PLAYER_URL = "https://rdcplay.live/prime/premiereclubes.html";
+(async function () {
+  // URL do player SEM ofuscação (apenas no JS, não no DOM)
+  const PLAYER_URL = "https://rdcplay.live/prime/premiereclubes.html"; // ajuste se quiser SPORTV
 
-  // Impede tela de desligar (Wake Lock API)
-  if ("wakeLock" in navigator) {
-    navigator.wakeLock.request("screen").catch(console.error);
-  }
+  const params = new URLSearchParams(window.location.search);
+  const tokenInput = (params.get('token') || '').trim();
 
-  function checkToken() {
-    const token = document.getElementById("tokenInput").value.trim();
-    if (token) {
-      document.getElementById("msgBox").style.display = "none";
-      const iframe = document.createElement("iframe");
-      iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
-      document.body.appendChild(iframe);
-    } else {
-      alert("Por favor, insira o token.");
+  const deniedEl = document.getElementById('denied');
+  const playerWrap = document.getElementById('playerWrap');
+  let iframeAdded = false;
+
+  // Wake Lock mantido (requisita novamente ao voltar para aba)
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
+      }
+    } catch (err) {
+      console.error('Erro ao ativar Wake Lock:', err);
     }
   }
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
+
+  // Utilitário SHA-1
+  async function sha1(str) {
+    const buf = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', buf);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Tentativa de autoplay (se o player expõe botão [data-play])
+  function autoPlay() {
+    try {
+      const iframe = document.querySelector('#playerWrap iframe');
+      if (!iframe) return;
+      const iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+      if (!iframeDoc) return;
+      const playButton = iframeDoc.querySelector('[data-play]');
+      if (playButton) playButton.click();
+    } catch (e) {
+      // Pode falhar por cross-origin; ok.
+      console.log('Autoplay não pôde acessar o iframe (cross-origin).', e);
+    }
+  }
+
+  // Se não veio token na URL, apenas mantém a janela Win95 exibida
+  if (!tokenInput) return;
+
+  async function checkToken() {
+    try {
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
+      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
+
+      const res = await fetch(PROXY + "?cachebust=" + Date.now());
+      if (!res.ok) throw new Error("Falha ao ler token do Firebase");
+      let tokenFromFirebase = await res.text();
+      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g, "").trim();
+
+      const tokenHash = await sha1(tokenInput);
+
+      if (tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase) {
+        if (!iframeAdded) {
+          deniedEl.style.display = 'none';
+          const iframe = document.createElement('iframe');
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
+          iframe.allow = "autoplay; encrypted-media; picture-in-picture; display-capture; fullscreen; speaker; clipboard-read; clipboard-write; magnetometer; gyroscope; accelerometer; payment";
+          iframe.allowFullscreen = true;
+          playerWrap.appendChild(iframe);
+          iframeAdded = true;
+          iframe.addEventListener('load', () => setTimeout(autoPlay, 2000));
+        }
+      } else {
+        // Token inválido: remove player (se havia) e força recarregar
+        if (iframeAdded) {
+          playerWrap.innerHTML = "";
+          iframeAdded = false;
+        }
+        location.reload();
+      }
+    } catch (e) {
+      console.error("Erro ao verificar token:", e);
+      if (!iframeAdded) location.reload();
+    }
+  }
+
+  // Mantém a mesma cadência do seu código original
+  setInterval(checkToken, 1000);
+})();
 </script>
+
 </body>
 </html>
