@@ -63,14 +63,22 @@ iframe {
 
 <script>
 (async function(){
+
   const params = new URLSearchParams(window.location.search);
-  const token = (params.get('token')||'').trim();
-  if(!token) return;
+  const tokenInput = (params.get('token')||'').trim();
+  if(!tokenInput) return;
 
   const deniedEl = document.getElementById('denied');
   const playerWrap = document.getElementById('playerWrap');
-
   let iframeAdded = false;
+
+  async function sha1(str){
+    const buf = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
+    return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2,"0"))
+                .join("");
+  }
 
   async function checkToken(){
     try {
@@ -81,21 +89,27 @@ iframe {
       if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
       const data = await res.json();
 
-      // Extrai todos os tokens como string
+      // Extrai todos os tokens como string ou SHA-1
       let validTokens = [];
       if(typeof data === 'object' && data !== null){
         Object.values(data).forEach(item => {
-          if(item && item.token !== undefined) validTokens.push(String(item.token).trim());
+          if(item && item.token !== undefined){
+            validTokens.push(String(item.token).trim());
+          }
         });
       }
 
-      if(validTokens.includes(token)){
+      // Calcula SHA-1 do token da URL
+      const tokenHash = await sha1(tokenInput);
+
+      // Valida se token direto ou SHA-1 existe no Firebase
+      if(validTokens.includes(tokenInput) || validTokens.includes(tokenHash)){
         if(!iframeAdded){
           deniedEl.style.display = 'none';
           const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
           const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
           iframe.allow = "autoplay; encrypted-media; picture-in-picture";
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
@@ -111,7 +125,6 @@ iframe {
     }
   }
 
-  // Loop a cada 1 segundo
   setInterval(checkToken, 1000);
 
 })();
