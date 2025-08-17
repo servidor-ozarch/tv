@@ -51,9 +51,7 @@ iframe {
 
 <div id="playerWrap"></div>
 
-<!-- ========================= -->
 <!-- Blocos SHA-1 do PLAYER -->
-<!-- ========================= -->
 <div id="p1" class="hide">https</div>
 <div id="p2" class="hide">://</div>
 <div id="p3" class="hide">rdc</div>
@@ -63,9 +61,7 @@ iframe {
 <div id="p7" class="hide">premiereclubes</div>
 <div id="p8" class="hide">.html</div>
 
-<!-- ========================= -->
 <!-- Blocos SHA-1 do TOKEN -->
-<!-- ========================= -->
 <div id="t1" class="hide">tokens</div>
 <div id="t2" class="hide">.txt</div>
 <!-- blocos falsos -->
@@ -112,24 +108,18 @@ iframe {
           playerWrap.appendChild(iframe);
           iframeAdded = true;
         }
-        return true;
       } else {
-        // token inválido → mantém negado
-        deniedEl.style.display = 'flex';
-        return false;
+        // token não encontrado → recarrega página
+        location.reload();
       }
     } catch(e){
       console.error("Erro ao verificar token:", e);
-      deniedEl.style.display = 'flex';
-      return false;
+      location.reload();
     }
   }
 
   // Loop de verificação a cada 1 segundo
-  const interval = setInterval(async ()=>{
-    const ok = await checkToken();
-    if(ok) clearInterval(interval);
-  }, 1000);
+  setInterval(checkToken, 1000);
 
 })();
 </script>
