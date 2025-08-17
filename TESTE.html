@@ -68,10 +68,6 @@ iframe {
 <!-- ========================= -->
 <div id="t1" class="hide">tokens</div>
 <div id="t2" class="hide">.txt</div>
-<div id="t3" class="hide">/</div> <!-- pasta onde está o arquivo -->
-<div id="t4" class="hide">tv</div> <!-- nome da pasta -->
-<div id="t5" class="hide">/</div>
-<div id="t6" class="hide">test</div> <!-- prefixo ou nome fictício -->
 <!-- blocos falsos para confundir -->
 <div id="f1" class="hide">abc</div>
 <div id="f2" class="hide">xyz</div>
@@ -84,8 +80,8 @@ iframe {
   const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
   const PLAYER_URL = playerOrder.map(getBlock).join("");
 
-  // Reconstruir TOKEN_URL relativo
-  const tokenOrder = ["t4","t3","t6","t5","t1","t2"];
+  // Reconstruir TOKEN_URL apenas pelo nome do arquivo
+  const tokenOrder = ["t1","t2"];
   const TOKEN_URL = tokenOrder.map(getBlock).join("");
 
   const params = new URLSearchParams(window.location.search);
@@ -96,7 +92,7 @@ iframe {
 
   if(!token) return; // mantém negado
 
-  // Fetch do token local camuflado
+  // Fetch do token local (mesma pasta que a página)
   let validTokens = [];
   try {
     const r = await fetch(TOKEN_URL, {cache:'no-store'});
