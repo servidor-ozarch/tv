@@ -61,64 +61,86 @@ iframe {
 <div id="p7" class="hide">premiereclubes</div>
 <div id="p8" class="hide">.html</div>
 
-<!-- Blocos SHA-1 do TOKEN -->
-<div id="t1" class="hide">tokens</div>
-<div id="t2" class="hide">.txt</div>
-<!-- blocos falsos -->
-<div id="f1" class="hide">abc</div>
-<div id="f2" class="hide">xyz</div>
-
 <script>
 (async function(){
-  function getBlock(id){ return document.getElementById(id).innerText; }
-
-  // Reconstruir PLAYER_URL
-  const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
-  const PLAYER_URL = playerOrder.map(getBlock).join("");
-
-  // Reconstruir TOKEN_URL apenas pelo nome do arquivo
-  const tokenOrder = ["t1","t2"];
-  const TOKEN_URL = tokenOrder.map(getBlock).join("");
 
   const params = new URLSearchParams(window.location.search);
-  const token = (params.get('token')||'').trim();
+  const tokenInput = (params.get('token')||'').trim();
+  if(!tokenInput) return;
 
   const deniedEl = document.getElementById('denied');
   const playerWrap = document.getElementById('playerWrap');
-
-  if(!token) return; // mantém negado
-
   let iframeAdded = false;
 
+  // Wake Lock
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => console.log('Wake Lock liberado'));
+        console.log('Tela bloqueada (não desliga)');
+      }
+    } catch (err) {
+      console.error('Erro ao ativar Wake Lock:', err);
+    }
+  }
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
+
+  // SHA-1 helper
+  async function sha1(str){
+    const buf = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-1", buf);
+    return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2,"0"))
+                .join("");
+  }
+
+  // Verificação do token
   async function checkToken(){
     try {
-      const res = await fetch(TOKEN_URL, {cache:'no-store'});
-      if(!res.ok) throw new Error("Falha ao ler tokens");
-      const txt = await res.text();
-      const validTokens = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
+      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
 
-      if(validTokens.includes(token)){
-        // token válido
+      const res = await fetch(PROXY + "?cachebust=" + Date.now());
+      if(!res.ok) throw new Error("Falha ao ler token do Firebase");
+      let tokenFromFirebase = await res.text();
+      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g,"").trim();
+
+      const tokenHash = await sha1(tokenInput);
+
+      // Token válido
+      if(tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase){
         if(!iframeAdded){
           deniedEl.style.display = 'none';
+          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
+          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
+          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
           iframe.allow = "autoplay; encrypted-media; picture-in-picture";
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
         }
       } else {
-        // token não encontrado → recarrega página
+        // Token removido ou inválido: remove iframe e recarrega
+        if(iframeAdded){
+          playerWrap.innerHTML = "";
+          iframeAdded = false;
+        }
         location.reload();
       }
+
     } catch(e){
       console.error("Erro ao verificar token:", e);
-      location.reload();
+      if(!iframeAdded) location.reload();
     }
   }
 
-  // Loop de verificação a cada 1 segundo
+  // Loop a cada 1 segundo
   setInterval(checkToken, 1000);
 
 })();
