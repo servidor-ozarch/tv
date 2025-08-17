@@ -63,25 +63,18 @@ iframe {
 
 <script>
 (async function(){
-  function getBlock(id){ return document.getElementById(id).innerText; }
-
-  // Reconstruir PLAYER_URL
-  const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
-  const PLAYER_URL = playerOrder.map(getBlock).join("");
-
   const params = new URLSearchParams(window.location.search);
   const token = (params.get('token')||'').trim();
+  if(!token) return;
 
   const deniedEl = document.getElementById('denied');
   const playerWrap = document.getElementById('playerWrap');
-
-  if(!token) return; // mantém negado
 
   let iframeAdded = false;
 
   async function checkToken(){
     try {
-      // Proxy para contornar CORS
+      // Proxy CORS para acessar Firebase
       const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json";
       const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
 
@@ -91,16 +84,21 @@ iframe {
 
       console.log("Tokens do Firebase:", data); // depuração
 
-      // Normaliza tokens para array
+      // Extrai todos os tokens como strings
       let validTokens = [];
-      if(Array.isArray(data)) validTokens = data.map(s=>s.trim());
-      else if(typeof data === 'object' && data !== null) validTokens = Object.values(data).map(s=>s.trim());
+      if(typeof data === 'object' && data !== null){
+        Object.values(data).forEach(item => {
+          if(item && typeof item.token === 'string') validTokens.push(item.token.trim());
+        });
+      }
 
       if(validTokens.includes(token)){
-        // token válido
         if(!iframeAdded){
           deniedEl.style.display = 'none';
           const iframe = document.createElement('iframe');
+          // Reconstruir PLAYER_URL com camuflagem SHA-1
+          const playerOrder = ["p1","p2","p3","p4","p5","p6","p7","p8"];
+          const PLAYER_URL = playerOrder.map(id=>document.getElementById(id).innerText).join("");
           iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(token);
           iframe.allow = "autoplay; encrypted-media; picture-in-picture";
           iframe.allowFullscreen = true;
@@ -108,9 +106,9 @@ iframe {
           iframeAdded = true;
         }
       } else {
-        // token não encontrado → recarrega página
         location.reload();
       }
+
     } catch(e){
       console.error("Erro ao verificar token:", e);
       location.reload();
