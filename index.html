@@ -7,11 +7,8 @@
 
 <!-- Ícone da aba -->
 <link rel="icon" type="image/png" href="favicon.png">
-
-<!-- Ícone para atalhos/tela inicial (Android/iOS) -->
 <link rel="apple-touch-icon" href="sportv.png">
 
-<!-- Metadados para players / compartilhamento -->
 <meta property="og:image" content="sportv.png">
 <meta property="og:title" content="SPORTV - Ao vivo">
 <meta property="og:description" content="Transmissão ao vivo">
@@ -130,6 +127,7 @@
   const deniedContent = document.getElementById('deniedContent');
   const playerWrap = document.getElementById('playerWrap');
   let iframeAdded = false;
+  let tokenValido = false;
 
   // Mantém tela ligada
   let wakeLock = null;
@@ -174,40 +172,6 @@
     return;
   }
 
-  async function checkToken() {
-    try {
-      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
-      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
-
-      const res = await fetch(PROXY + "?cachebust=" + Date.now());
-      if (!res.ok) throw new Error("Falha ao ler token do Firebase");
-      let tokenFromFirebase = await res.text();
-      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g, "").trim();
-
-      const tokenHash = await sha1(tokenInput);
-
-      if (tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase) {
-        // Token válido
-        deniedEl.style.display = 'none';
-        if (!iframeAdded) {
-          const iframe = document.createElement('iframe');
-          iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
-          iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-          iframe.allowFullscreen = true;
-          playerWrap.appendChild(iframe);
-          iframeAdded = true;
-          iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
-        }
-      } else {
-        // Token inválido
-        showDeniedMessage("TOKEN INVÁLIDO", "Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.");
-      }
-    } catch (e) {
-      console.error("Erro ao verificar token:", e);
-      showDeniedMessage("ERRO DE CONEXÃO", "Não foi possível validar seu acesso no momento.");
-    }
-  }
-
   function showDeniedMessage(title, message) {
     deniedEl.style.display = 'flex';
     deniedContent.querySelector("h1").textContent = title;
@@ -218,9 +182,53 @@
     }
   }
 
+  async function checkToken() {
+    try {
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/Eliomar/token.json";
+      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
+
+      const res = await fetch(PROXY + "?cachebust=" + Date.now());
+      if (!res.ok) throw new Error("Falha ao ler token do Firebase");
+
+      let tokenFromFirebase = await res.text();
+      tokenFromFirebase = tokenFromFirebase.replace(/["\n\r]/g, "").trim();
+
+      const tokenHash = await sha1(tokenInput);
+
+      if (tokenInput === tokenFromFirebase || tokenHash === tokenFromFirebase) {
+        // Token válido
+        if (!tokenValido) {
+          deniedEl.style.display = 'none';
+          if (!iframeAdded) {
+            const iframe = document.createElement('iframe');
+            iframe.src = PLAYER_URL + "?token=" + encodeURIComponent(tokenInput);
+            iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+            iframe.allowFullscreen = true;
+            playerWrap.appendChild(iframe);
+            iframeAdded = true;
+            iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
+          }
+          tokenValido = true;
+        }
+      } else {
+        // Token inválido
+        if (tokenValido || !iframeAdded) {
+          showDeniedMessage("TOKEN INVÁLIDO", "Acompanhe os tokens gratuitos através do WhatsApp para os principais jogos da semana.");
+          tokenValido = false;
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao verificar token:", e);
+      if (tokenValido || !iframeAdded) {
+        showDeniedMessage("ERRO DE CONEXÃO", "Não foi possível validar seu acesso no momento.");
+        tokenValido = false;
+      }
+    }
+  }
+
   // Primeira verificação imediata
   checkToken();
-  // Verificação periódica a cada 15s
+  // Verificação periódica a cada 15 segundos
   setInterval(checkToken, 15000);
 
 })();
