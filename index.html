@@ -4,7 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>SPORTV - Ao vivo</title>
+
+<!-- Ícone da aba -->
 <link rel="icon" type="image/png" href="favicon.png">
+
+<!-- Ícone para atalhos/tela inicial (Android/iOS) -->
+<link rel="apple-touch-icon" href="sportv.png">
+
+<!-- Metadados para players / compartilhamento -->
+<meta property="og:image" content="sportv.png">
+<meta property="og:title" content="SPORTV - Ao vivo">
+<meta property="og:description" content="Transmissão ao vivo">
+
 <style>
   html, body {
     margin:0;
@@ -16,7 +27,6 @@
     overflow:hidden;
   }
 
-  /* Container do player ocupa a tela toda quando liberado */
   #playerWrap {
     position:fixed;
     inset:0;
@@ -30,7 +40,6 @@
     inset:0;
   }
 
-  /* Overlay estilo Windows 95 */
   #denied {
     position:fixed;
     inset:0;
@@ -80,12 +89,10 @@
 </head>
 <body>
 
-<!-- Overlay Windows 95 com a sua mensagem ORIGINAL -->
 <div id="denied">
   <div class="window95" id="deniedContent">
     <div class="titlebar">Acesso negado</div>
     <div class="content">
-      <!-- ícone local -->
       <img src="warning.png" alt="!">
       <div>
         <h1>TOKEN EXPIRADO</h1>
@@ -95,13 +102,11 @@
   </div>
 </div>
 
-<!-- Onde o player é injetado -->
 <div id="playerWrap"></div>
 
 <script>
 (async function () {
-  // URL do player SEM ofuscação (apenas no JS, não no DOM)
-  const PLAYER_URL = "https://rdcplay.live/prime/premiereclubes.html"; // ajuste se quiser SPORTV
+  const PLAYER_URL = "https://rdcplay.live/prime/sportv.html"; 
 
   const params = new URLSearchParams(window.location.search);
   const tokenInput = (params.get('token') || '').trim();
@@ -110,7 +115,6 @@
   const playerWrap = document.getElementById('playerWrap');
   let iframeAdded = false;
 
-  // Wake Lock mantido (requisita novamente ao voltar para aba)
   let wakeLock = null;
   async function requestWakeLock() {
     try {
@@ -127,14 +131,12 @@
     if (document.visibilityState === 'visible') requestWakeLock();
   });
 
-  // Utilitário SHA-1
   async function sha1(str) {
     const buf = new TextEncoder().encode(str);
     const hashBuffer = await crypto.subtle.digest('SHA-1', buf);
     return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Tentativa de autoplay (se o player expõe botão [data-play])
   function autoPlay() {
     try {
       const iframe = document.querySelector('#playerWrap iframe');
@@ -144,12 +146,10 @@
       const playButton = iframeDoc.querySelector('[data-play]');
       if (playButton) playButton.click();
     } catch (e) {
-      // Pode falhar por cross-origin; ok.
       console.log('Autoplay não pôde acessar o iframe (cross-origin).', e);
     }
   }
 
-  // Se não veio token na URL, apenas mantém a janela Win95 exibida
   if (!tokenInput) return;
 
   async function checkToken() {
@@ -173,10 +173,9 @@
           iframe.allowFullscreen = true;
           playerWrap.appendChild(iframe);
           iframeAdded = true;
-          iframe.addEventListener('load', () => setTimeout(autoPlay, 2000));
+          iframe.addEventListener('load', () => setTimeout(autoPlay, 0));
         }
       } else {
-        // Token inválido: remove player (se havia) e força recarregar
         if (iframeAdded) {
           playerWrap.innerHTML = "";
           iframeAdded = false;
@@ -189,8 +188,7 @@
     }
   }
 
-  // Mantém a mesma cadência do seu código original
-  setInterval(checkToken, 1000);
+  setInterval(checkToken, 500);
 })();
 </script>
 
