@@ -81,12 +81,15 @@ iframe {
 
   async function checkToken(){
     try {
-      // Pega tokens do Firebase (evita cache)
-      const res = await fetch("https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json?cachebust=" + Date.now());
+      // Proxy para contornar CORS
+      const FIREBASE_URL = "https://projeto-aplicativo-android-default-rtdb.firebaseio.com/tokens.json";
+      const PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FIREBASE_URL);
+
+      const res = await fetch(PROXY + "?cachebust=" + Date.now());
       if(!res.ok) throw new Error("Falha ao ler tokens do Firebase");
       const data = await res.json();
 
-      console.log("Tokens do Firebase:", data); // para depuração
+      console.log("Tokens do Firebase:", data); // depuração
 
       // Normaliza tokens para array
       let validTokens = [];
