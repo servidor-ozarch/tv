@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Toolbar */
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: rgba(20,20,20,0.95);
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 20;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.toolbar button {
+    background: #ff002b;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.3s;
+    margin-right: 12px;
+}
+
+.toolbar button:hover {
+    background: #ff3355;
+}
+
+.toolbar-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Drawer lateral */
+.sidebar {
+    width: 250px;
+    background: rgba(20, 20, 20, 0.95);
+    padding: 0 15px 20px 15px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: transform 0.5s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 30;
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: rgba(20,20,20,0.97);
+    z-index: 15;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Titulo TVFlix */
+.sidebar h1 {
+    font-size: 40px;
+    color: #ff0000;
+    margin: 0 0 10px 10px;
+}
+
+/* Campo de busca com lupa */
+.search-container {
+    width: 100%;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 8px 12px;
+    padding-left: 32px;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    background: #222;
+    color: #fff;
+    box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27a6.471 6.471 0 001.48-5.34C15.07 5.14 12.57 3 9.5 3S3.93 5.14 3.93 8.39s2.5 5.39 5.57 5.39c1.61 0 3.09-.72 4.09-1.85l.27.28v.79l4.25 4.25 1.49-1.49L15.5 14zM9.5 12c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 16px 16px;
+}
+
+.search-container input::placeholder {
+    color: #fff;
+}
+
+/* Canal compacto */
+.channel-item {
+    display: flex;
+    flex-direction: column;
+    background: #1c1c1c;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border 0.3s, box-shadow 0.3s;
+}
+
+.channel-item.active {
+    border: 2px solid #ff002b;
+}
+
+.channel-item:hover {
+    border: 2px solid #ff002b;
+    box-shadow: 0 0 12px rgba(255,0,43,0.4);
+}
+
+/* Estrutura do canal: logo + nome + assistindo */
+.channel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.channel-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.channel-header img {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.channel-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Texto “assistindo” com fade in/out suave */
+.assistindo {
+    font-size: 12px;
+    color: #ff002b;
+    opacity: 0;
+    animation: fade 2s infinite;
+    margin-top: 2px;
+}
+
+@keyframes fade {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+/* Wrapper para aplicar border-radius corretamente */
+.logo-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+/* Área principal (contêiner do player) */
+.content {
+    position: fixed;
+    top: 50px;
+    left: 100%;
+    width: 100%;
+    height: calc(100% - 50px - 30px);
+    background: #111;
+    transition: all 0.5s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    z-index: 15; 
+}
+
+.content.visible {
+    left: 0;
+    opacity: 1;
+}
+
+.content.hidden {
+    left: 100%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preview {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 16;
+}
+
+.preview iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Overlay para fechar Drawer ao clicar fora */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.3);
+    z-index: 25;
+    display: none;
+}
+
+.overlay.visible {
+    display: block;
+}
+
+/* Modal / Mensagens interativas */
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: #111;
+    border: 2px solid #ff002b;
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 90%;
+    color: #fff;
+    z-index: 50;
+    box-shadow: 0 0 20px rgba(255,0,43,0.7);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.modal.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.modal h2 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #ff002b;
+}
+
+.modal p {
+    margin: 10px 0 20px;
+    font-size: 14px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.modal-buttons button.confirm {
+    background: #ff002b;
+    color: #fff;
+}
+
+.modal-buttons button.confirm:hover {
+    background: #ff3355;
+}
+
+.modal-buttons button.cancel {
+    background: #444;
+    color: #fff;
+}
+
+.modal-buttons button.cancel:hover {
+    background: #666;
+}
+</style>
+<body>
+    
+<div class="toolbar">
+    <button id="toggleDrawer">☰</button>
+    <span class="toolbar-title">TVFlix</span>
+</div>
+
+<div class="sidebar hidden" id="sidebar">
+    <div class="sidebar-header">
+        <h1>TVFlix</h1>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Buscar canais...">
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="content hidden" id="content">
+    <div class="preview" id="preview">
+        Selecione um canal para assistir
+    </div>
+</div>
+
+<!-- Modal mensagens -->
+<div class="modal" id="modalMessage">
+    <h2 id="modalTitle">Título</h2>
+    <p id="modalText">Mensagem aqui</p>
+    <div class="modal-buttons" id="modalButtons"></div>
+</div>
+
+<script>
+// --- Variáveis ---
+const sidebar = document.getElementById('sidebar');
+const content = document.getElementById('content');
+const preview = document.getElementById('preview');
+const toggleDrawer = document.getElementById('toggleDrawer');
+const searchInput = document.getElementById('searchInput');
+const overlay = document.getElementById('overlay');
+let drawerOpen = false;
+
+// Modal
+const modal = document.getElementById('modalMessage');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const modalButtons = document.getElementById('modalButtons');
+
+function showModal(title, text, buttons = []) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalButtons.innerHTML = '';
+    buttons.forEach(btn => {
+        const button = document.createElement('button');
+        button.textContent = btn.text;
+        button.className = btn.class || '';
+        button.addEventListener('click', () => {
+            if(btn.onClick) btn.onClick();
+            hideModal();
+        });
+        modalButtons.appendChild(button);
+    });
+    modal.classList.add('visible');
+}
+
+function hideModal() {
+    modal.classList.remove('visible');
+}
+
+function showConnectionLost() {
+    hidePlayer();
+    updateActiveChannelStatus('sem sinal', 'yellow');
+    showModal("Conexão perdida", "Sua conexão foi interrompida. Verifique sua internet e tente novamente.", [
+        {text: "Ok", class: "confirm"}
+    ]);
+}
+
+function confirmExit() {
+    showModal("Play+", "Deseja sair do Play+?", [
+        {text: "Não", class: "cancel"},
+        {text: "Sim", class: "confirm", onClick: () => window.history.back()}
+    ]);
+}
+
+// Drawer
+function openDrawer() {
+    sidebar.classList.remove('hidden');
+    overlay.classList.add('visible');
+    drawerOpen = true;
+}
+
+function closeDrawer() {
+    sidebar.classList.add('hidden');
+    overlay.classList.remove('visible');
+    drawerOpen = false;
+}
+
+toggleDrawer.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerOpen ? closeDrawer() : openDrawer();
+});
+
+overlay.addEventListener('click', closeDrawer);
+
+//🔴 Lista de canais
+    
+const channels = [
+    {logo: "https://embedtv.digital/assets/images/ae.png", nome: "A&E", url: "https://embedtv-2.icu/ae"},
+    
+    {logo: "https://embedtv.digital/assets/images/axn.png", nome: "AXN", url: "https://embedtv-2.icu/axn"},
+    
+    {logo: "https://embedtv.digital/assets/images/adultswim.png", nome: "Adultswim", url: "https://embedtv-2.icu/adultswim"},
+    
+    {logo: "https://embedtv.digital/assets/images/animalplanet.png", nome: "Animal Planet", url: "https://embedtv-2.icu/animalplanet"},
+    
+    {logo: "https://embedtv.digital/assets/images/band.png", nome: "BAND", url: "https://embedtv-2.icu/band"},
+    
+    {logo: "https://embedtv.digital/assets/images/bandsports.png", nome: "Band Sports", url: "https://embedtv-2.icu/bandsports"},
+    
+    {logo: "https://embedtv.digital/assets/images/cartoonnetwork.png", nome: "Cartoon Network", url: "https://embedtv-2.icu/cartoonnetwork"},
+    
+    {logo: "https://embedtv.digital/assets/images/cartoonito.png", nome: "Cartoonito", url: "https://embedtv-2.icu/cartoonito"},
+    
+    {logo: "https://embedtv.digital/assets/images/cinemax.png", nome: "Cinemax", url: "https://embedtv-2.icu/cinemax"},
+    
+    {logo: "https://embedtv.digital/assets/images/combate.png", nome: "COMBATE", url: "https://embedtv-2.icu/combate"},
+    
+    {logo: "https://embedtv.digital/assets/images/comedycentral.png", nome: "Comedy Central", url: "https://embedtv-2.icu/comedycentral"},
+    
+    {logo: "https://embedtv.digital/assets/images/cultura.png", nome: "Cultura", url: "https://embedtv-2.icu/cultura"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoverychannel.png", nome: "Discovery Channel", url: "https://embedtv-2.icu/discoverychannel"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoveryhh.png", nome: "h&h", url: "https://embedtv-2.icu/discoveryhh"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoverykids.png", nome: "Discovery Kids", url: "https://embedtv-2.icu/discoverykids"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoveryscience.png", nome: "Discovery Science", url: "https://embedtv-2.icu/discoveryscience"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoverytheater.png", nome: "Discovery Theater", url: "https://embedtv-2.icu/discoverytheather"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoveryturbo.png", nome: "Discovery Turbo", url: "https://cloud7-l2-user98745241-2.s27-usa-cloudfront-net.online/secret_key/bddf8ea905d3df0e3aaec713a2805734.m3u8"},
+    
+    {logo: "https://embedtv.digital/assets/images/discoveryworld.png", nome: "Discovery World", url: "https://embedtv-2.icu/discoveryword"},
+    
+    {logo: "https://embedtv.digital/assets/images/disneyplus.png", nome: "Disney Plus", url: "https://embedtv-2.icu/disneyplus1"},
+    
+    {logo: "https://embedtv.digital/assets/images/espn.png", nome: "ESPN", url: "https://embedtv-2.icu/espn"},
+    
+    {logo: "https://embedtv.digital/assets/images/fx.png", nome: "FX", url: "https://embedtv-2.icu/fx"},
+    
+    {logo: "https://embedtv.digital/assets/images/fishtv.png", nome: "Fish TV", url: "https://embedtv-2.icu/fish"},
+    
+    {logo: "https://embedtv.digital/assets/images/foodnetwork.png", nome: "Food Network", url: "https://embedtv-2.icu/foodnetwork"},
+    
+    {logo: "https://embedtv.digital/assets/images/gnt.png", nome: "GNT", url: "https://embedtv-2.icu/gnt"},
+    
+    {logo: "https://embedtv.digital/assets/images/globosp.png", nome: "Globo RJ", url: "https://embedtv-2.icu/globorj"},
+    
+    {logo: "https://embedtv.digital/assets/images/gloob.png", nome: "Gloob", url: "https://embedtv-2.icu/gloob"},
+    
+    {logo: "https://embedtv.digital/assets/images/cnnbrasil.png", nome: "CNN", url: "https://embedtv-2.icu/cnnbrasil"},
+    
+    {logo: "https://embedtv.digital/assets/images/hbo.png", nome: "HBO", url: "https://embedtv-2.icu/hbo"},
+    
+    {logo: "https://embedtv.digital/assets/images/hbo2.png", nome: "HBO 2", url: "https://embedtv-2.icu/hbo2"},
+    
+    {logo: "https://embedtv.digital/assets/images/hbofamily.png", nome: "HBO Family", url: "https://embedtv-2.icu/hbofamily"},
+    
+    {logo: "https://embedtv.digital/assets/images/hbomundi.png", nome: "HBO Mundi", url: "https://embedtv-2.icu/hbomundi"},
+    
+    {logo: "https://embedtv.digital/assets/images/hbopop.png", nome: "HBO Pop", url: "https://embedtv-2.icu/hbopop"},
+    
+    {logo: "https://embedtv.digital/assets/images/hboplus.png", nome: "HBO Plus", url: "https://embedtv-2.icu/hboplus"},
+    
+    {logo: "https://embedtv.digital/assets/images/hboxtreme.png", nome: "HBO Xtreme", url: "https://embedtv-2.icu/hboxtreme"},
+    
+    {logo: "https://embedtv.digital/assets/images/hgtv.png", nome: "HGTV", url: "https://embedtv-2.icu/hgtv"},
+    
+    {logo: "https://embedtv.digital/assets/images/history.png", nome: "History", url: "https://embedtv-2.icu/history"},
+    
+    {logo: "https://embedtv.digital/assets/images/nickelodeon.png", nome: "Nickelodeon", url: "https://embedtv-2.icu/nickelodeon"},
+    
+    {logo: "https://embedtv.digital/assets/images/premiere.png", nome: "Premiere", url: "https://embedtv-2.icu/premiere"},
+    
+    {logo: "https://embedtv.digital/assets/images/record.png", nome: "RecordTV", url: "https://embedtv-2.icu/record"},
+    
+    {logo: "https://embedtv.digital/assets/images/sbt.png", nome: "SBT", url: "https://embedtv-2.icu/sbt"},
+    
+    {logo: "https://embedtv.digital/assets/images/sonychannel.png", nome: "Sony Channel", url: "https://embedtv-2.icu/sonychannel"},
+    
+    {logo: "https://embedtv.digital/assets/images/sportv.png", nome: "SporTV", url: "https://embedtv-2.icu/sportv"},
+    
+    {logo: "https://embedtv.digital/assets/images/studiouniversal.png", nome: "Studio Universal", url: "https://embedtv-2.icu/studiouniversal"},
+    
+    {logo: "https://embedtv.digital/assets/images/tcm.png", nome: "TCM", url: "https://embedtv-2.icu/tcm"},
+    
+    {logo: "https://embedtv.digital/assets/images/tlc.png", nome: "TLC", url: "https://embedtv-2.icu/tlc"},
+    
+    {logo: "https://embedtv.digital/assets/images/tnt.png", nome: "TNT", url: "https://embedtv-2.icu/tnt"},
+    
+    {logo: "https://embedtv.digital/assets/images/telecinecult.png", nome: "Telecine Cult", url: "https://embedtv-2.icu/telecinecult"},
+    
+    {logo: "https://embedtv.digital/assets/images/telecinepremium.png", nome: "Telecine Premium", url: "https://embedtv-2.icu/telecinepremium"},
+    
+    {logo: "https://embedtv.digital/assets/images/off.png", nome: "OFF", url: "https://embedtv-2.icu/off"},
+    
+];
+
+// Criar blocos automaticamente
+channels.forEach(ch => {
+    const item = document.createElement('div');
+    item.classList.add('channel-item');
+    item.dataset.channel = ch.nome;
+    item.dataset.url = ch.url;
+    item.innerHTML = `
+        <div class="channel-header">
+            <div class="logo-wrapper">
+                <img src="${ch.logo}" alt="${ch.nome}">
+            </div>
+            <div class="channel-info">
+                <span class="channel-name">${ch.nome}</span>
+            </div>
+        </div>
+    `;
+    sidebar.appendChild(item);
+});
+
+// Funções utilitárias
+function hidePlayer() {
+    content.classList.remove('visible');
+    content.classList.add('hidden');
+    preview.innerHTML = 'Selecione um canal para assistir';
+}
+
+function showPlayer(url) {
+    preview.innerHTML = `<iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
+    content.classList.remove('hidden');
+    content.classList.add('visible');
+}
+
+function updateActiveChannelStatus(text, color = '#ff002b') {
+    document.querySelectorAll('.channel-item').forEach(ch => {
+        if(ch.classList.contains('active')){
+            let span = ch.querySelector('.assistindo');
+            if(!span){
+                span = document.createElement('span');
+                span.classList.add('assistindo');
+                ch.querySelector('.channel-info').appendChild(span);
+            }
+            span.textContent = text;
+            span.style.color = color;
+        }
+    });
+}
+
+function activateChannel(item) {
+    const channelUrl = item.dataset.url;
+    document.querySelectorAll('.channel-item').forEach(ch => {
+        ch.classList.remove('active');
+        const assist = ch.querySelector('.assistindo');
+        if(assist) assist.remove();
+    });
+    item.classList.add('active');
+    const liveSpan = document.createElement('span');
+    liveSpan.classList.add('assistindo');
+    liveSpan.textContent = navigator.onLine ? '• agora' : 'sem sinal';
+    liveSpan.style.color = navigator.onLine ? '#ff002b' : 'yellow';
+    item.querySelector('.channel-info').appendChild(liveSpan);
+    if(navigator.onLine){
+        showPlayer(channelUrl);
+    } else {
+        hidePlayer();
+        showConnectionLost();
+    }
+    closeDrawer();
+}
+
+document.querySelectorAll('.channel-item').forEach(item => {
+    item.addEventListener('click', () => activateChannel(item));
+});
+
+// Busca funcional
+searchInput.addEventListener('input', () => {
+    const query = searchInput.value.toLowerCase();
+    document.querySelectorAll('.channel-item').forEach(item => {
+        const name = item.dataset.channel.toLowerCase();
+        item.style.display = name.includes(query) ? 'flex' : 'none';
+    });
+});
+
+// Ajusta player fullscreen em landscape
+function handleOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if(!content.classList.contains('visible')) return;
+
+    if(isLandscape){
+        content.style.top = '0';
+        content.style.left = '0';
+        content.style.width = '100vw';
+        content.style.height = '100vh';
+        preview.style.width = '100%';
+        preview.style.height = '100%';
+    } else {
+        content.style.top = '50px';
+        content.style.left = '0';
+        content.style.width = '100%';
+        content.style.height = 'calc(100% - 50px - 30px)';
+        preview.style.width = '100%';
+        preview.style.height = '100%';
+    }
+}
+
+window.addEventListener('load', () => {
+    handleOrientation();
+    if(navigator.onLine){
+        const firstChannel = document.querySelector('.channel-item');
+        if(firstChannel) activateChannel(firstChannel);
+    } else {
+        updateActiveChannelStatus('sem sinal', 'yellow');
+    }
+});
+
+window.addEventListener('resize', handleOrientation);
+window.addEventListener('orientationchange', handleOrientation);
+
+window.addEventListener('popstate', (e) => {
+    e.preventDefault();
+    confirmExit();
+});
+
+window.addEventListener('offline', () => {
+    hidePlayer();
+    updateActiveChannelStatus('sem sinal', 'yellow');
+    showConnectionLost();
+});
+
+window.addEventListener('online', () => {
+    const active = document.querySelector('.channel-item.active');
+    if(active){
+        activateChannel(active);
+    } else {
+        const firstChannel = document.querySelector('.channel-item');
+        if(firstChannel) activateChannel(firstChannel);
+    }
+});
+
+// Mantém a tela sempre ativa
+if ('wakeLock' in navigator) {
+    let wakeLock = null;
+    const requestWakeLock = async () => {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+            console.error('Falha ao ativar wakeLock:', err);
+        }
+    };
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            requestWakeLock();
+        }
+    });
+}
+</script>
+</body>
+</html>
