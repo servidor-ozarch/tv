@@ -13,6 +13,20 @@
 const API_PROXY = "https://api.allorigins.win/raw?url=";
 const BASE_URL = "https://tvmap.com.br/Claro-TV/";
 
+// Mapeamento de categorias para gêneros
+const generos = {
+    'ação': ['ação', 'luta', 'artes marciais', 'guerra', 'combate', 'batalha', 'herói', 'super-herói'],
+    'aventura': ['aventura', 'expedição', 'missão', 'viagem', 'exploração', 'descoberta'],
+    'terror': ['terror', 'horror', 'suspense', 'thriller', 'sobrenatural', 'assustador', 'medo'],
+    'ficção científica': ['ficção científica', 'sci-fi', 'futuro', 'espacial', 'alienígena', 'nave', 'robô'],
+    'drama': ['drama', 'emocionante', 'romance', 'família', 'relacionamento', 'sentimental'],
+    'comédia': ['comédia', 'humor', 'divertido', 'engraçado', 'riso', 'zoação'],
+    'documentário': ['documentário', 'realidade', 'história', 'biografia', 'fatos reais'],
+    'esportes': ['esporte', 'futebol', 'jogo', 'competição', 'campeonato', 'atleta'],
+    'notícias': ['notícias', 'jornal', 'informação', 'atualidades', 'reportagem'],
+    'infantil': ['infantil', 'criança', 'desenho', 'animação', 'kids', 'educativo']
+};
+
 // ========================
 // Detecta parâmetros ?data=xxx
 // ========================
@@ -47,6 +61,27 @@ function formatHora(dt) {
     return `${hours}:${minutes}`;
 }
 
+function detectarGenero(titulo, descricao) {
+    const texto = `${titulo} ${descricao}`.toLowerCase();
+    
+    for (const [genero, palavrasChave] of Object.entries(generos)) {
+        for (const palavra of palavrasChave) {
+            if (texto.includes(palavra)) {
+                return genero;
+            }
+        }
+    }
+    
+    return 'outros';
+}
+
+function extrairHorarios(texto) {
+    // Tenta extrair horários no formato "HH:MM"
+    const horarioRegex = /(\d{1,2}:\d{2})/g;
+    const horarios = texto.match(horarioRegex) || [];
+    return horarios;
+}
+
 // ========================
 // Parse HTML da programação da Claro TV
 // ========================
@@ -55,23 +90,30 @@ function parseGradeClaroTV(html) {
     const programRows = Array.from(doc.querySelectorAll('.zc-row.outerTable'));
     const now = Date.now();
     
-    return programRows.map(row => {
+    const programas = programRows.map(row => {
         try {
             // Extrai informações do canal
             const canalEl = row.querySelector('.zc-st-a');
-            const canalNome = canalEl ? canalEl.getAttribute('href').replace('/', '') : '';
+            const canalNome = canalEl ? canalEl.textContent.trim() : '';
             const canalNumero = row.querySelector('.numcanal') ? row.querySelector('.numcanal').textContent.trim() : '';
             
-            // Extrai informações do programa atual (primeira célula com programa em exibição)
-            const programaCell = row.querySelector('.zc-pg[onclick*="wtc.tvg.ld"]');
+            // Encontra a célula do programa que está passando AGORA
+            const programaCell = row.querySelector('.zc-pg .tempo');
             if (!programaCell) return null;
             
-            const programaLink = programaCell.querySelector('a.zc-pg-t');
+            const programaContainer = programaCell.closest('.zc-pg');
+            const programaLink = programaContainer.querySelector('a.zc-pg-t');
+            const horarioTerminoEl = programaContainer.querySelector('.zc-pg-e');
+            
             const programaNome = programaLink ? programaLink.textContent.trim() : '';
             const programaUrl = programaLink ? programaLink.getAttribute('href') : '';
+            const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
             
-            // Extrai informações de tempo
-            const tempoElement = programaCell.querySelector('.duracao-filme');
+            // Extrai informações de tempo e progresso
+            const tempoBarra = programaContainer.querySelector('.barra');
+            const tempoElement = programaContainer.querySelector('.duracao-filme');
+            
+            let progresso = 0;
             let tempoDecorrido = '0min';
             let tempoTotal = '0min';
             
@@ -81,15 +123,20 @@ function parseGradeClaroTV(html) {
                 if (tempoMatch) {
                     tempoDecorrido = tempoMatch[1];
                     tempoTotal = tempoMatch[2];
+                    
+                    // Calcula progresso percentual
+                    const decorrido = parseInt(tempoMatch[1]);
+                    const total = parseInt(tempoMatch[2]);
+                    progresso = Math.round((decorrido / total) * 100);
                 }
             }
             
-            // Extrai horário de término se disponível
-            const horarioTerminoEl = programaCell.querySelector('.zc-pg-e');
-            const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
+            // Tenta extrair horário de início da barra de progresso
+            const horarios = extrairHorarios(programaContainer.textContent);
+            const horarioInicio = horarios.length > 0 ? horarios[0] : '';
             
-            // Determina se é o programa atual
-            const isNow = programaCell.querySelector('.tempo') !== null;
+            // Detecta gênero baseado no título
+            const genero = detectarGenero(programaNome, '');
             
             return {
                 data_atual: formatData(new Date()),
@@ -97,17 +144,23 @@ function parseGradeClaroTV(html) {
                 numero_canal: canalNumero,
                 programa: programaNome,
                 programa_url: programaUrl,
+                horario_inicio: horarioInicio,
+                horario_termino: horarioTermino,
                 tempo_decorrido: tempoDecorrido,
                 tempo_total: tempoTotal,
-                horario_termino: horarioTermino,
-                isNow: isNow,
-                timestamp: now
+                progresso: progresso,
+                genero: genero,
+                isNow: true,
+                timestamp: now,
+                consulta: new Date().toISOString()
             };
         } catch (error) {
             console.error('Erro ao parsear linha:', error);
             return null;
         }
-    }).filter(item => item !== null && item.isNow); // Filtra apenas programas em exibição no momento
+    }).filter(item => item !== null);
+    
+    return programas;
 }
 
 // ========================
@@ -132,7 +185,11 @@ async function enviarParaFirebase(canal, data, jsonData) {
 // ========================
 async function getProgramacaoClaroTV(data) {
     try {
-        const url = `${BASE_URL}${data}/17.30hs`; // Usando 17:30hs como horário de referência
+        // Usa horário atual para pegar a grade correta
+        const now = new Date();
+        const horaAtual = `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}hs`;
+        const url = `${BASE_URL}${data}/${horaAtual}`;
+        
         const resp = await fetch(API_PROXY + encodeURIComponent(url));
         
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
