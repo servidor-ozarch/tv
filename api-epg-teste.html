@@ -13,7 +13,6 @@
 const API_PROXY = "https://api.allorigins.win/raw?url=";
 const BASE_URL = "https://tvinside.com.br/programacao_tv/";
 
-// Mapeamento dos dias para os slugs corretos do site
 const dias = {
   domingo: 'domingo',
   segunda: 'segunda',
@@ -30,7 +29,7 @@ const dias = {
 const urlParams = new URLSearchParams(location.search);
 const canal = urlParams.get('canal') || 'premiere_clubes';
 const diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
-const diaSlug = dias[diaParam] || 'domingo'; // fallback para domingo
+const diaSlug = dias[diaParam] || 'domingo';
 
 // ========================
 // Formatação de data e hora
@@ -85,13 +84,14 @@ function parseGrade(html){
       sinopse: sinopseEl ? sinopseEl.textContent.trim() : '',
       classificacao: classificacaoEl ? classificacaoEl.textContent.trim() : '',
       faixa: faixaEl ? faixaEl.textContent.trim() : '',
-      isNow
+      isNow,
+      startTime: startDate ? startDate.getTime() : null
     };
   }).filter(x=>x.data_inicio && x.titulo);
 }
 
 // ========================
-// Envia JSON para Firebase (chave canal/dia)
+// Envia JSON para Firebase
 // ========================
 async function enviarParaFirebase(canal, dia, jsonData) {
   try {
@@ -119,15 +119,24 @@ async function getProgramacao(canal, dia){
     const html = await resp.text();
     const itens = parseGrade(html);
 
-    // Exibe no corpo da página (debug)
-    document.body.textContent = JSON.stringify(itens, null, 2);
+    // Programa atual
+    const atual = itens.find(p => p.isNow);
 
-    // Envia para Firebase
-    enviarParaFirebase(canal, dia, itens);
+    // Próximo programa
+    const nowTime = Date.now();
+    const proximo = itens.find(p => p.startTime && p.startTime > nowTime);
 
-    // Chama interface nativa (WebView)
+    const resultado = { atual: atual || null, proximo: proximo || null };
+
+    // Debug na página
+    document.body.textContent = JSON.stringify(resultado, null, 2);
+
+    // Envia todos os dados para Firebase
+    enviarParaFirebase(canal, dia, resultado);
+
+    // Interface nativa WebView
     if (window.JsonInterface && window.JsonInterface.salvarJson) {
-      window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
+      window.JsonInterface.salvarJson(JSON.stringify(resultado, null, 2));
     }
 
   } catch(err){
@@ -140,7 +149,7 @@ async function getProgramacao(canal, dia){
 // Atualização automática (5 min)
 // ========================
 getProgramacao(canal, diaSlug);
-setInterval(()=> getProgramacao(canal, diaSlug), 300000); // 5 minutos
+setInterval(()=> getProgramacao(canal, diaSlug), 300000);
 </script>
 </body>
 </html>
