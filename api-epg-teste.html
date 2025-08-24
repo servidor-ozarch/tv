@@ -23,7 +23,7 @@ function getCurrentDateFormatted() {
 function getCurrentTimeFormatted() {
   const now = new Date();
   const h = String(now.getHours()).padStart(2, '0');
-  const m = Math.floor(now.getMinutes() / 5) * 5; // arredonda para 5 min
+  const m = Math.floor(now.getMinutes() / 5) * 5;
   return `${h}.${String(m).padStart(2, '0')}hs`;
 }
 function formatData(dt) {
@@ -50,8 +50,9 @@ function parseGradeClaroTV(html) {
   for (const row of linhas) {
     try {
       const canalEl = row.querySelector('.zc-st-a');
-      const canalNome = canalEl ? canalEl.getAttribute('href').replace('/', '') : '';
+      let canalNome = canalEl ? canalEl.getAttribute('href').replace('/', '') : '';
       if (!canalNome) continue;
+      canalNome = canalNome.trim(); // remove espaços
       const canalNumero = row.querySelector('.numcanal') ? row.querySelector('.numcanal').textContent.trim() : '';
 
       const programas = Array.from(row.querySelectorAll('.zc-pg'));
@@ -61,7 +62,7 @@ function parseGradeClaroTV(html) {
         const fimEl = cell.querySelector('.zc-pg-e');
         const inicio = inicioEl ? inicioEl.textContent.trim() : '';
         const fim = fimEl ? fimEl.textContent.trim() : '';
-        if (cell.querySelector('.tempo')) { // marcador visual
+        if (cell.querySelector('.tempo')) {
           programaAtual = { cell, inicio, fim };
           break;
         }
@@ -150,12 +151,22 @@ async function getEPG() {
     // Firebase com todos os canais
     await enviarParaFirebase(diaParam, epg);
 
-    // Exibe apenas o canal solicitado, se houver
+    // Mostra todos os nomes encontrados no console para depuração
+    console.log("Canais encontrados:", Object.keys(epg));
+
+    // Filtro por canal (normalizado)
     let exibicao = epg;
-    if (canalParam && epg[canalParam]) {
-      exibicao = {[canalParam]: epg[canalParam]};
-    } else if (canalParam) {
-      exibicao = {error:`Canal ${canalParam} não encontrado.`};
+    if (canalParam) {
+      const filtro = canalParam.toLowerCase().trim();
+      exibicao = {};
+      for (let [nome, dados] of Object.entries(epg)) {
+        if (nome.toLowerCase().trim().includes(filtro)) {
+          exibicao[nome] = dados;
+        }
+      }
+      if (Object.keys(exibicao).length === 0) {
+        exibicao = { error: `Canal "${canalParam}" não encontrado. Veja console (F12) para a lista completa.` };
+      }
     }
 
     document.body.innerHTML = `<pre>${JSON.stringify(exibicao, null, 2)}</pre>`;
@@ -165,7 +176,7 @@ async function getEPG() {
   }
 }
 
-// Atualiza
+// Atualiza a cada 60s
 getEPG();
 setInterval(getEPG, 60000);
 </script>
