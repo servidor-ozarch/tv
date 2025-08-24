@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Programação Claro TV → Firebase</title>
+    <title>Programação TV → Firebase</title>
 </head>
 <body>
 <script>
@@ -11,7 +11,7 @@
 // Configuração
 // ========================
 const API_PROXY = "https://api.allorigins.win/raw?url=";
-const BASE_URL = "https://tvmap.com.br/Claro-TV/";
+const BASE_URL = "https://tvmap.com.br/";
 
 // Mapeamento de categorias para gêneros
 const generos = {
@@ -27,11 +27,24 @@ const generos = {
     'infantil': ['infantil', 'criança', 'desenho', 'animação', 'kids', 'educativo']
 };
 
+// Mapeamento de dias para formato TV Map
+const diasMap = {
+    'domingo': 'domingo',
+    'segunda': 'segunda-feira', 
+    'terca': 'terca-feira',
+    'quarta': 'quarta-feira',
+    'quinta': 'quinta-feira',
+    'sexta': 'sexta-feira',
+    'sabado': 'sabado'
+};
+
 // ========================
-// Detecta parâmetros ?data=xxx
+// Detecta parâmetros ?canal=xxx&dia=xxx
 // ========================
 const urlParams = new URLSearchParams(location.search);
-const dataParam = urlParams.get('data') || getCurrentDateFormatted();
+const canal = urlParams.get('canal') || 'Claro-TV';
+const diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
+const diaSlug = diasMap[diaParam] || 'domingo';
 
 // ========================
 // Funções auxiliares
@@ -76,16 +89,15 @@ function detectarGenero(titulo, descricao) {
 }
 
 function extrairHorarios(texto) {
-    // Tenta extrair horários no formato "HH:MM"
     const horarioRegex = /(\d{1,2}:\d{2})/g;
     const horarios = texto.match(horarioRegex) || [];
     return horarios;
 }
 
 // ========================
-// Parse HTML da programação da Claro TV
+// Parse HTML da programação TV Map
 // ========================
-function parseGradeClaroTV(html) {
+function parseGradeTVMap(html) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const programRows = Array.from(doc.querySelectorAll('.zc-row.outerTable'));
     const now = Date.now();
@@ -110,7 +122,6 @@ function parseGradeClaroTV(html) {
             const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
             
             // Extrai informações de tempo e progresso
-            const tempoBarra = programaContainer.querySelector('.barra');
             const tempoElement = programaContainer.querySelector('.duracao-filme');
             
             let progresso = 0;
@@ -131,7 +142,7 @@ function parseGradeClaroTV(html) {
                 }
             }
             
-            // Tenta extrair horário de início da barra de progresso
+            // Tenta extrair horário de início
             const horarios = extrairHorarios(programaContainer.textContent);
             const horarioInicio = horarios.length > 0 ? horarios[0] : '';
             
@@ -166,9 +177,9 @@ function parseGradeClaroTV(html) {
 // ========================
 // Envia JSON para Firebase
 // ========================
-async function enviarParaFirebase(canal, data, jsonData) {
+async function enviarParaFirebase(canal, dia, jsonData) {
     try {
-        const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/claro_tv/${data}.json`;
+        const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg/${canal}/${dia}.json`;
         await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -183,27 +194,37 @@ async function enviarParaFirebase(canal, data, jsonData) {
 // ========================
 // Função principal
 // ========================
-async function getProgramacaoClaroTV(data) {
+async function getProgramacao(canal, dia) {
     try {
+        // Formata a data atual para a URL
+        const dataAtual = getCurrentDateFormatted();
+        
         // Usa horário atual para pegar a grade correta
         const now = new Date();
         const horaAtual = `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}hs`;
-        const url = `${BASE_URL}${data}/${horaAtual}`;
+        
+        // Constrói a URL baseada no canal
+        let url;
+        if (canal.toLowerCase() === 'claro-tv') {
+            url = `${BASE_URL}${canal}/${dataAtual}/${horaAtual}`;
+        } else {
+            url = `${BASE_URL}${canal}/${dia}/${horaAtual}`;
+        }
         
         const resp = await fetch(API_PROXY + encodeURIComponent(url));
         
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         
         const html = await resp.text();
-        const programacao = parseGradeClaroTV(html);
+        const programacao = parseGradeTVMap(html);
         
         // Exibe resultado na página
         document.body.innerHTML = `<pre>${JSON.stringify(programacao, null, 2)}</pre>`;
         
         // Envia para Firebase
-        await enviarParaFirebase('claro_tv', data, programacao);
+        await enviarParaFirebase(canal, dia, programacao);
         
-        // Interface com Android (se disponível)
+        // Interface com Android
         if (window.JsonInterface && window.JsonInterface.salvarJson) {
             window.JsonInterface.salvarJson(JSON.stringify(programacao, null, 2));
         }
@@ -217,10 +238,10 @@ async function getProgramacaoClaroTV(data) {
 // ========================
 // Execução principal
 // ========================
-getProgramacaoClaroTV(dataParam);
+getProgramacao(canal, diaSlug);
 
 // Atualização automática a cada 60s
-setInterval(() => getProgramacaoClaroTV(dataParam), 60000);
+setInterval(() => getProgramacao(canal, diaSlug), 60000);
 </script>
 </body>
 </html>
