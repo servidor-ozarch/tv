@@ -12,14 +12,25 @@
 // ========================
 const API_PROXY = "https://api.allorigins.win/raw?url=";
 const BASE_URL = "https://tvinside.com.br/programacao_tv/";
-const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+
+// Mapeamento dos dias para os slugs corretos do site
+const dias = {
+  domingo: 'domingo',
+  segunda: 'segunda',
+  terca: 'terca',
+  quarta: 'quarta',
+  quinta: 'quinta',
+  sexta: 'sexta',
+  sabado: 'sabado'
+};
 
 // ========================
 // Detecta parâmetros ?canal=xxx&dia=xxx
 // ========================
 const urlParams = new URLSearchParams(location.search);
 const canal = urlParams.get('canal') || 'premiere_clubes';
-const dia = urlParams.get('dia') || dias[new Date().getDay()];
+const diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
+const diaSlug = dias[diaParam] || 'domingo'; // fallback para domingo
 
 // ========================
 // Formatação de data e hora
@@ -80,14 +91,13 @@ function parseGrade(html){
 }
 
 // ========================
-// Envia JSON para Firebase (usando chave canal/dia)
+// Envia JSON para Firebase (chave canal/dia)
 // ========================
 async function enviarParaFirebase(canal, dia, jsonData) {
   try {
-    // cada canal/dia tem seu próprio caminho
     const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg/${canal}/${dia}.json`;
     const resp = await fetch(url, {
-      method: 'PUT', // substitui os dados para aquele canal/dia
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(jsonData)
     });
@@ -109,13 +119,13 @@ async function getProgramacao(canal, dia){
     const html = await resp.text();
     const itens = parseGrade(html);
 
-    // Exibe no corpo da página (apenas para debug)
+    // Exibe no corpo da página (debug)
     document.body.textContent = JSON.stringify(itens, null, 2);
 
     // Envia para Firebase
     enviarParaFirebase(canal, dia, itens);
 
-    // Chama interface nativa (caso esteja num WebView)
+    // Chama interface nativa (WebView)
     if (window.JsonInterface && window.JsonInterface.salvarJson) {
       window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
     }
@@ -127,11 +137,10 @@ async function getProgramacao(canal, dia){
 }
 
 // ========================
-// Atualização automática (recomendo >= 5 min)
+// Atualização automática (5 min)
 // ========================
-getProgramacao(canal, dia);
-// Ex.: a cada 5 minutos (300000 ms)
-setInterval(()=> getProgramacao(canal, dia), 300000);
+getProgramacao(canal, diaSlug);
+setInterval(()=> getProgramacao(canal, diaSlug), 300000); // 5 minutos
 </script>
 </body>
 </html>
