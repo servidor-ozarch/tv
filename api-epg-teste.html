@@ -27,7 +27,7 @@ const dias = {
 // Detecta parâmetros ?canal=xxx&dia=xxx
 // ========================
 const urlParams = new URLSearchParams(location.search);
-const canal = urlParams.get('canal') || 'premiere_clubes';
+const canal = urlParams.get('canal') || 'cinemax';
 const diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
 const diaSlug = dias[diaParam] || 'domingo';
 
@@ -75,6 +75,7 @@ function parseGrade(html){
     const isNow = (startDate && endDate && now >= startDate.getTime() && now < endDate.getTime()) || el.classList.contains('check_noar');
 
     return {
+      data_atual: formatData(new Date()),      // data de hoje
       data_inicio: formatData(startDate),
       hora_inicio: formatHora(startDate),
       data_fim: formatData(endDate),
@@ -87,7 +88,7 @@ function parseGrade(html){
       isNow,
       startTime: startDate ? startDate.getTime() : null
     };
-  }).filter(x=>x.data_inicio && x.titulo);
+  }).filter(x=>x.isNow); // filtra somente o programa atual
 }
 
 // ========================
@@ -96,13 +97,11 @@ function parseGrade(html){
 async function enviarParaFirebase(canal, dia, jsonData) {
   try {
     const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg/${canal}/${dia}.json`;
-    const resp = await fetch(url, {
+    await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(jsonData)
     });
-    if(!resp.ok) throw new Error('Falha ao enviar para Firebase: ' + resp.status);
-    console.log(`Dados enviados para Firebase em epg/${canal}/${dia}`);
   } catch(err) {
     console.error(err);
   }
@@ -119,24 +118,14 @@ async function getProgramacao(canal, dia){
     const html = await resp.text();
     const itens = parseGrade(html);
 
-    // Programa atual
-    const atual = itens.find(p => p.isNow);
+    const atual = itens[0] || null;
 
-    // Próximo programa
-    const nowTime = Date.now();
-    const proximo = itens.find(p => p.startTime && p.startTime > nowTime);
+    document.body.textContent = JSON.stringify(atual, null, 2);
 
-    const resultado = { atual: atual || null, proximo: proximo || null };
+    enviarParaFirebase(canal, dia, atual);
 
-    // Debug na página
-    document.body.textContent = JSON.stringify(resultado, null, 2);
-
-    // Envia todos os dados para Firebase
-    enviarParaFirebase(canal, dia, resultado);
-
-    // Interface nativa WebView
     if (window.JsonInterface && window.JsonInterface.salvarJson) {
-      window.JsonInterface.salvarJson(JSON.stringify(resultado, null, 2));
+      window.JsonInterface.salvarJson(JSON.stringify(atual, null, 2));
     }
 
   } catch(err){
@@ -146,10 +135,10 @@ async function getProgramacao(canal, dia){
 }
 
 // ========================
-// Atualização automática (5 min)
+// Atualização automática a cada 60s
 // ========================
 getProgramacao(canal, diaSlug);
-setInterval(()=> getProgramacao(canal, diaSlug), 300000);
+setInterval(()=> getProgramacao(canal, diaSlug), 60000);
 </script>
 </body>
 </html>
