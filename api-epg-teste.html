@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Programação Claro TV → Firebase</title>
+    <title>Programação TV → Firebase</title>
 </head>
 <body>
 <script>
@@ -75,15 +75,9 @@ function formatData(dt) {
     return `${day}/${month}/${year}`;
 }
 
-function formatHora(dt) {
-    if (!dt) return '';
-    const d = new Date(dt);
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-}
-
 function detectarGenero(titulo) {
+    if (!titulo) return 'outros';
+    
     const texto = titulo.toLowerCase();
     
     for (const [genero, palavrasChave] of Object.entries(generos)) {
@@ -97,15 +91,19 @@ function detectarGenero(titulo) {
     return 'outros';
 }
 
-function extrairHorarioInicio(texto) {
-    // Tenta extrair horário no formato "HH:MM"
-    const horarioRegex = /(\d{1,2}:\d{2})/;
-    const match = texto.match(horarioRegex);
-    return match ? match[1] : '';
+function calcularProgresso(tempoDecorrido, tempoTotal) {
+    if (!tempoDecorrido || !tempoTotal) return 0;
+    
+    const decorrido = parseInt(tempoDecorrido);
+    const total = parseInt(tempoTotal);
+    
+    if (isNaN(decorrido) || isNaN(total) || total === 0) return 0;
+    
+    return Math.round((decorrido / total) * 100);
 }
 
 // ========================
-// Parse HTML da programação
+// Parse HTML da programação (versão que funciona)
 // ========================
 function parseGrade(html) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -120,62 +118,58 @@ function parseGrade(html) {
             const canalNumero = row.querySelector('.numcanal') ? row.querySelector('.numcanal').textContent.trim() : '';
             
             // Encontra programas em exibição (com barra de progresso)
-            const programaCell = row.querySelector('.zc-pg .tempo');
-            if (!programaCell) return null;
+            const programaCells = row.querySelectorAll('.zc-pg[onclick*="wtc.tvg.ld"]');
             
-            const programaContainer = programaCell.closest('.zc-pg');
-            const programaLink = programaContainer.querySelector('a.zc-pg-t');
-            const horarioTerminoEl = programaContainer.querySelector('.zc-pg-e');
-            
-            const programaNome = programaLink ? programaLink.textContent.trim() : '';
-            const programaUrl = programaLink ? programaLink.getAttribute('href') : '';
-            const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
-            
-            // Extrai informações de tempo e progresso
-            const tempoElement = programaContainer.querySelector('.duracao-filme');
-            
-            let progresso = 0;
-            let tempoDecorrido = '0min';
-            let tempoTotal = '0min';
-            let horarioInicio = '';
-            
-            if (tempoElement) {
-                const tempoText = tempoElement.textContent;
-                const tempoMatch = tempoText.match(/(\d+min)\/(\d+min)/);
-                
-                if (tempoMatch) {
-                    tempoDecorrido = tempoMatch[1];
-                    tempoTotal = tempoMatch[2];
+            for (const programaCell of programaCells) {
+                const tempoElement = programaCell.querySelector('.tempo');
+                if (tempoElement) {
+                    // Este programa está em exibição agora
+                    const programaLink = programaCell.querySelector('a.zc-pg-t');
+                    const horarioTerminoEl = programaCell.querySelector('.zc-pg-e');
+                    const duracaoElement = programaCell.querySelector('.duracao-filme');
                     
-                    // Calcula progresso percentual
-                    const decorrido = parseInt(tempoMatch[1]);
-                    const total = parseInt(tempoMatch[2]);
-                    progresso = Math.round((decorrido / total) * 100);
+                    const programaNome = programaLink ? programaLink.textContent.trim() : '';
+                    const programaUrl = programaLink ? programaLink.getAttribute('href') : '';
+                    const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
+                    
+                    // Extrai informações de tempo
+                    let tempoDecorrido = '0min';
+                    let tempoTotal = '0min';
+                    
+                    if (duracaoElement) {
+                        const tempoText = duracaoElement.textContent;
+                        const tempoMatch = tempoText.match(/(\d+min)\/(\d+min)/);
+                        if (tempoMatch) {
+                            tempoDecorrido = tempoMatch[1];
+                            tempoTotal = tempoMatch[2];
+                        }
+                    }
+                    
+                    // Calcula progresso
+                    const progresso = calcularProgresso(tempoDecorrido, tempoTotal);
+                    
+                    // Detecta gênero
+                    const genero = detectarGenero(programaNome);
+                    
+                    return {
+                        data_atual: formatData(new Date()),
+                        canal: canalNome,
+                        numero_canal: canalNumero,
+                        programa: programaNome,
+                        programa_url: programaUrl,
+                        tempo_decorrido: tempoDecorrido,
+                        tempo_total: tempoTotal,
+                        progresso: progresso,
+                        genero: genero,
+                        horario_termino: horarioTermino,
+                        isNow: true,
+                        timestamp: now,
+                        consulta: new Date().toISOString()
+                    };
                 }
-                
-                // Tenta extrair horário de início
-                horarioInicio = extrairHorarioInicio(tempoText);
             }
             
-            // Detecta gênero baseado no título
-            const genero = detectarGenero(programaNome);
-            
-            return {
-                data_atual: formatData(new Date()),
-                canal: canalNome,
-                numero_canal: canalNumero,
-                programa: programaNome,
-                programa_url: programaUrl,
-                horario_inicio: horarioInicio,
-                horario_termino: horarioTermino,
-                tempo_decorrido: tempoDecorrido,
-                tempo_total: tempoTotal,
-                progresso: progresso,
-                genero: genero,
-                isNow: true,
-                timestamp: now,
-                consulta: new Date().toISOString()
-            };
+            return null;
         } catch (error) {
             console.error('Erro ao parsear linha:', error);
             return null;
@@ -201,22 +195,22 @@ async function enviarParaFirebase(canal, dia, jsonData) {
 }
 
 // ========================
-// Função principal
+// Função principal (usando horário fixo que funciona)
 // ========================
 async function getProgramacao(canal, dia) {
     try {
-        // Usa horário atual para pegar a grade correta
-        const now = new Date();
-        const horaAtual = `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}hs`;
-        
-        // Constrói a URL baseada no canal
+        // Usa horário fixo que sabemos que funciona (17.30hs)
+        // O TV Map tem grades horárias específicas
         let url;
+        
         if (canal.toLowerCase() === 'claro-tv') {
             const dataAtual = getCurrentDateFormatted();
-            url = `${BASE_URL}${canal}/${dataAtual}/${horaAtual}`;
+            url = `${BASE_URL}${canal}/${dataAtual}/17.30hs`;
         } else {
-            url = `${BASE_URL}${canal}/${dia}/${horaAtual}`;
+            url = `${BASE_URL}${canal}/${dia}/17.30hs`;
         }
+        
+        console.log('Acessando URL:', url);
         
         const resp = await fetch(API_PROXY + encodeURIComponent(url));
         
@@ -238,7 +232,11 @@ async function getProgramacao(canal, dia) {
         
     } catch(err) {
         console.error('Erro ao carregar programação:', err);
-        document.body.innerHTML = `<pre>${JSON.stringify({error: "Falha ao carregar programação", details: err.message}, null, 2)}</pre>`;
+        document.body.innerHTML = `<pre>${JSON.stringify({
+            error: "Falha ao carregar programação", 
+            details: err.message,
+            suggestion: "Tente novamente ou verifique se o site está acessível"
+        }, null, 2)}</pre>`;
     }
 }
 
