@@ -3,54 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Programação TV → Firebase</title>
+    <title>Programação Claro TV → Firebase</title>
 </head>
 <body>
 <script>
 // ========================
 // Configuração
 // ========================
-// Teste com diferentes proxies
-const PROXIES = [
-    "https://api.allorigins.win/raw?url=",
-    "https://corsproxy.io/?",
-    "https://cors-anywhere.herokuapp.com/",
-    "https://proxy.cors.sh/",
-    "" // Tentativa direta (pode falhar por CORS)
-];
-
-let currentProxyIndex = 0;
-function getProxy() {
-    return PROXIES[currentProxyIndex];
-}
-
-function rotateProxy() {
-    currentProxyIndex = (currentProxyIndex + 1) % PROXIES.length;
-    console.log('Trocando para proxy:', getProxy());
-}
+const API_PROXY = "https://api.allorigins.win/raw?url=";
+const BASE_URL = "https://tvmap.com.br/";
 
 // Mapeamento de categorias para gêneros
 const generos = {
-    'ação': ['ação', 'luta', 'artes marciais', 'guerra', 'combate', 'batalha', 'herói', 'super-herói'],
-    'aventura': ['aventura', 'expedição', 'missão', 'viagem', 'exploração', 'descoberta'],
-    'terror': ['terror', 'horror', 'suspense', 'thriller', 'sobrenatural', 'assustador', 'medo'],
-    'ficção científica': ['ficção científica', 'sci-fi', 'futuro', 'espacial', 'alienígena', 'nave', 'robô'],
-    'drama': ['drama', 'emocionante', 'romance', 'família', 'relacionamento', 'sentimental'],
-    'comédia': ['comédia', 'humor', 'divertido', 'engraçado', 'riso', 'zoação'],
-    'documentário': ['documentário', 'realidade', 'história', 'biografia', 'fatos reais'],
-    'esportes': ['esporte', 'futebol', 'jogo', 'competição', 'campeonato', 'atleta'],
-    'notícias': ['notícias', 'jornal', 'informação', 'atualidades', 'reportagem'],
-    'infantil': ['infantil', 'criança', 'desenho', 'animação', 'kids', 'educativo']
+    'ação': ['ação', 'luta', 'artes marciais', 'guerra', 'combate', 'batalha', 'herói', 'super-herói', 'polícia', 'crime'],
+    'aventura': ['aventura', 'expedição', 'missão', 'viagem', 'exploração', 'descoberta', 'aventureiro'],
+    'terror': ['terror', 'horror', 'suspense', 'thriller', 'sobrenatural', 'assustador', 'medo', 'fantasma'],
+    'ficção científica': ['ficção científica', 'sci-fi', 'futuro', 'espacial', 'alienígena', 'nave', 'robô', 'futurista'],
+    'drama': ['drama', 'emocionante', 'romance', 'família', 'relacionamento', 'sentimental', 'amor'],
+    'comédia': ['comédia', 'humor', 'divertido', 'engraçado', 'riso', 'zoação', 'humorístico'],
+    'documentário': ['documentário', 'realidade', 'história', 'biografia', 'fatos reais', 'documentario'],
+    'esportes': ['esporte', 'futebol', 'jogo', 'competição', 'campeonato', 'atleta', 'esportivo'],
+    'notícias': ['notícias', 'jornal', 'informação', 'atualidades', 'reportagem', 'noticias'],
+    'infantil': ['infantil', 'criança', 'desenho', 'animação', 'kids', 'educativo', 'animado'],
+    'entretenimento': ['entretenimento', 'show', 'talento', 'musical', 'reality', 'auditório']
 };
 
 // ========================
 // Detecta parâmetros ?canal=xxx&dia=xxx
 // ========================
 const urlParams = new URLSearchParams(location.search);
-const canal = urlParams.get('canal') || 'tv-aberta';
-let diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
+const canalParam = urlParams.get('canal') || 'Claro-TV';
+const diaParam = urlParams.get('dia') || new Date().toLocaleString('pt-BR', { weekday: 'long' }).toLowerCase();
 
-// Corrige nome dos dias para o formato do TV Map
+// Mapeamento de dias para formato TV Map
 const diasMap = {
     'domingo': 'domingo',
     'segunda': 'segunda-feira', 
@@ -90,6 +75,14 @@ function formatData(dt) {
     return `${day}/${month}/${year}`;
 }
 
+function formatHora(dt) {
+    if (!dt) return '';
+    const d = new Date(dt);
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
 function detectarGenero(titulo) {
     const texto = titulo.toLowerCase();
     
@@ -104,47 +97,90 @@ function detectarGenero(titulo) {
     return 'outros';
 }
 
+function extrairHorarioInicio(texto) {
+    // Tenta extrair horário no formato "HH:MM"
+    const horarioRegex = /(\d{1,2}:\d{2})/;
+    const match = texto.match(horarioRegex);
+    return match ? match[1] : '';
+}
+
 // ========================
-// Parse HTML alternativo (mais simples)
+// Parse HTML da programação
 // ========================
-function parseGradeSimples(html) {
-    try {
-        const now = new Date();
-        const horaAtual = now.getHours();
-        const minutoAtual = now.getMinutes();
-        
-        // Encontra programas que estão no ar
-        const programasEmExibicao = [];
-        
-        // Extrai informações básicas - abordagem mais simples
-        const canalMatch = html.match(/<title>([^<]+)<\/title>/);
-        const canalNome = canalMatch ? canalMatch[1].replace('Guia de Programação da', '').trim() : 'Canal Desconhecido';
-        
-        // Tenta encontrar programas atuais de forma mais simples
-        const programaRegex = /<a[^>]+class="zc-pg-t"[^>]*>([^<]+)<\/a>/g;
-        let match;
-        
-        while ((match = programaRegex.exec(html)) !== null) {
-            const programaNome = match[1].trim();
-            if (programaNome) {
-                programasEmExibicao.push({
-                    data_atual: formatData(now),
-                    canal: canalNome,
-                    programa: programaNome,
-                    horario_consulta: `${String(horaAtual).padStart(2, '0')}:${String(minutoAtual).padStart(2, '0')}`,
-                    genero: detectarGenero(programaNome),
-                    isNow: true,
-                    timestamp: now.getTime(),
-                    consulta: now.toISOString()
-                });
+function parseGrade(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const programRows = Array.from(doc.querySelectorAll('.zc-row.outerTable'));
+    const now = Date.now();
+    
+    return programRows.map(row => {
+        try {
+            // Extrai informações do canal
+            const canalEl = row.querySelector('.zc-st-a');
+            const canalNome = canalEl ? canalEl.textContent.trim() : '';
+            const canalNumero = row.querySelector('.numcanal') ? row.querySelector('.numcanal').textContent.trim() : '';
+            
+            // Encontra programas em exibição (com barra de progresso)
+            const programaCell = row.querySelector('.zc-pg .tempo');
+            if (!programaCell) return null;
+            
+            const programaContainer = programaCell.closest('.zc-pg');
+            const programaLink = programaContainer.querySelector('a.zc-pg-t');
+            const horarioTerminoEl = programaContainer.querySelector('.zc-pg-e');
+            
+            const programaNome = programaLink ? programaLink.textContent.trim() : '';
+            const programaUrl = programaLink ? programaLink.getAttribute('href') : '';
+            const horarioTermino = horarioTerminoEl ? horarioTerminoEl.textContent.trim() : '';
+            
+            // Extrai informações de tempo e progresso
+            const tempoElement = programaContainer.querySelector('.duracao-filme');
+            
+            let progresso = 0;
+            let tempoDecorrido = '0min';
+            let tempoTotal = '0min';
+            let horarioInicio = '';
+            
+            if (tempoElement) {
+                const tempoText = tempoElement.textContent;
+                const tempoMatch = tempoText.match(/(\d+min)\/(\d+min)/);
+                
+                if (tempoMatch) {
+                    tempoDecorrido = tempoMatch[1];
+                    tempoTotal = tempoMatch[2];
+                    
+                    // Calcula progresso percentual
+                    const decorrido = parseInt(tempoMatch[1]);
+                    const total = parseInt(tempoMatch[2]);
+                    progresso = Math.round((decorrido / total) * 100);
+                }
+                
+                // Tenta extrair horário de início
+                horarioInicio = extrairHorarioInicio(tempoText);
             }
+            
+            // Detecta gênero baseado no título
+            const genero = detectarGenero(programaNome);
+            
+            return {
+                data_atual: formatData(new Date()),
+                canal: canalNome,
+                numero_canal: canalNumero,
+                programa: programaNome,
+                programa_url: programaUrl,
+                horario_inicio: horarioInicio,
+                horario_termino: horarioTermino,
+                tempo_decorrido: tempoDecorrido,
+                tempo_total: tempoTotal,
+                progresso: progresso,
+                genero: genero,
+                isNow: true,
+                timestamp: now,
+                consulta: new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('Erro ao parsear linha:', error);
+            return null;
         }
-        
-        return programasEmExibicao.slice(0, 5); // Retorna apenas os primeiros 5 programas
-    } catch (error) {
-        console.error('Erro no parse simples:', error);
-        return [];
-    }
+    }).filter(item => item !== null);
 }
 
 // ========================
@@ -153,124 +189,66 @@ function parseGradeSimples(html) {
 async function enviarParaFirebase(canal, dia, jsonData) {
     try {
         const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg/${canal}/${dia}.json`;
-        const response = await fetch(url, {
+        await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jsonData)
         });
-        
-        if (response.ok) {
-            console.log('Dados enviados para Firebase com sucesso');
-        }
+        console.log('Dados enviados para Firebase com sucesso');
     } catch(err) {
         console.error('Erro ao enviar para Firebase:', err);
     }
 }
 
 // ========================
-// Função principal com fallbacks
+// Função principal
 // ========================
 async function getProgramacao(canal, dia) {
-    let tentativa = 0;
-    const maxTentativas = PROXIES.length;
-    
-    while (tentativa < maxTentativas) {
-        try {
-            const proxy = getProxy();
-            let url;
-            
-            // Diferentes formatos de URL para testar
-            const urlsParaTestar = [
-                `https://tvmap.com.br/${canal}/${dia}`,
-                `https://tvmap.com.br/${canal}`,
-                `https://www.tvmap.com.br/${canal}/${dia}`,
-                `https://www.tvmap.com.br/${canal}`
-            ];
-            
-            let html = null;
-            
-            // Tenta cada URL até uma funcionar
-            for (const testUrl of urlsParaTestar) {
-                try {
-                    const fullUrl = proxy ? proxy + encodeURIComponent(testUrl) : testUrl;
-                    console.log('Tentando URL:', fullUrl);
-                    
-                    const resp = await fetch(fullUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        },
-                        signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
-                    });
-                    
-                    if (resp.ok) {
-                        html = await resp.text();
-                        break;
-                    }
-                } catch (e) {
-                    console.log('URL falhou:', testUrl);
-                    continue;
-                }
-            }
-            
-            if (!html) {
-                throw new Error('Todas as URLs falharam');
-            }
-            
-            const programacao = parseGradeSimples(html);
-            
-            if (programacao.length === 0) {
-                // Fallback: retorna dados simulados se não conseguir parsear
-                programacao.push({
-                    data_atual: formatData(new Date()),
-                    canal: canal,
-                    programa: 'Programação não disponível',
-                    horario_consulta: new Date().toLocaleTimeString('pt-BR'),
-                    genero: 'informação',
-                    isNow: true,
-                    timestamp: Date.now(),
-                    consulta: new Date().toISOString(),
-                    observacao: 'Dados simulados - site pode ter mudado'
-                });
-            }
-            
-            // Exibe resultado na página
-            document.body.innerHTML = `<pre>${JSON.stringify(programacao, null, 2)}</pre>`;
-            
-            // Envia para Firebase
-            await enviarParaFirebase(canal, dia, programacao);
-            
-            // Interface com Android
-            if (window.JsonInterface && window.JsonInterface.salvarJson) {
-                window.JsonInterface.salvarJson(JSON.stringify(programacao, null, 2));
-            }
-            
-            return; // Sucesso, sai do loop
-            
-        } catch(err) {
-            tentativa++;
-            console.error(`Tentativa ${tentativa}/${maxTentativas} falhou:`, err);
-            
-            if (tentativa < maxTentativas) {
-                rotateProxy();
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Espera 1 segundo
-            } else {
-                document.body.innerHTML = `<pre>${JSON.stringify({
-                    error: "Falha ao carregar programação", 
-                    details: "Site pode estar bloqueando acesso",
-                    suggestion: "Tente novamente mais tarde ou verifique se o site tvmap.com.br está acessível"
-                }, null, 2)}</pre>`;
-            }
+    try {
+        // Usa horário atual para pegar a grade correta
+        const now = new Date();
+        const horaAtual = `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}hs`;
+        
+        // Constrói a URL baseada no canal
+        let url;
+        if (canal.toLowerCase() === 'claro-tv') {
+            const dataAtual = getCurrentDateFormatted();
+            url = `${BASE_URL}${canal}/${dataAtual}/${horaAtual}`;
+        } else {
+            url = `${BASE_URL}${canal}/${dia}/${horaAtual}`;
         }
+        
+        const resp = await fetch(API_PROXY + encodeURIComponent(url));
+        
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        
+        const html = await resp.text();
+        const programacao = parseGrade(html);
+        
+        // Exibe resultado na página
+        document.body.innerHTML = `<pre>${JSON.stringify(programacao, null, 2)}</pre>`;
+        
+        // Envia para Firebase
+        await enviarParaFirebase(canal, dia, programacao);
+        
+        // Interface com Android
+        if (window.JsonInterface && window.JsonInterface.salvarJson) {
+            window.JsonInterface.salvarJson(JSON.stringify(programacao, null, 2));
+        }
+        
+    } catch(err) {
+        console.error('Erro ao carregar programação:', err);
+        document.body.innerHTML = `<pre>${JSON.stringify({error: "Falha ao carregar programação", details: err.message}, null, 2)}</pre>`;
     }
 }
 
 // ========================
 // Execução principal
 // ========================
-getProgramacao(canal, diaSlug);
+getProgramacao(canalParam, diaSlug);
 
-// Atualização automática a cada 2 minutos
-setInterval(() => getProgramacao(canal, diaSlug), 120000);
+// Atualização automática a cada 60s
+setInterval(() => getProgramacao(canalParam, diaSlug), 60000);
 </script>
 </body>
 </html>
