@@ -3,114 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Programação TV → Firebase (mi.tv)</title>
+<title>Programação TV (mi.tv local)</title>
 </head>
 <body>
 <script>
-// ========================
-// Configuração
-// ========================
-const API_PROXY = "https://api.allorigins.win/raw?url=";
-const BASE_URL = "https://mi.tv/br/programacao";
 const urlParams = new URLSearchParams(location.search);
-const canal = urlParams.get('canal') || ''; // ex: ?canal=cinemax
-
-// ========================
-// Funções utilitárias
-// ========================
-function normalizar(txt){
-  return (txt || '')
-    .toLowerCase()
+const canal = urlParams.get('canal') || ''; // ?canal=cinemax
+function normalizar(t){
+  return (t||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/\s+/g,' ')
-    .trim();
+    .replace(/\s+/g,' ').trim();
 }
-function limpar(txt){ return (txt||'').replace(/\s+/g,' ').trim(); }
+function limpar(t){return (t||'').replace(/\s+/g,' ').trim();}
 
-// ========================
-// Parser da página mi.tv
-// ========================
-function parseMiTV(html, canalFiltro){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const canaisEls = doc.querySelectorAll('#channels .channel');
-  const lista = [];
-  const canalNorm = normalizar(canalFiltro);
-
-  canaisEls.forEach(ch => {
-    const nome = (ch.querySelector('h3')?.textContent) || (ch.querySelector('a.c')?.textContent) || '';
-    const nomeNorm = normalizar(nome);
-
-    if (canalNorm && !nomeNorm.includes(canalNorm)) return;
-
-    const logo = ch.querySelector('img.logo')?.getAttribute('src') || '';
-    const url  = ch.querySelector('a.c')?.getAttribute('href') || '';
-
-    ch.querySelectorAll('ul.broadcasts li').forEach(li => {
-      const hora = limpar(li.querySelector('span.time, time')?.textContent);
-      const titulo = limpar(li.querySelector('span.title')?.textContent) 
-                  || limpar(li.textContent).slice(0,80);
-      const subtitulo = limpar(li.querySelector('span.sub-title')?.textContent);
-      const sinopse = limpar(li.querySelector('span.synopsis')?.textContent);
-      const tipo = li.querySelector('img.peli') ? 'filme' : 
-                   (li.querySelector('img.vivo') ? 'ao vivo' : '');
-      const emAndamento = !!(li.querySelector('.progress span') || li.classList.contains('ongoing'));
-
-      lista.push({ canal: nome, logo, url, hora, titulo, subtitulo, sinopse, tipo, emAndamento });
-    });
-  });
-
-  return lista;
-}
-
-// ========================
-// Envio para Firebase
-// ========================
-async function enviarParaFirebase(jsonData) {
-  try {
-    const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json`;
-    const resp = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(jsonData)
-    });
-    if(!resp.ok) throw new Error('Falha ao enviar para Firebase: ' + resp.status);
-    console.log('Dados enviados para Firebase!');
-  } catch(err) {
-    console.error(err);
-  }
-}
-
-// ========================
-// Principal
-// ========================
 async function getProgramacao(){
   try {
-    const resp = await fetch(API_PROXY + encodeURIComponent(BASE_URL));
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    // Aqui usamos o arquivo salvo
+    const resp = await fetch("Guia de Programação da televisão no Brasil - Hoje - mi.tv.html");
+    if(!resp.ok) throw new Error(resp.status);
     const html = await resp.text();
-    const itens = parseMiTV(html, canal);
-
-    // Exibe JSON na página
-    document.body.textContent = JSON.stringify(itens, null, 2);
-
-    // Envia para Firebase
-    enviarParaFirebase(itens);
-
-    // Chama interface nativa se existir
-    if (window.JsonInterface && window.JsonInterface.salvarJson) {
-      window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
-    }
-  } catch(err){
-    console.error(err);
-    document.body.textContent = JSON.stringify({error:"Falha ao carregar programação", details: err.message});
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const canaisEls = doc.querySelectorAll("div.channel");
+    const lista = [];
+    const filtro = normalizar(canal);
+    canaisEls.forEach(ch=>{
+      const nome = limpar(ch.querySelector("h3")?.textContent || ch.querySelector("a.c")?.textContent);
+      if(filtro && !normalizar(nome).includes(filtro)) return;
+      const logo = ch.querySelector("img.logo")?.getAttribute("src") || "";
+      ch.querySelectorAll("ul.broadcasts li").forEach(li=>{
+        const hora = limpar(li.querySelector("span.time")?.textContent);
+        const titulo = limpar(li.querySelector("span.title")?.textContent) || limpar(li.textContent).slice(0,80);
+        const subtitulo = limpar(li.querySelector("span.sub-title")?.textContent);
+        lista.push({canal:nome,logo,hora,titulo,subtitulo});
+      });
+    });
+    document.body.textContent = JSON.stringify(lista,null,2);
+  } catch(e){
+    document.body.textContent = JSON.stringify({erro:e.message});
   }
 }
-
-// ========================
-// Execução imediata e atualização a cada 60s
-// ========================
 getProgramacao();
-setInterval(getProgramacao, 60000);
 </script>
 </body>
 </html>
