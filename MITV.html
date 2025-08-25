@@ -3,105 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Programação TV → Firebase (mi.tv)</title>
+<title>Programação TV → Firebase (mi.tv AJAX)</title>
 </head>
 <body>
 <script>
-// ========================
-// Configuração
-// ========================
 const API_PROXY = "https://api.allorigins.win/raw?url=";
-const BASE_URL = "https://mi.tv/br/programacao";
-const urlParams = new URLSearchParams(location.search);
-const canal = urlParams.get('canal') || ''; // ?canal=cinemax
+// Substitua por endpoint real se encontrado
+const AJAX_URL = "https://mi.tv/xhr/epg"; 
 
-// ========================
-// Funções utilitárias
-// ========================
-function normalizar(txt){
-  return (txt || '')
-    .toLowerCase()
+const urlParams = new URLSearchParams(location.search);
+const canal = (urlParams.get('canal') || '').toLowerCase();
+
+function normalizar(t){
+  return (t||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/\s+/g,' ')
     .trim();
 }
-function limpar(txt){ return (txt||'').replace(/\s+/g,' ').trim(); }
 
-// ========================
-// Parser do HTML da mi.tv
-// ========================
-function parseGrade(html){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const canaisEls = doc.querySelectorAll('div.channel');
-  const lista = [];
-  const filtro = normalizar(canal);
-
-  canaisEls.forEach(ch => {
-    const nome = limpar(ch.querySelector('h3')?.textContent || ch.querySelector('a.c')?.textContent);
-    if (filtro && !normalizar(nome).includes(filtro)) return;
-
-    const logo = ch.querySelector('img.logo')?.getAttribute('src') || '';
-    ch.querySelectorAll('ul.broadcasts li').forEach(li => {
-      const hora = limpar(li.querySelector('span.time')?.textContent);
-      const titulo = limpar(li.querySelector('span.title')?.textContent) || limpar(li.textContent).slice(0,80);
-      const subtitulo = limpar(li.querySelector('span.sub-title')?.textContent);
-      const tipo = li.querySelector('img.peli') ? 'filme' : (li.querySelector('img.vivo') ? 'ao vivo' : '');
-      const emAndamento = !!(li.querySelector('.progress span') || li.classList.contains('ongoing'));
-      lista.push({canal:nome,logo,hora,titulo,subtitulo,tipo,emAndamento});
-    });
-  });
-  return lista;
-}
-
-// ========================
-// Envia JSON para Firebase
-// ========================
-async function enviarParaFirebase(canal, jsonData) {
+async function getProgramacao() {
   try {
-    const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json`;
-    const resp = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(jsonData)
+    const resp = await fetch(API_PROXY + encodeURIComponent(AJAX_URL));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json(); // Se for JSON
+    let itens = [];
+
+    // Exemplo de parsing – ajuste conforme o formato real
+    data.channels.forEach(ch => {
+      const nome = ch.name || '';
+      if (canal && !normalizar(nome).includes(canal)) return;
+
+      ch.programs.forEach(p => {
+        itens.push({
+          canal: nome,
+          hora_inicio: p.start_time,
+          hora_fim: p.end_time,
+          titulo: p.title,
+          descricao: p.description || ''
+        });
+      });
     });
-    if(!resp.ok) throw new Error('Falha ao enviar para Firebase: ' + resp.status);
-    console.log('Dados enviados para Firebase!');
-  } catch(err) {
-    console.error(err);
-  }
-}
 
-// ========================
-// Função principal
-// ========================
-async function getProgramacao(canal){
-  try{
-    const resp = await fetch(API_PROXY + encodeURIComponent(BASE_URL));
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    const html = await resp.text();
-    const itens = parseGrade(html);
-
-    // Exibe no corpo da página
     document.body.textContent = JSON.stringify(itens, null, 2);
 
     // Envia para Firebase
-    enviarParaFirebase(canal, itens);
+    await fetch('https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itens)
+    });
 
-    // Chama interface nativa se existir
-    if (window.JsonInterface && window.JsonInterface.salvarJson) {
-      window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
-    }
-  } catch(err){
-    console.error(err);
-    document.body.textContent = JSON.stringify({error:"Falha ao carregar programação", details: err.message});
+  } catch (err) {
+    document.body.textContent = JSON.stringify({erro: err.message});
   }
 }
 
-// ========================
-// Execução e atualização a cada 60s
-// ========================
-getProgramacao(canal);
-setInterval(()=> getProgramacao(canal), 60000);
+getProgramacao();
 </script>
 </body>
 </html>
