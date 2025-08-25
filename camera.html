@@ -2,23 +2,61 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Teste de Câmera</title>
+<title>Detector de Rosto em Tempo Real</title>
+<style>
+  body { display: flex; flex-direction: column; align-items: center; background: #111; color: #eee; font-family: sans-serif; }
+  video, canvas { border: 2px solid #4caf50; margin: 10px; }
+</style>
 </head>
 <body>
-<h1>Teste de Câmera</h1>
-<video id="cam" autoplay playsinline width="640" height="480"></video>
-<script>
-const video = document.getElementById('cam');
+<h1>Detector de Rosto 🌝🌚</h1>
+<video id="video" width="640" height="480" autoplay playsinline></video>
+<canvas id="overlay" width="640" height="480"></canvas>
 
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => {
+<!-- face-api.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
-    console.log("Câmera iniciada com sucesso!");
-  })
-  .catch(err => {
-    console.error("Erro ao acessar câmera:", err);
-    alert("Erro ao acessar câmera: " + err.name + " - " + err.message);
+  } catch(err) {
+    alert("Erro ao acessar câmera: " + err);
+    console.error(err);
+  }
+}
+
+async function loadModels() {
+  await faceapi.nets.tinyFaceDetector.loadFromUri('https://justadummycdn.com/models'); 
+  console.log("Modelos carregados!");
+}
+
+// Ajuste: você pode hospedar os modelos localmente ou usar CDN confiável
+async function detectFaces() {
+  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224 });
+  const detections = await faceapi.detectAllFaces(video, options);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  detections.forEach(det => {
+    const { x, y, width, height } = det.box;
+    ctx.strokeStyle = '#4caf50';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
   });
+
+  requestAnimationFrame(detectFaces);
+}
+
+video.addEventListener('play', () => {
+  detectFaces();
+});
+
+startCamera();
+loadModels();
 </script>
 </body>
 </html>
