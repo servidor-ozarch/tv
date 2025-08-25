@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programação TV → Firebase (mi.tv)</title>
+</head>
+<body>
+<script>
+// ========================
+// Configuração
+// ========================
+const API_PROXY = "https://api.allorigins.win/raw?url=";
+const BASE_URL = "https://mi.tv/br/programacao/";
+const urlParams = new URLSearchParams(location.search);
+const canal = urlParams.get('canal') || ''; // vazio = todos os canais
+
+// ========================
+// Funções de formatação
+// ========================
+function limparTexto(t){
+  return t ? t.replace(/\s+/g,' ').trim() : '';
+}
+
+// ========================
+// Parser da mi.tv
+// ========================
+function parseMiTV(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const canaisEls = doc.querySelectorAll('#channels .channel');
+  const agora = Date.now();
+
+  const lista = [];
+
+  canaisEls.forEach(ch => {
+    const nome = limparTexto((ch.querySelector('h3')?.textContent) || (ch.querySelector('a.c')?.textContent));
+    const logo = ch.querySelector('img.logo')?.getAttribute('src') || '';
+    const url  = ch.querySelector('a.c')?.getAttribute('href') || '';
+
+    // Se ?canal= foi passado, filtra
+    if (canal && nome.toLowerCase().indexOf(canal.toLowerCase()) === -1) return;
+
+    ch.querySelectorAll('ul.broadcasts li').forEach(li => {
+      const hora = limparTexto(li.querySelector('span.time, time')?.textContent);
+      const titulo = limparTexto(li.querySelector('span.title')?.textContent) || limparTexto(li.textContent).slice(0,80);
+      const subtitulo = limparTexto(li.querySelector('span.sub-title')?.textContent);
+      const sinopse = limparTexto(li.querySelector('span.synopsis')?.textContent);
+      const tipo = li.querySelector('img.peli') ? 'filme' : (li.querySelector('img.vivo') ? 'ao vivo' : '');
+      const emAndamento = li.querySelector('.progress span') || li.classList.contains('ongoing');
+
+      lista.push({
+        canal: nome,
+        logo,
+        url,
+        hora,
+        titulo,
+        subtitulo,
+        sinopse,
+        tipo,
+        emAndamento: !!emAndamento
+      });
+    });
+  });
+
+  return lista;
+}
+
+// ========================
+// Envio para Firebase
+// ========================
+async function enviarParaFirebase(jsonData) {
+  try {
+    const url = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json`;
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jsonData)
+    });
+    if(!resp.ok) throw new Error('Falha ao enviar para Firebase: ' + resp.status);
+    console.log('Dados enviados para Firebase!');
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+// ========================
+// Função principal
+// ========================
+async function getProgramacao(){
+  try {
+    const url = BASE_URL; // mi.tv não separa por dia/canal via URL
+    const resp = await fetch(API_PROXY + encodeURIComponent(url));
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const html = await resp.text();
+    const itens = parseMiTV(html);
+
+    // Mostra JSON
+    document.body.textContent = JSON.stringify(itens, null, 2);
+
+    // Envia para Firebase
+    enviarParaFirebase(itens);
+
+    // Chama interface nativa se existir
+    if (window.JsonInterface && window.JsonInterface.salvarJson) {
+      window.JsonInterface.salvarJson(JSON.stringify(itens, null, 2));
+    }
+
+  } catch(err) {
+    console.error(err);
+    document.body.textContent = JSON.stringify({error:"Falha ao carregar programação", details: err.message});
+  }
+}
+
+// ========================
+// Atualização a cada 60s
+// ========================
+getProgramacao();
+setInterval(getProgramacao, 60000);
+</script>
+</body>
+</html>
