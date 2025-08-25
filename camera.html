@@ -2,23 +2,48 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Detector de Rosto 🌝🌚</title>
+<title>Detector Facial com Embeddings 🌝</title>
 <style>
-body { display: flex; flex-direction: column; align-items: center; background: #111; color: #eee; font-family: sans-serif; }
+body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #111; color: #eee; }
 video, canvas { border: 2px solid #4caf50; margin: 10px; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+#status { margin: 10px; }
 </style>
 </head>
 <body>
-<h1>Detector de Rosto 🌝🌚</h1>
+<h1>Detector Facial 🌝</h1>
 <video id="video" width="640" height="480" autoplay playsinline></video>
 <canvas id="overlay" width="640" height="480"></canvas>
 
+<div>
+  <button id="captureBtn">📸 Capturar e Codificar Rosto</button>
+</div>
+<div id="status">Status: Aguardando...</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
+<!-- face-api.js -->
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('overlay');
 const ctx = canvas.getContext('2d');
+const captureBtn = document.getElementById('captureBtn');
+const status = document.getElementById('status');
 
+let lastEmbedding = null;
+
+// Firebase config
+const firebaseConfig = {
+  databaseURL: "https://projeto-aplicativo-android-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Inicializar câmera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -29,31 +54,59 @@ async function startCamera() {
   }
 }
 
-// Carregar modelos
+// Carregar modelos (TinyFaceDetector + Face Recognition)
 async function loadModels() {
-  await faceapi.nets.tinyFaceDetector.loadFromUri('/models'); 
+  await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+  await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
   console.log("Modelos carregados!");
+  status.innerText = "Status: Modelos carregados!";
 }
 
-// Detectar rostos
+// Detectar rostos (apenas para desenhar)
 async function detectFaces() {
-  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224 });
-  const detections = await faceapi.detectAllFaces(video, options);
+  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 128 });
+  if(video.readyState === video.HAVE_ENOUGH_DATA){
+    const detections = await faceapi.detectAllFaces(video, options).withFaceLandmarks();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  detections.forEach(det => {
-    const { x, y, width, height } = det.box;
-    ctx.strokeStyle = '#4caf50';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, width, height);
-  });
-
+    detections.forEach(det => {
+      const { x, y, width, height } = det.detection.box;
+      ctx.strokeStyle = '#4caf50';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, width, height);
+    });
+  }
   requestAnimationFrame(detectFaces);
 }
 
-video.addEventListener('play', () => detectFaces());
-startCamera();
-loadModels();
+// Capturar embedding facial
+captureBtn.addEventListener('click', async () => {
+  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 128 });
+  const detection = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+  if(!detection) return alert("Nenhum rosto detectado!");
+  lastEmbedding = Array.from(detection.descriptor); // Float32Array → Array para Firebase
+  status.innerText = "Status: Rosto codificado! Pronto para enviar.";
+
+  // Exibir no console
+  console.log("Embedding:", lastEmbedding);
+  
+  // Enviar para Firebase
+  const timestamp = Date.now();
+  db.ref('faces_embeddings').push({ timestamp, embedding: lastEmbedding })
+    .then(() => status.innerText = "Status: Embedding enviado com sucesso!")
+    .catch(err => status.innerText = "Erro ao enviar: " + err);
+});
+
+// Inicializar tudo
+async function init() {
+  await loadModels();
+  await startCamera();
+  video.addEventListener('play', detectFaces);
+}
+
+init();
 </script>
 </body>
 </html>
