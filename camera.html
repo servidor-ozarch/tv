@@ -2,10 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Detector de Rosto em Tempo Real</title>
+<title>Detector de Rosto 🌝🌚</title>
 <style>
-  body { display: flex; flex-direction: column; align-items: center; background: #111; color: #eee; font-family: sans-serif; }
-  video, canvas { border: 2px solid #4caf50; margin: 10px; }
+body { display: flex; flex-direction: column; align-items: center; background: #111; color: #eee; font-family: sans-serif; }
+video, canvas { border: 2px solid #4caf50; margin: 10px; }
 </style>
 </head>
 <body>
@@ -13,7 +13,6 @@
 <video id="video" width="640" height="480" autoplay playsinline></video>
 <canvas id="overlay" width="640" height="480"></canvas>
 
-<!-- face-api.js -->
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
 const video = document.getElementById('video');
@@ -30,12 +29,13 @@ async function startCamera() {
   }
 }
 
+// Carregar modelos
 async function loadModels() {
-  await faceapi.nets.tinyFaceDetector.loadFromUri('https://justadummycdn.com/models'); 
+  await faceapi.nets.tinyFaceDetector.loadFromUri('/models'); 
   console.log("Modelos carregados!");
 }
 
-// Ajuste: você pode hospedar os modelos localmente ou usar CDN confiável
+// Detectar rostos
 async function detectFaces() {
   const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224 });
   const detections = await faceapi.detectAllFaces(video, options);
@@ -51,10 +51,7 @@ async function detectFaces() {
   requestAnimationFrame(detectFaces);
 }
 
-video.addEventListener('play', () => {
-  detectFaces();
-});
-
+video.addEventListener('play', () => detectFaces());
 startCamera();
 loadModels();
 </script>
