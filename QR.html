@@ -82,7 +82,7 @@ async function startScanner() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { 
-        facingMode: "environment", // câmera traseira para leitura
+        facingMode: "user", // câmera frontal
         width: { ideal: 1280 },
         height: { ideal: 1280 },
         aspectRatio: 1
