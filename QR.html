@@ -38,6 +38,15 @@
     margin: 15px 0;
     box-shadow: 0 0 12px rgba(0, 255, 128, 0.3);
   }
+  #controls {
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  #zoomSlider {
+    width: 80%;
+  }
   #results {
     background: #1f1f1f;
     width: 100%;
@@ -65,6 +74,12 @@
 <header>📷 Leitor de QR Code</header>
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
+
+<div id="controls" style="display:none;">
+  <label for="zoomSlider">🔍 Zoom:</label>
+  <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1">
+</div>
+
 <div id="results">Resultados:</div>
 
 <script src="https://servidor-ozarch.github.io/tv/jsQR.js"></script>
@@ -73,18 +88,56 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const resultsDiv = document.getElementById('results');
+const zoomSlider = document.getElementById('zoomSlider');
+const controlsDiv = document.getElementById('controls');
 
 let scanning = false;
+let track = null;
 
 async function startScanner() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" } // câmera frontal
+      video: { 
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 1280 },
+        aspectRatio: 1,
+        advanced: [
+          { focusMode: "continuous" },
+          { zoom: 2 }
+        ]
+      }
     });
+    
     video.srcObject = stream;
     video.setAttribute("playsinline", true);
     await video.play();
     scanning = true;
+
+    [track] = stream.getVideoTracks();
+    const capabilities = track.getCapabilities();
+
+    // foco contínuo (quando disponível)
+    if (capabilities.focusMode) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+      } catch (e) {
+        console.warn("Foco contínuo não suportado:", e);
+      }
+    }
+
+    // habilita controle de zoom manual se suportado
+    if (capabilities.zoom) {
+      controlsDiv.style.display = "block";
+      zoomSlider.min = capabilities.zoom.min;
+      zoomSlider.max = capabilities.zoom.max;
+      zoomSlider.step = capabilities.zoom.step || 0.1;
+      zoomSlider.value = capabilities.zoom.min;
+      zoomSlider.addEventListener("input", () => {
+        track.applyConstraints({ advanced: [{ zoom: zoomSlider.value }] });
+      });
+    }
+
     requestAnimationFrame(scanFrame);
   } catch (err) {
     alert("Erro ao acessar a câmera: " + err);
@@ -95,7 +148,6 @@ function scanFrame() {
   if (!scanning) return;
 
   if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    // Força o quadrado fixo
     canvas.width = 500;
     canvas.height = 500;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -107,7 +159,6 @@ function scanFrame() {
 
     if (code) {
       addResult(code.data);
-      // reinicia o leitor automaticamente sem apagar os registros
       setTimeout(() => {
         scanning = true;
         requestAnimationFrame(scanFrame);
