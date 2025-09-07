@@ -78,7 +78,25 @@ const resultsDiv = document.getElementById('results');
 let scanning = false;
 let track = null;
 
+// Mantém a tela ligada
+let wakeLock = null;
+async function keepScreenOn() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        console.log('Tela pode desligar');
+      });
+      console.log('Tela ligada (wake lock ativo)');
+    }
+  } catch (err) {
+    console.warn('Não foi possível ativar wake lock:', err);
+  }
+}
+
 async function startScanner() {
+  await keepScreenOn();
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { 
@@ -106,10 +124,10 @@ async function startScanner() {
       }
     }
 
-    // força zoom 100% se suportado
+    // força zoom em 100% se suportado
     if (capabilities.zoom) {
       try {
-        await track.applyConstraints({ advanced: [{ zoom: 1 }] }); // 1 = 100%
+        await track.applyConstraints({ advanced: [{ zoom: capabilities.zoom.min || 1 }] });
       } catch(e) {
         console.warn("Zoom fixo não suportado:", e);
       }
