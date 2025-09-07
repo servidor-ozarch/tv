@@ -76,18 +76,16 @@ const ctx = canvas.getContext('2d');
 const resultsDiv = document.getElementById('results');
 
 let scanning = false;
+let track = null;
 
 async function startScanner() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { 
-        facingMode: "user",
+        facingMode: "environment", // câmera traseira para leitura
         width: { ideal: 1280 },
         height: { ideal: 1280 },
-        aspectRatio: 1,
-        advanced: [
-          { focusMode: "continuous" } // mantém apenas foco contínuo
-        ]
+        aspectRatio: 1
       }
     });
     
@@ -95,6 +93,27 @@ async function startScanner() {
     video.setAttribute("playsinline", true);
     await video.play();
     scanning = true;
+
+    [track] = stream.getVideoTracks();
+    const capabilities = track.getCapabilities();
+
+    // foco contínuo
+    if (capabilities.focusMode) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+      } catch (e) {
+        console.warn("Foco contínuo não suportado:", e);
+      }
+    }
+
+    // força zoom 100% se suportado
+    if (capabilities.zoom) {
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: 1 }] }); // 1 = 100%
+      } catch(e) {
+        console.warn("Zoom fixo não suportado:", e);
+      }
+    }
 
     requestAnimationFrame(scanFrame);
   } catch (err) {
