@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Leitor de QR Code</title>
+<style>
+  body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f0f2f5; }
+  video { width: 300px; border-radius: 10px; border: 2px solid #007bff; }
+  canvas { display: none; }
+  #result { margin-top: 20px; font-size: 18px; }
+  button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 5px; background: #007bff; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h2>Leitor de QR Code</h2>
+<video id="video" autoplay></video>
+<canvas id="canvas"></canvas>
+<div id="result">Aproxime um QR Code da câmera</div>
+<button id="startBtn">Iniciar Leitura</button>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const resultDiv = document.getElementById('result');
+
+let scanning = false;
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => {
+      video.srcObject = stream;
+      video.setAttribute("playsinline", true); // necessário para iOS
+      video.play();
+      scanning = true;
+      requestAnimationFrame(scanFrame);
+    })
+    .catch(err => {
+      alert('Erro ao acessar a câmera: ' + err);
+    });
+});
+
+function scanFrame() {
+  if (!scanning) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+    if (code) {
+      scanning = false;
+      resultDiv.innerHTML = `QR Code lido: <a href="${code.data}" target="_blank">${code.data}</a>`;
+      // Opcional: parar câmera
+      video.srcObject.getTracks().forEach(track => track.stop());
+      return;
+    }
+  }
+  requestAnimationFrame(scanFrame);
+}
+</script>
+</body>
+</html>
