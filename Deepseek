@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>DeepSeek Chat — HTML</title>
+
+<style>
+  :root{
+    --bg:#0f1724; --panel:#0b1220; --accent:#7c3aed; --muted:#9aa4b2; --bubble-me:#15324b; --bubble-ai:#1b2b3d;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Roboto,"Helvetica Neue",Arial;}
+  body{background:linear-gradient(180deg,#031026 0%, #071425 40%); color:#e6eef8; overflow:hidden; -webkit-font-smoothing:antialiased;}
+  canvas#bgCanvas{position:fixed;inset:0;z-index:0;opacity:0.55;pointer-events:none;}
+  .app{
+    position:relative; z-index:1;
+    height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .card{
+    width:100%; max-width:920px; height:90vh; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:16px; box-shadow: 0 10px 30px rgba(2,6,23,0.6); overflow:hidden; display:flex; flex-direction:column;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  header{padding:18px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.02);}
+  .logo{
+    width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--accent),#3b82f6); display:flex;align-items:center;justify-content:center;
+    font-weight:700; color:white; font-size:18px;
+  }
+  .title{font-size:16px; font-weight:600;}
+  .subtitle{font-size:12px; color:var(--muted);}
+  .messages{
+    flex:1; padding:20px; overflow:auto; display:flex; flex-direction:column; gap:12px; background:transparent;
+  }
+  .bubble{max-width:78%; padding:12px 14px; border-radius:12px; line-height:1.45; box-shadow: 0 6px 18px rgba(2,6,23,0.4);}
+  .me{align-self:flex-end; background:linear-gradient(180deg,var(--bubble-me),#0b2a40); border-bottom-right-radius:4px;}
+  .ai{align-self:flex-start; background:linear-gradient(180deg,var(--bubble-ai),#112233); border-bottom-left-radius:4px;}
+  .meta{font-size:11px; color:var(--muted); margin-top:6px;}
+  .inputBar{display:flex; gap:8px; padding:14px; border-top:1px solid rgba(255,255,255,0.02); background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01));}
+  textarea#prompt{flex:1; min-height:48px; max-height:120px; resize:none; padding:12px; border-radius:10px; border:none; outline:none; background:rgba(255,255,255,0.02); color:inherit;}
+  button#send{min-width:120px; background:var(--accent); color:white; border:none; padding:12px 14px; border-radius:10px; cursor:pointer; font-weight:600;}
+  .small{font-size:12px; color:var(--muted);}
+  .status{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.02); font-size:12px; color:var(--muted);}
+  footer.controls{display:flex; gap:12px; align-items:center;}
+  /* scrollbar */
+  .messages::-webkit-scrollbar{width:8px;}
+  .messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.04); border-radius:8px;}
+  @media (max-width:520px){
+    .card{height:100vh;border-radius:0;}
+    header .subtitle{display:none;}
+  }
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<div class="app">
+  <div class="card" role="application" aria-label="Chat DeepSeek">
+    <header>
+      <div class="logo">DS</div>
+      <div style="flex:1">
+        <div class="title">DeepSeek — Chat</div>
+        <div class="subtitle">Respostas em Português (Brasil) • Conexão direta ao modelo</div>
+      </div>
+      <div class="status" id="wakeStatus">Tela: off</div>
+    </header>
+
+    <div class="messages" id="messages" aria-live="polite"></div>
+
+    <div class="inputBar">
+      <textarea id="prompt" placeholder="Escreva sua pergunta..."></textarea>
+      <div style="display:flex;flex-direction:column;justify-content:space-between">
+        <button id="send">Enviar</button>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;margin-top:6px;">
+          <div class="small">Modelo: <strong id="modelLabel">deepseek/deepseek-r1:free</strong></div>
+          <div class="small">Temperatura: <span id="tempLabel">0.7</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== CONFIGURAÇÕES ========== */
+/* Substitua pela sua chave (recomendado: colocar no servidor / proxy) */
+const API_KEY = 'SK_REPLACE_ME'; // <<-- substitua ou use proxy para não expor
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = 'deepseek/deepseek-r1:free';
+const TEMPERATURE = 0.7;
+const MAX_TOKENS = 500;
+
+/* Forçar respostas em PT-BR: adicionamos uma mensagem 'system' fixa */
+const SYSTEM_PROMPT_PTBR = 'Você é um assistente que responde estritamente em Português do Brasil. Seja claro, conciso e útil.';
+
+const messagesEl = document.getElementById('messages');
+const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('send');
+const wakeStatusEl = document.getElementById('wakeStatus');
+
+/* armazenar histórico local (persistente enquanto o site permanece aberto) */
+let chatHistory = JSON.parse(sessionStorage.getItem('deepseek_chat') || '[]');
+
+/* render inicial */
+function renderHistory(){
+  messagesEl.innerHTML = '';
+  for(const m of chatHistory){
+    addBubble(m.role, m.content, false);
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+renderHistory();
+
+/* adiciona bolha no DOM */
+function addBubble(role, text, save = true){
+  const b = document.createElement('div');
+  b.className = 'bubble ' + (role === 'user' ? 'me' : 'ai');
+  b.innerHTML = `<div>${escapeHtml(text).replace(/\\n/g,'<br>')}</div>`;
+  if(role === 'ai'){
+    const meta = document.createElement('div');
+    meta.className = 'meta'; meta.textContent = 'DeepSeek';
+    b.appendChild(meta);
+  }
+  messagesEl.appendChild(b);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  if(save){
+    chatHistory.push({role, content:text});
+    sessionStorage.setItem('deepseek_chat', JSON.stringify(chatHistory));
+  }
+}
+
+/* escape básico para segurança */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+/* ========== Envio da requisição ========== */
+sendBtn.addEventListener('click', sendPrompt);
+promptEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' && (e.ctrlKey||e.metaKey)){ sendPrompt(); } });
+
+async function sendPrompt(){
+  const text = promptEl.value.trim();
+  if(!text) return;
+  addBubble('user', text);
+  promptEl.value = '';
+  showTypingIndicator();
+
+  /* Prepara mensagens: inclui system prompt PT-BR + histórico curto (ou apenas a pergunta) */
+  const bodyMessages = [
+    {role:'system', content: SYSTEM_PROMPT_PTBR},
+    {role:'user', content: text}
+  ];
+
+  const payload = {
+    model: MODEL,
+    messages: bodyMessages,
+    temperature: TEMPERATURE,
+    max_tokens: MAX_TOKENS
+  };
+
+  try {
+    // OBS: Muitos endpoints bloqueiam CORS. Se der erro, use proxy no servidor.
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer ' + API_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if(!res.ok){
+      removeTypingIndicator();
+      addBubble('ai', `Erro na requisição: ${res.status} ${res.statusText}`);
+      console.error('Resposta não OK', await res.text());
+      return;
+    }
+
+    const json = await res.json();
+    // tenta extrair como seu código Java fazia
+    let content = '';
+    try {
+      if(Array.isArray(json.choices) && json.choices.length){
+        const first = json.choices[0];
+        // pode vir em message.content ou text, dependendo do API
+        if(first.message && first.message.content) content = first.message.content;
+        else if(first.text) content = first.text;
+        else content = JSON.stringify(first);
+      } else if(json.output) {
+        content = typeof json.output === 'string' ? json.output : JSON.stringify(json.output);
+      } else {
+        content = JSON.stringify(json);
+      }
+    } catch(err){
+      content = 'Erro ao processar resposta.';
+    }
+    removeTypingIndicator();
+    addBubble('ai', content);
+  } catch(err){
+    removeTypingIndicator();
+    addBubble('ai', 'Erro de rede: ' + (err && err.message ? err.message : String(err)));
+    console.error(err);
+  }
+}
+
+/* typing indicator */
+let typingEl = null;
+function showTypingIndicator(){
+  if(typingEl) return;
+  typingEl = document.createElement('div');
+  typingEl.className = 'bubble ai';
+  typingEl.innerHTML = '<div>Respondendo...</div><div class="meta">DeepSeek</div>';
+  messagesEl.appendChild(typingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function removeTypingIndicator(){ if(typingEl){ typingEl.remove(); typingEl = null; } }
+
+/* ========== Wake Lock (manter tela ativa) ========== */
+let wakeLock = null;
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeStatusEl.textContent = 'Tela: ligada';
+      wakeLock.addEventListener('release', ()=>{
+        wakeStatusEl.textContent = 'Tela: liberada';
+      });
+    } else {
+      wakeStatusEl.textContent = 'Tela: não suportado';
+    }
+  }catch(err){
+    console.warn('wakeLock erro', err);
+    wakeStatusEl.textContent = 'Tela: erro';
+  }
+}
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.visibilityState === 'visible'){
+    // re-request on focus
+    if(wakeLock === null) await requestWakeLock().catch(()=>{});
+  }
+});
+requestWakeLock().catch(()=>{});
+
+/* ========== Canvas animado de fundo (sutil) ========== */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const particles = [];
+for(let i=0;i<40;i++){
+  particles.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    r: 20 + Math.random()*60,
+    vx: (Math.random()-0.5)*0.2, vy:(Math.random()-0.5)*0.2,
+    hue: 200 + Math.random()*60
+  });
+}
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(const p of particles){
+    p.x += p.vx; p.y += p.vy;
+    if(p.x<-200) p.x = canvas.width+200;
+    if(p.x>canvas.width+200) p.x = -200;
+    if(p.y<-200) p.y = canvas.height+200;
+    if(p.y>canvas.height+200) p.y = -200;
+    const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+    g.addColorStop(0, `rgba(124,58,237,0.12)`);
+    g.addColorStop(0.4, `rgba(59,130,246,0.06)`);
+    g.addColorStop(1, `rgba(3,6,23,0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* ========== Alternativas / observações ==========
+ - CORS: se o browser bloquear (erro de CORS) -> crie um proxy no servidor que repasse ao openrouter.
+ - Segurança: nunca deixe a API_KEY hard-coded em produção. Use backend para assinar requisições.
+ - Streaming: se o endpoint suportar streaming, podemos adaptar para mostrar a resposta token-a-token (posso adicionar se quiser).
+ - Persistência: usei sessionStorage para manter o chat enquanto a aba está aberta; para histórico permanente use localStorage ou backend.
+=========================================== */
+</script>
+</body>
+</html>
