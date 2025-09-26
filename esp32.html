@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Controle LED ESP32</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+    button {
+      width: 150px;
+      height: 50px;
+      margin: 10px 0;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="ligar">Ligar Led</button>
+  <button id="desligar">Desligar Led</button>
+
+  <script type="module">
+    // Importa os módulos do Firebase necessários
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+    // Configuração do Firebase (dados do seu projeto)
+    const firebaseConfig = {
+      databaseURL: "https://projeto-aplicativo-android-default-rtdb.firebaseio.com"
+      // Se houver mais campos da config, acrescente aqui (apiKey, authDomain etc), mas para apenas DB, só o databaseURL funciona.
+    };
+
+    // Inicializa o Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // Função para gravar valor na referência "esp32"
+    function escreverValor(valor) {
+      set(ref(database, 'esp32'), valor)
+        .then(() => {
+          console.log(`Valor "${valor}" gravado com sucesso.`);
+        })
+        .catch((error) => {
+          console.error('Erro ao gravar valor:', error);
+        });
+    }
+
+    document.getElementById('ligar').addEventListener('click', () => {
+      escreverValor('ligar');
+    });
+
+    document.getElementById('desligar').addEventListener('click', () => {
+      escreverValor('desligar');
+    });
+  </script>
+</body>
+</html>
