@@ -31,37 +31,46 @@
 
 <script src="qrious.min.js"></script>
 <script>
-  const qrValue = 'Bem vindo!';
+  // Busca o dado do QR Code no Firebase Realtime Database
+  fetch('https://projeto-aplicativo-android-default-rtdb.firebaseio.com/chave_pix.json')
+    .then(response => response.json())
+    .then(data => {
+      // Trata o dado recebido, que pode ser string ou objeto JSON
+      const qrValue = typeof data === 'string' ? data : JSON.stringify(data);
 
-  const qr = new QRious({
-    element: document.getElementById('qrCanvas'),
-    value: qrValue,
-    size: 500,
-    level: 'H',
-    padding: 0,
-    foreground: '#000',
-    background: 'transparent',
-    backgroundAlpha: 0
-  });
+      const qr = new QRious({
+        element: document.getElementById('qrCanvas'),
+        value: qrValue,
+        size: 500,
+        level: 'H',
+        padding: 0,
+        foreground: '#000',
+        background: 'transparent',
+        backgroundAlpha: 0
+      });
 
-  const canvas = qr.canvas;
-  const ctx = canvas.getContext('2d');
-  
-  const modules = Math.sqrt(qr._canvasRenderer.qrious.buffer.length);
-  const moduleSize = Math.floor(qr.size / modules);
-  const offset = Math.floor((qr.size - moduleSize * modules) / 2);
+      const canvas = qr.canvas;
+      const ctx = canvas.getContext('2d');
 
-  ctx.clearRect(0, 0, qr.size, qr.size);
-  ctx.fillStyle = qr.foreground;
+      const modules = Math.sqrt(qr._canvasRenderer.qrious.buffer.length);
+      const moduleSize = Math.floor(qr.size / modules);
+      const offset = Math.floor((qr.size - moduleSize * modules) / 2);
 
-  const buffer = qr._canvasRenderer.qrious.buffer;
-  for (let y = 0; y < modules; y++) {
-    for (let x = 0; x < modules; x++) {
-      if (buffer[x + y * modules]) {
-        ctx.fillRect(x * moduleSize + offset, y * moduleSize + offset, moduleSize, moduleSize);
+      ctx.clearRect(0, 0, qr.size, qr.size);
+      ctx.fillStyle = qr.foreground;
+
+      const buffer = qr._canvasRenderer.qrious.buffer;
+      for (let y = 0; y < modules; y++) {
+        for (let x = 0; x < modules; x++) {
+          if (buffer[x + y * modules]) {
+            ctx.fillRect(x * moduleSize + offset, y * moduleSize + offset, moduleSize, moduleSize);
+          }
+        }
       }
-    }
-  }
+    })
+    .catch(error => {
+      console.error('Erro ao buscar dados do Firebase:', error);
+    });
 </script>
 
 </body>
