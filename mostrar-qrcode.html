@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QR Code PIX</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <!-- Lottie -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <style>
         body {
             box-sizing: border-box;
@@ -89,9 +91,9 @@
         }
 
         .empty-cart {
-            color: #666;
-            font-size: 18px;
-            text-align: center;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
         }
 
         .retry-btn {
@@ -137,6 +139,7 @@
     <script>
         let ultimoValor = null;
         let intervalId = null;
+        let wakeLock = null; // 🔹 para manter a tela ativa
 
         async function buscarChavePix() {
             const qrContainer = document.getElementById('qrContainer');
@@ -159,11 +162,19 @@
                 
                 if (!data || typeof data !== 'string' || data.trim() === '') {
                     qrContainer.innerHTML = `
-                        <div class="empty-cart">
-                            🛒 Carrinho vazio!
-                        </div>
+                        <div class="empty-cart" id="vacaAnim"></div>
                     `;
                     messageDiv.innerHTML = '';
+
+                    // Inicializa animação vaca.json
+                    lottie.loadAnimation({
+                        container: document.getElementById('vacaAnim'),
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        path: 'vaca.json' // caminho do seu arquivo vaca.json
+                    });
+
                     return;
                 }
                 
@@ -230,11 +241,32 @@
             intervalId = setInterval(buscarChavePix, 2000);
         }
 
-        window.addEventListener('load', iniciarEscuta);
+        // 🔹 Ativar WakeLock (impede que a tela apague)
+        async function ativarWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('WakeLock liberado');
+                    });
+                    console.log('WakeLock ativo');
+                }
+            } catch (err) {
+                console.error('Erro ao ativar WakeLock:', err);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            iniciarEscuta();
+            ativarWakeLock(); // 🔹 ativa ao carregar
+        });
         
         window.addEventListener('beforeunload', () => {
             if (intervalId) {
                 clearInterval(intervalId);
+            }
+            if (wakeLock) {
+                wakeLock.release();
             }
         });
     </script>
