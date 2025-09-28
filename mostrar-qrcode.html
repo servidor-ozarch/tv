@@ -172,7 +172,7 @@
                         renderer: 'svg',
                         loop: true,
                         autoplay: true,
-                        path: 'dragon.json' // caminho do seu arquivo vaca.json
+                        path: 'carrinho.json' // caminho do seu arquivo vaca.json
                     });
 
                     return;
@@ -219,14 +219,14 @@
                 
                 qrContainer.innerHTML = `
                     <div class="error">
-                        ❌ Erro ao carregar QR Code<br>
+                        Erro ao carregar QR Code<br>
                         <small>${error.message}</small>
                     </div>
                 `;
                 
                 messageDiv.innerHTML = `
                     <button class="retry-btn" onclick="iniciarEscuta()">
-                        🔄 Tentar Novamente
+                        Tentar Novamente
                     </button>
                 `;
             }
