@@ -6,7 +6,7 @@
 <!-- BLOQUEAR ZOOM -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>WebPlayer Pro</title>
+<title>Player</title>
 
 <style>
     html, body {
@@ -15,7 +15,7 @@
         overflow: hidden;
         background: black;
         height: 100%;
-        touch-action: manipulation;    
+        touch-action: manipulation;
         overscroll-behavior: none;
     }
 
@@ -28,33 +28,24 @@
         object-fit: contain;
     }
 
-    #tapToUnmute, #loading, #erro {
+    /* Elemento invisível apenas para captar o toque e ativar o áudio */
+    #tapToUnmute {
         position: fixed;
         inset: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
         z-index: 10;
-        color: white;
-        font-size: 22px;
-        background: rgba(0,0,0,0.6);
-        text-align: center;
+        background: transparent;
     }
-
-    #loading { font-size: 26px; }
-    #erro { display: none; }
 </style>
 </head>
 
 <body>
 
-<div id="loading">Carregando stream...</div>
-<div id="tapToUnmute">Toque para ativar o áudio</div>
-<div id="erro">Falha ao carregar o vídeo<br><small>Tentando novamente...</small></div>
+<!-- invisível, só para desbloquear áudio -->
+<div id="tapToUnmute"></div>
 
 <video id="player" autoplay muted playsinline></video>
 
-<!-- =================== ANTI-ZOOM COMPLETO =================== -->
+<!-- =================== ANTI-ZOOM =================== -->
 <script>
 document.addEventListener("gesturestart", e => e.preventDefault());
 document.addEventListener("gesturechange", e => e.preventDefault());
@@ -67,14 +58,12 @@ document.addEventListener("touchend", e => {
     lastTouch = now;
 }, { passive: false });
 </script>
-<!-- ========================================================== -->
+<!-- ================================================= -->
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
-// ----------------------
-// Ajuste dinâmico retrato/paisagem
-// ----------------------
+// Ajuste retrato/paisagem
 function ajustarPlayer() {
     const video = document.getElementById("player");
     const portrait = window.innerHeight > window.innerWidth;
@@ -83,40 +72,30 @@ function ajustarPlayer() {
 window.addEventListener("resize", ajustarPlayer);
 window.addEventListener("orientationchange", ajustarPlayer);
 
-// ----------------------
-// Extração do M3U8 totalmente oculta
-// ----------------------
+// Extração silenciosa
 async function extrairLink() {
     try {
-        const req = await fetch("https://www.cxtv.com.br/tv-ao-vivo/tv-brasil");
+        const req = await fetch("https://www.cxtv.com.br/tv-ao-vivo/sony-one-cinema");
         const html = await req.text();
         const achados = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         return achados ? achados[0] : null;
-    } catch (e) {
+    } catch {
         return null;
     }
 }
 
-// ----------------------
-// Player + reconexão
-// ----------------------
+// Player totalmente silencioso
 async function iniciarPlayer() {
 
     ajustarPlayer();
 
     let m3u8 = await extrairLink();
     if (!m3u8) {
-        document.getElementById("erro").style.display = "flex";
-        setTimeout(iniciarPlayer, 3000);
+        setTimeout(iniciarPlayer, 2000);
         return;
     }
 
     const video = document.getElementById("player");
-    const loading = document.getElementById("loading");
-    const erro = document.getElementById("erro");
-
-    erro.style.display = "none";
-    loading.style.display = "flex";
 
     if (Hls.isSupported()) {
         const hls = new Hls({
@@ -130,30 +109,24 @@ async function iniciarPlayer() {
         hls.loadSource(m3u8);
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => loading.style.display = "none");
-
         hls.on(Hls.Events.ERROR, (e, data) => {
             if (data.fatal) {
-                erro.style.display = "flex";
-                setTimeout(iniciarPlayer, 2000);
+                setTimeout(iniciarPlayer, 1500);
             }
         });
 
     } else {
         video.src = m3u8;
-        video.onloadeddata = () => loading.style.display = "none";
         video.onerror = () => {
-            erro.style.display = "flex";
-            setTimeout(iniciarPlayer, 2000);
+            setTimeout(iniciarPlayer, 1500);
         };
     }
 
-    // Desbloqueio manual do áudio
-    const overlay = document.getElementById("tapToUnmute");
-    overlay.onclick = () => {
+    // desbloqueio silencioso do áudio
+    document.getElementById("tapToUnmute").onclick = () => {
         video.muted = false;
         video.play();
-        overlay.style.display = "none";
+        document.getElementById("tapToUnmute").style.display = "none";
     };
 }
 
