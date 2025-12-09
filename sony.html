@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<!-- BLOQUEAR ZOOM -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Player</title>
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: black;
+        height: 100%;
+        touch-action: manipulation;
+        overscroll-behavior: none;
+    }
+
+    #player {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+        object-fit: contain;
+    }
+
+    /* Elemento invisível apenas para captar o toque e ativar o áudio */
+    #tapToUnmute {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: transparent;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- invisível, só para desbloquear áudio -->
+<div id="tapToUnmute"></div>
+
+<video id="player" autoplay muted playsinline></video>
+
+<!-- =================== ANTI-ZOOM =================== -->
+<script>
+document.addEventListener("gesturestart", e => e.preventDefault());
+document.addEventListener("gesturechange", e => e.preventDefault());
+document.addEventListener("gestureend", e => e.preventDefault());
+
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTouch <= 300) e.preventDefault();
+    lastTouch = now;
+}, { passive: false });
+</script>
+<!-- ================================================= -->
+
+<script src="hls.js"></script>
+
+<script>
+// Ajuste retrato/paisagem
+function ajustarPlayer() {
+    const video = document.getElementById("player");
+    const portrait = window.innerHeight > window.innerWidth;
+    video.style.objectFit = portrait ? "cover" : "contain";
+}
+window.addEventListener("resize", ajustarPlayer);
+window.addEventListener("orientationchange", ajustarPlayer);
+
+// Extração silenciosa
+async function extrairLink() {
+    try {
+        const req = await fetch("https://www.cxtv.com.br/tv-ao-vivo/sony-one-cinema");
+        const html = await req.text();
+        const achados = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+        return achados ? achados[0] : null;
+    } catch {
+        return null;
+    }
+}
+
+// Player totalmente silencioso
+async function iniciarPlayer() {
+
+    ajustarPlayer();
+
+    let m3u8 = await extrairLink();
+    if (!m3u8) {
+        setTimeout(iniciarPlayer, 2000);
+        return;
+    }
+
+    const video = document.getElementById("player");
+
+    if (Hls.isSupported()) {
+        const hls = new Hls({
+            maxBufferLength: 30,
+            lowLatencyMode: true,
+            enableWorker: true,
+            fragLoadingRetryDelay: 1500,
+            manifestLoadingRetryDelay: 1500
+        });
+
+        hls.loadSource(m3u8);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.ERROR, (e, data) => {
+            if (data.fatal) {
+                setTimeout(iniciarPlayer, 1500);
+            }
+        });
+
+    } else {
+        video.src = m3u8;
+        video.onerror = () => {
+            setTimeout(iniciarPlayer, 1500);
+        };
+    }
+
+    // desbloqueio silencioso do áudio
+    document.getElementById("tapToUnmute").onclick = () => {
+        video.muted = false;
+        video.play();
+        document.getElementById("tapToUnmute").style.display = "none";
+    };
+}
+
+iniciarPlayer();
+</script>
+
+</body>
+</html>
