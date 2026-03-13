@@ -1,5 +1,8 @@
 #EXTM3U
 
+#EXTINF:-1, Premiere
+https://d1muf25xa03so8hp13.s27-usa-cloudfront-net.online/token/c0e2911f6c6e6407e60fe9eb15cce72d/premiere.txt
+
 #EXTINF:-1, Cinemax
 https://d1muf25xa03so8hp13.s27-usa-cloudfront-net.online/token/f641aefb19045abf36c371a66cfd7061/cinemax.txt
 
