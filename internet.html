@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teste de Velocidade da Internet</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #121212;
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        margin: 0;
-        padding: 20px;
-    }
-    h1 { margin-bottom: 20px; }
-    button { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; cursor: pointer; }
-    .result { margin: 10px 0; }
+body {
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+h1 { margin-bottom: 20px; }
+button { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; cursor: pointer; }
+.result { margin: 10px 0; }
 </style>
 </head>
 <body>
@@ -31,8 +31,8 @@
 <div class="result" id="upload">Upload: -- Mbps</div>
 
 <script>
-// Servidores públicos confiáveis para teste
-const downloadUrl = "https://ash-speed.hetzner.com/10GB.bin"; // arquivo para teste de download
+// Servidores confiáveis
+const downloadUrl = "https://speed.hetzner.de/10MB.bin";
 const uploadSize = 5 * 1024 * 1024; // 5 MB
 
 async function startTest() {
@@ -45,59 +45,71 @@ async function startTest() {
     await testUpload();
 }
 
-// Medir latência real
 async function testPing() {
     const url = "https://www.google.com/favicon.ico";
     const attempts = 5;
     let total = 0;
-
     for (let i = 0; i < attempts; i++) {
         const start = performance.now();
-        try {
-            await fetch(url, { cache: "no-store", mode: "no-cors" });
-            const end = performance.now();
-            total += (end - start);
-        } catch(e){}
+        try { await fetch(url, {cache:"no-store", mode:"no-cors"}); } catch(e){}
+        const end = performance.now();
+        total += (end - start);
     }
-
-    const averagePing = Math.round(total / attempts);
-    document.getElementById("ping").innerText = `Ping: ${averagePing} ms`;
+    document.getElementById("ping").innerText = `Ping: ${Math.round(total/attempts)} ms`;
 }
 
-// Medir download real
+// DOWNLOAD em tempo real
 async function testDownload() {
+    let loaded = 0;
     const start = performance.now();
     try {
-        const response = await fetch(downloadUrl, { cache: "no-store" });
-        const blob = await response.blob();
-        const end = performance.now();
+        const response = await fetch(downloadUrl, {cache:"no-store"});
+        const reader = response.body.getReader();
 
-        const duration = (end - start) / 1000; // segundos
-        const bitsLoaded = blob.size * 8;
-        const speedMbps = (bitsLoaded / duration / 1024 / 1024).toFixed(2);
-        document.getElementById("download").innerText = `Download: ${speedMbps} Mbps`;
-    } catch (e) {
+        while(true) {
+            const {done, value} = await reader.read();
+            if(done) break;
+            loaded += value.length;
+            const now = performance.now();
+            const duration = (now - start) / 1000;
+            const speedMbps = ((loaded * 8) / duration / 1024 / 1024).toFixed(2);
+            document.getElementById("download").innerText = `Download: ${speedMbps} Mbps`;
+        }
+    } catch(e) {
         document.getElementById("download").innerText = "Download: erro";
     }
 }
 
-// Medir upload real
+// UPLOAD em tempo real
 async function testUpload() {
-    const data = new Uint8Array(uploadSize); // 5 MB
+    const data = new Uint8Array(uploadSize);
+    let sent = 0;
     const start = performance.now();
 
     try {
         await fetch("https://httpbin.org/post", {
-            method: "POST",
-            body: data
+            method:"POST",
+            body: new ReadableStream({
+                start(controller){
+                    function pushChunk(){
+                        if(sent >= data.length){
+                            controller.close();
+                            return;
+                        }
+                        const chunk = data.slice(sent, sent + 1024*1024);
+                        sent += chunk.length;
+                        controller.enqueue(chunk);
+                        const now = performance.now();
+                        const duration = (now - start)/1000;
+                        const speedMbps = ((sent*8)/duration/1024/1024).toFixed(2);
+                        document.getElementById("upload").innerText = `Upload: ${speedMbps} Mbps`;
+                        setTimeout(pushChunk,0);
+                    }
+                    pushChunk();
+                }
+            })
         });
-
-        const end = performance.now();
-        const duration = (end - start) / 1000;
-        const bitsUploaded = uploadSize * 8;
-        const speedMbps = (bitsUploaded / duration / 1024 / 1024).toFixed(2);
-        document.getElementById("upload").innerText = `Upload: ${speedMbps} Mbps`;
-    } catch (e) {
+    } catch(e){
         document.getElementById("upload").innerText = "Upload: erro";
     }
 }
