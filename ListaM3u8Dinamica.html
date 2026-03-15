@@ -2,52 +2,39 @@
 <html>
 <head>
 <meta charset="UTF-8">
-
+<title>Lista Dinâmica M3U</title>
 <script>
-// força navegador a tratar como arquivo M3U
-document.write("#EXTM3U\n");
+const canais = ['cinemax','globo','amc','hbo','combate','adultswim','agromais','ae','premiere'];
 
-// Lista de canais
-const canais = [
-'cinemax','globo','amc','hbo','combate',
-'adultswim','agromais','ae','premiere'
-];
+async function gerarListaCompleta() {
+    let m3uContent = "#EXTM3U\n"; // inicia o M3U
 
-async function gerarLista() {
+    // percorre todos os canais
+    for (let nomeCanal of canais) {
+        const apiURL = `https://api.reidoscanais.ooo/search?q=${encodeURIComponent(nomeCanal)}`;
+        try {
+            const response = await fetch(apiURL);
+            const data = await response.json();
 
-for (let nomeCanal of canais) {
-
-    const api = "https://api.reidoscanais.ooo/search?q=" + encodeURIComponent(nomeCanal);
-
-    try {
-
-        const resposta = await fetch(api);
-        const json = await resposta.json();
-
-        if(json.success && json.data && json.data.channels.length > 0){
-
-            json.data.channels.forEach(canal => {
-
-                const linha1 =
-`#EXTINF:-1 tvg-id="${canal.id}" tvg-logo="${canal.logo_url}" group-title="${canal.category}",${canal.name}`;
-
-                const linha2 = canal.embed_url;
-
-                document.write(linha1 + "\n");
-                document.write(linha2 + "\n");
-
-            });
-
+            if(data.success && data.data && data.data.channels.length > 0) {
+                data.data.channels.forEach(channel => {
+                    m3uContent += `#EXTINF:-1 tvg-id="${channel.id}" tvg-logo="${channel.logo_url}" group-title="${channel.category}",${channel.name}\n`;
+                    m3uContent += `${channel.embed_url}\n`;
+                });
+            } else {
+                console.log(`Canal não encontrado: ${nomeCanal}`);
+            }
+        } catch (err) {
+            console.error(`Erro ao buscar canal ${nomeCanal}:`, err);
         }
+    }
 
-    } catch(e){}
-
+    // só depois de ter toda a lista, imprime de uma vez
+    document.body.innerText = m3uContent; // texto puro, compatível com IPTV
 }
 
-}
-
-gerarLista();
-
+// executa tudo antes de mostrar
+gerarListaCompleta();
 </script>
 </head>
 <body>
