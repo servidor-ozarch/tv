@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Lista Dinâmica M3U</title>
+</head>
+<body>
+<h2>Lista de Canais</h2>
+<pre id="m3u-list">#EXTM3U
+</pre>
+
+<script>
+// Lista de canais que queremos buscar
+const canais = ['cinemax', 'globo', 'amc', 'hbo', 'combate', 'adultswim', 'agromais', 'ae', 'premiere'];
+
+// Função principal para buscar todos os canais e gerar M3U
+async function gerarListaCanais(canais) {
+    const m3uElement = document.getElementById('m3u-list');
+    let m3uContent = '#EXTM3U\n';
+
+    for (let nomeCanal of canais) {
+        const apiURL = `https://api.reidoscanais.ooo/search?q=${encodeURIComponent(nomeCanal)}`;
+        try {
+            const response = await fetch(apiURL);
+            const data = await response.json();
+
+            if(data.success && data.data && data.data.channels.length > 0) {
+                data.data.channels.forEach(channel => {
+                    let urlLimpa = channel.embed_url.replace(/https?:\/\/|\\/g, '');
+                    m3uContent += `#EXTINF:-1 tvg-id="${channel.id}" tvg-logo="${channel.logo_url}" group-title="${channel.category}",${channel.name}\n`;
+                    m3uContent += `${urlLimpa}\n`;
+                });
+            } else {
+                console.log(`Canal não encontrado: ${nomeCanal}`);
+            }
+        } catch (err) {
+            console.error(`Erro ao buscar canal ${nomeCanal}:`, err);
+        }
+    }
+
+    m3uElement.textContent = m3uContent;
+}
+
+// Executa a função
+gerarListaCanais(canais);
+</script>
+</body>
+</html>
