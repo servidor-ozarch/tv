@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste de Velocidade da Internet</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #121212;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        padding: 20px;
+    }
+    h1 { margin-bottom: 20px; }
+    button { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; cursor: pointer; }
+    .result { margin: 10px 0; }
+</style>
+</head>
+<body>
+<h1>Teste de Velocidade da Internet</h1>
+<button onclick="startTest()">Iniciar Teste</button>
+
+<div class="result" id="ping">Ping: -- ms</div>
+<div class="result" id="download">Download: -- Mbps</div>
+<div class="result" id="upload">Upload: -- Mbps</div>
+
+<script>
+// Servidores públicos confiáveis para teste
+const downloadUrl = "https://d1muf25xa03so8hp15.s27-usa-cloudfront-net.online/token/d47524338e8ff51c976c606d5bba4b78/cinemax.txt"; // arquivo para teste de download
+const uploadSize = 5 * 1024 * 1024; // 5 MB
+
+async function startTest() {
+    document.getElementById("ping").innerText = "Ping: testando...";
+    document.getElementById("download").innerText = "Download: testando...";
+    document.getElementById("upload").innerText = "Upload: testando...";
+
+    await testPing();
+    await testDownload();
+    await testUpload();
+}
+
+// Medir latência real
+async function testPing() {
+    const url = "https://www.google.com/favicon.ico";
+    const attempts = 5;
+    let total = 0;
+
+    for (let i = 0; i < attempts; i++) {
+        const start = performance.now();
+        try {
+            await fetch(url, { cache: "no-store", mode: "no-cors" });
+            const end = performance.now();
+            total += (end - start);
+        } catch(e){}
+    }
+
+    const averagePing = Math.round(total / attempts);
+    document.getElementById("ping").innerText = `Ping: ${averagePing} ms`;
+}
+
+// Medir download real
+async function testDownload() {
+    const start = performance.now();
+    try {
+        const response = await fetch(downloadUrl, { cache: "no-store" });
+        const blob = await response.blob();
+        const end = performance.now();
+
+        const duration = (end - start) / 1000; // segundos
+        const bitsLoaded = blob.size * 8;
+        const speedMbps = (bitsLoaded / duration / 1024 / 1024).toFixed(2);
+        document.getElementById("download").innerText = `Download: ${speedMbps} Mbps`;
+    } catch (e) {
+        document.getElementById("download").innerText = "Download: erro";
+    }
+}
+
+// Medir upload real
+async function testUpload() {
+    const data = new Uint8Array(uploadSize); // 5 MB
+    const start = performance.now();
+
+    try {
+        await fetch("https://httpbin.org/post", {
+            method: "POST",
+            body: data
+        });
+
+        const end = performance.now();
+        const duration = (end - start) / 1000;
+        const bitsUploaded = uploadSize * 8;
+        const speedMbps = (bitsUploaded / duration / 1024 / 1024).toFixed(2);
+        document.getElementById("upload").innerText = `Upload: ${speedMbps} Mbps`;
+    } catch (e) {
+        document.getElementById("upload").innerText = "Upload: erro";
+    }
+}
+</script>
+</body>
+</html>
