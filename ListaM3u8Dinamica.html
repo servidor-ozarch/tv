@@ -1,48 +1,55 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Lista Dinâmica M3U</title>
-</head>
-<body>
-<h2>Lista de Canais</h2>
-<pre id="m3u-list">#EXTM3U
-</pre>
 
 <script>
-// Lista de canais que queremos buscar
-const canais = ['cinemax', 'globo', 'amc', 'hbo', 'combate', 'adultswim', 'agromais', 'ae', 'premiere'];
+// força navegador a tratar como arquivo M3U
+document.write("#EXTM3U\n");
 
-// Função principal para buscar todos os canais e gerar M3U
-async function gerarListaCanais(canais) {
-    const m3uElement = document.getElementById('m3u-list');
-    let m3uContent = '#EXTM3U\n';
+// Lista de canais
+const canais = [
+'cinemax','globo','amc','hbo','combate',
+'adultswim','agromais','ae','premiere'
+];
 
-    for (let nomeCanal of canais) {
-        const apiURL = `https://api.reidoscanais.ooo/search?q=${encodeURIComponent(nomeCanal)}`;
-        try {
-            const response = await fetch(apiURL);
-            const data = await response.json();
+async function gerarLista() {
 
-            if(data.success && data.data && data.data.channels.length > 0) {
-                data.data.channels.forEach(channel => {
-                    let urlLimpa = channel.embed_url.replace(/https?:\/\/|\\/g, '');
-                    m3uContent += `#EXTINF:-1 tvg-id="${channel.id}" tvg-logo="${channel.logo_url}" group-title="${channel.category}",${channel.name}\n`;
-                    m3uContent += `${urlLimpa}\n`;
-                });
-            } else {
-                console.log(`Canal não encontrado: ${nomeCanal}`);
-            }
-        } catch (err) {
-            console.error(`Erro ao buscar canal ${nomeCanal}:`, err);
+for (let nomeCanal of canais) {
+
+    const api = "https://api.reidoscanais.ooo/search?q=" + encodeURIComponent(nomeCanal);
+
+    try {
+
+        const resposta = await fetch(api);
+        const json = await resposta.json();
+
+        if(json.success && json.data && json.data.channels.length > 0){
+
+            json.data.channels.forEach(canal => {
+
+                const linha1 =
+`#EXTINF:-1 tvg-id="${canal.id}" tvg-logo="${canal.logo_url}" group-title="${canal.category}",${canal.name}`;
+
+                const linha2 = canal.embed_url;
+
+                document.write(linha1 + "\n");
+                document.write(linha2 + "\n");
+
+            });
+
         }
-    }
 
-    m3uElement.textContent = m3uContent;
+    } catch(e){}
+
 }
 
-// Executa a função
-gerarListaCanais(canais);
+}
+
+gerarLista();
+
 </script>
+</head>
+<body>
 </body>
 </html>
