@@ -2,55 +2,55 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Lista IPTV</title>
+<title>Lista IPTV Dinâmica</title>
 </head>
 <body>
 
 <script>
-
 const canais = [
-'cinemax','globo','amc','hbo','combate',
-'adultswim','agromais','ae','premiere'
+  'cinemax','globo','amc','hbo','combate',
+  'adultswim','agromais','ae','premiere'
 ];
 
 async function gerarLista() {
+  let lista = "#EXTM3U\n"; // inicia lista
 
-let lista = "#EXTM3U\n";
-
-for (let nomeCanal of canais) {
-
+  // busca todos os canais
+  for (let nomeCanal of canais) {
     try {
+      const apiURL = `https://api.reidoscanais.ooo/search?q=${encodeURIComponent(nomeCanal)}`;
+      const response = await fetch(apiURL);
+      const data = await response.json();
 
-        const api = "https://api.reidoscanais.ooo/search?q=" + encodeURIComponent(nomeCanal);
+      if(data.success && data.data && data.data.channels.length > 0) {
+        data.data.channels.forEach(channel => {
+          lista += `#EXTINF:-1 tvg-id="${channel.id}" tvg-logo="${channel.logo_url}" group-title="${channel.category}",${channel.name}\n`;
+          lista += `${channel.embed_url}\n`;
+        });
+      } else {
+        console.log(`Canal não encontrado: ${nomeCanal}`);
+      }
 
-        const response = await fetch(api);
-        const json = await response.json();
-
-        if(json.success && json.data && json.data.channels.length > 0){
-
-            json.data.channels.forEach(channel => {
-
-                lista += `#EXTINF:-1 tvg-id="${channel.id}" tvg-logo="${channel.logo_url}" group-title="${channel.category}",${channel.name}\n`;
-
-                lista += channel.embed_url + "\n";
-
-            });
-
-        }
-
-    } catch(e){
-        console.log("erro", e);
+    } catch(e) {
+      console.error(`Erro ao buscar canal ${nomeCanal}:`, e);
     }
+  }
 
+  // forçar download do arquivo .m3u8
+  const blob = new Blob([lista], { type: 'application/vnd.apple.mpegurl' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'lista.m3u8';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
-// substitui a página inteira pelo M3U final
-document.body.textContent = lista;
-
-}
-
+// executa tudo
 gerarLista();
-
 </script>
 
 </body>
