@@ -1,0 +1,135 @@
+#EXTM3U
+
+# 🟢 CANAIS DE ESPORTES
+
+# Fonte: embedtv.best
+
+
+#EXTINF:-1 tvg-id="premiere" tvg-name="Premiere" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/premiere.png?raw=true" group-title="Esporte",Premiere
+https://d1muf25xa03so8hp13.s27-usa-cloudfront-net.online/token/c0e2911f6c6e6407e60fe9eb15cce72d/premiere.txt
+
+#EXTINF:-1 tvg-id="bandsports" tvg-name="BandSports" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/bandsports.png?raw=true" group-title="Esporte",BandSports
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/70e252977247223b22a977dfeb7f24fc/bandsports.txt
+
+#EXTINF:-1 tvg-id="combate" tvg-name="Combate" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/combate.png?raw=true" group-title="Esporte",Combate
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/25ac766e373b473ba03579ff1257b7e0/combate.txt
+
+#EXTINF:-1 tvg-id="espn" tvg-name="Espn" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn.png?raw=true" group-title="Esporte",Espn
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/e5748a3451219b9dd8d3a38610a94da9/espn.txt
+
+#EXTINF:-1 tvg-id="espn2" tvg-name="Espn 2" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn2.png?raw=true" group-title="Esporte",Espn 2
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/eb86b70b0e7b3d78ec712ca6e7ce341e/espn2.txt
+
+#EXTINF:-1 tvg-id="espn3" tvg-name="Espn 3" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn3.png?raw=true" group-title="Esporte",Espn 3
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/0d1a99a1efd6d52e675fb92dd74a1e07/espn3.txt
+
+#EXTINF:-1 tvg-id="espn4" tvg-name="Espn 4" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn4.png?raw=true" group-title="Esporte",Espn 4
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a2145d6a0d3be777e34b9b576c32879e/espn4.txt
+
+#EXTINF:-1 tvg-id="espn5" tvg-name="Espn 5" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn5.png?raw=true" group-title="Esporte",Espn 5
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/1af9b083e61a8b261758717e4ca6e51a/espn5.txt
+
+#EXTINF:-1 tvg-id="espn6" tvg-name="Espn 6" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/espn6.png?raw=true" group-title="Esporte",Espn 6
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/d5392c1d473ec1a2500b2c5d93c6debc/espn6.txt
+
+
+
+# 🔵 CANAIS DE FILMES
+
+# Fonte: embedtv.best
+
+#EXTINF:-1 tvg-id="cinemax" tvg-name="Cinemax" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/cinemax.png?raw=true" group-title="Filmes",Cinemax
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/6df3e165e48cb2194bd1a4ec43a37228/cinemax.txt
+
+#EXTINF:-1 tvg-id="ae" tvg-name="A&E" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/ae.png?raw=true" group-title="Filmes",A&E
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a50abfc639297715cfcb731ed620913b/ae.txt
+
+#EXTINF:-1 tvg-id="axn" tvg-name="AXN" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/axn.png?raw=true" group-title="Filmes",AXN
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/59f5cffb428a84ced1846a61142b2805/axn.txt
+
+#EXTINF:-1 tvg-id="hbo" tvg-name="HBO" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbo.png?raw=true" group-title="Filmes",HBO
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/2c3c05db9b2150700dc1eac91db940d7/hbo.txt
+
+#EXTINF:-1 tvg-id="hbo2" tvg-name="HBO 2" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbo2.png?raw=true" group-title="Filmes",HBO 2
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a1875ab5210c83e86a57fd69971ce2a1/hbo2.txt
+
+#EXTINF:-1 tvg-id="hbofamily" tvg-name="HBO Family" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbofamily.png?raw=true" group-title="Filmes",HBO Family
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/5d0c6f1ef3d12a4db65d5511671aefc3/hbofamily.txt
+
+#EXTINF:-1 tvg-id="hbomundi" tvg-name="HBO Mundi" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbomundi.png?raw=true" group-title="Filmes",HBO Mundi
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/f4da63bf62afd03665af58b586d25fd3/hbomundi.txt
+
+#EXTINF:-1 tvg-id="hboplus" tvg-name="HBO Plus" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboplus.png?raw=true" group-title="Filmes",HBO Plus
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/d92c55735642c20b1127b9d0714afeaa/hboplus.txt
+
+#EXTINF:-1 tvg-id="hbopop" tvg-name="HBO Pop" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbopop.png?raw=true" group-title="Filmes",HBO Pop
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/2dd60a9cf1dda09f002d592d1d97a1ff/hbopop.txt
+
+#EXTINF:-1 tvg-id="hboxtreme" tvg-name="HBO Xtreme" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboxtreme.png?raw=true" group-title="Filmes",HBO Xtreme
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a5b3f81ef22e492feea202a89046947b/hboxtreme.txt
+
+#EXTINF:-1 tvg-id="megapix" tvg-name="Megapix" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/megapix.png?raw=true" group-title="Filmes",Megapix
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/bb5303555174037bca86694270f27800/megapix.txt
+
+#EXTINF:-1 tvg-id="sonychannel" tvg-name="Sony Channel" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/sonychannel.png?raw=true" group-title="Filmes",Sony Channel
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/79d4e3589b194fa24cf14c0c13fe3a0b/sonychannel.txt
+
+#EXTINF:-1 tvg-id="space" tvg-name="Space" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/space.png?raw=true" group-title="Filmes",Space
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/9f120050ad05c631d69ebf30ab0f5dbb/space.txt
+
+#EXTINF:-1 tvg-id="studiouniversal" tvg-name="Studio Universal" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/studiouniversal.png?raw=true" group-title="Filmes",Studio Universal
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/f5302a4aab9d6c57e550ad23c8607d65/studiouniversal.txt
+
+#EXTINF:-1 tvg-id="telecineaction" tvg-name="Telecine Action" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecineaction.png?raw=true" group-title="Filmes",Telecine Action
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/0a650b61f5778b3b5f1b791f5d43015a/telecineaction.txt
+
+#EXTINF:-1 tvg-id="telecinecult" tvg-name="Telecine Cult" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinecult.png?raw=true" group-title="Filmes",Telecine Cult
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/fd703fd66cf6896cf7eaec88d8d381d6/telecinecult.txt
+
+#EXTINF:-1 tvg-id="telecinefun" tvg-name="Telecine Fun" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinefun.png?raw=true" group-title="Filmes",Telecine Fun
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/acc34f8af8cd6b8408c4105061690ac2/telecinefun.txt
+
+#EXTINF:-1 tvg-id="telecinepipoca" tvg-name="Telecine Pipoca" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepipoca.png?raw=true" group-title="Filmes",Telecine Pipoca
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/ec904566a7281b3652804f0f29d03696/telecinepipoca.txt
+
+#EXTINF:-1 tvg-id="telecinepremium" tvg-name="Telecine Premium" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepremium.png?raw=true" group-title="Filmes",Telecine Premium
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/579db1b474d04325a6e6d15f28176516/telecinepremium.txt
+
+#EXTINF:-1 tvg-id="telecinetouch" tvg-name="Telecine Touch" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinetouch.png?raw=true" group-title="Filmes",Telecine Touch
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/24f5a1f4ce7e43bee6136522ed737b04/telecinetouch.txt
+
+#EXTINF:-1 tvg-id="warnerchannel" tvg-name="Warner Channel" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/warnerchannel.png?raw=true" group-title="Filmes",Warner Channel
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/fe917cbaef95f295326bb9c6fd090d66/warnerchannel.txt
+
+
+# 🔴 CANAIS ADULTOS
+
+# Fonte: adult-tv-channels.com
+# Fonte: http://oxax.tv
+
+#EXTINF:-1 tvg-id="playboytv.br" tvg-name="Playboy" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/playboy.png?raw=true" group-title="Adultos",Playboy
+https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/9d95c620f0225d602b2fbbb8c15678b3/playboy.txt
+
+#EXTINF:-1 tvg-id="erotic1" tvg-name="Erotic 1" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/e/e3/Pink_Erotic.png/revision/latest?cb=20210318150833" group-title="Adultos",Erotic 1
+https://webtvstream.bhtelecom.ba/hls17/pink_erotic1_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic2" tvg-name="Erotic 2" tvg-logo="https://tvprofil.com/img/kanali-logo/Pink_Erotic_2_RS_logo.png?1736421764" group-title="Adultos",Erotic 2
+https://webtvstream.bhtelecom.ba/hls14/pink_erotic2_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic3" tvg-name="Erotic 3" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/0f/Pink_Erotic_3.png/revision/latest/smart/width/386/height/259?cb=20210318151205" group-title="Adultos",Erotic 3
+https://webtvstream.bhtelecom.ba/hls14/pink_erotic3_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic4" tvg-name="Erotic 4" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/5/5f/Pink_Erotic_4.png/revision/latest?cb=20210318151404" group-title="Adultos",Erotic 4
+https://webtvstream.bhtelecom.ba/hls17/pink_erotic4_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic5" tvg-name="Erotic 5" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/1/13/Pink_Erotic_5.png/revision/latest/smart/width/386/height/259?cb=20210318151617" group-title="Adultos",Erotic 5
+https://webtvstream.bhtelecom.ba/hls15/pink_erotic5_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic6" tvg-name="Erotic 6" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/d/d7/Pink_Erotic_6.png/revision/latest/scale-to-width-down/250?cb=20210318151827" group-title="Adultos",Erotic 6
+https://webtvstream.bhtelecom.ba/hls14/pink_erotic6_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic7" tvg-name="Erotic 7" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/c/c1/Pink_Erotic_7.png/revision/latest?cb=20210318152056" group-title="Adultos",Erotic 7
+https://webtvstream.bhtelecom.ba/hls14/pink_erotic7_1200.m3u8
+
+#EXTINF:-1 tvg-id="erotic8" tvg-name="Erotic 8" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/d/db/Pink_Erotic_8.png/revision/latest?cb=20210318152238" group-title="Adultos",Erotic 8
+https://webtvstream.bhtelecom.ba/hls17/pink_erotic8_1200.m3u8
