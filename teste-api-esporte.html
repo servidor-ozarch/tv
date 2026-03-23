@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Futebol Brasileiro | Status</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root { --bg-body: #0f172a; --card-bg: #1e293b; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-body);
+            color: #f1f5f9; min-height: 100vh;
+        }
+        .card-stream {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+        }
+        
+        /* Efeito de Oscilação (Skeleton Pulse) */
+        @keyframes pulse-bg {
+            0% { background-color: rgba(255, 255, 255, 0.05); }
+            50% { background-color: rgba(255, 255, 255, 0.1); }
+            100% { background-color: rgba(255, 255, 255, 0.05); }
+        }
+        .skeleton-item { animation: pulse-bg 1.5s ease-in-out infinite; }
+        
+        .no-italic { font-style: normal !important; text-transform: none !important; }
+        .status-andamento { color: #22c55e; }
+        .status-encerrado { color: #ef4444; }
+        .status-breve { color: #94a3b8; }
+    </style>
+</head>
+<body class="antialiased pb-10">
+
+    <nav class="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md px-4 py-4 border-b border-white/5">
+        <div class="max-w-7xl mx-auto">
+            <div class="bg-[#1e293b] flex items-center px-5 py-3 rounded-xl border border-white/10">
+                <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+                <input type="text" id="search-input" placeholder="Pesquisar partida..." 
+                       class="bg-transparent border-none outline-none ml-4 text-base text-white w-full placeholder:text-slate-500 font-medium">
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <div id="events-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+
+    <script>
+        const API_URL = 'https://api.reidoscanais.ooo/sports';
+        let allEvents = [];
+
+        const ALLOWED_LEAGUES = [
+            "BRASILEIRÃO", "SÉRIE A", "SÉRIE B", "SÉRIE C", "SÉRIE D",
+            "COPA DO BRASIL", "ESTADUAL", "PAULISTA", "CARIOCA",
+            "MINEIRO", "GAÚCHO", "SUPERCOPA DO BRASIL"
+        ];
+
+        // Função para mostrar o efeito visual de carregamento (Skeleton)
+        function showSkeletons() {
+            const grid = document.getElementById('events-grid');
+            grid.innerHTML = "";
+            for (let i = 0; i < 6; i++) {
+                grid.innerHTML += `
+                    <div class="card-stream flex flex-col overflow-hidden opacity-50">
+                        <div class="h-48 skeleton-item"></div>
+                        <div class="p-6 flex flex-col gap-4">
+                            <div class="flex gap-3">
+                                <div class="w-12 h-6 skeleton-item rounded"></div>
+                                <div class="w-full h-6 skeleton-item rounded"></div>
+                            </div>
+                            <div class="w-1/2 h-4 skeleton-item rounded"></div>
+                            <div class="w-1/3 h-3 skeleton-item rounded mt-2"></div>
+                            <div class="mt-auto pt-4 border-t border-white/5">
+                                <div class="flex justify-between mb-2">
+                                    <div class="w-10 h-3 skeleton-item rounded"></div>
+                                    <div class="w-10 h-3 skeleton-item rounded"></div>
+                                </div>
+                                <div class="w-full h-1.5 skeleton-item rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function init() {
+            showSkeletons(); // Inicia o efeito visual antes da chamada
+            
+            try {
+                const res = await fetch(API_URL);
+                const { data } = await res.json();
+                
+                allEvents = data.filter(ev => {
+                    const textToTest = (ev.description + " " + ev.category + " " + ev.title).toUpperCase();
+                    return ALLOWED_LEAGUES.some(league => textToTest.includes(league));
+                });
+
+                render();
+            } catch (e) { 
+                console.error(e);
+                document.getElementById('events-grid').innerHTML = '<p class="text-center text-slate-500 col-span-full py-12">Erro ao carregar dados.</p>';
+            }
+        }
+
+        function render() {
+            const grid = document.getElementById('events-grid');
+            const term = document.getElementById('search-input').value.toLowerCase().trim();
+            const now = new Date();
+            grid.innerHTML = "";
+
+            const filtered = allEvents.filter(ev => 
+                ev.title.toLowerCase().includes(term) || (ev.description && ev.description.toLowerCase().includes(term))
+            );
+
+            if(filtered.length === 0 && allEvents.length > 0) {
+                grid.innerHTML = '<p class="text-center text-slate-500 col-span-full py-12">Nenhum jogo encontrado.</p>';
+                return;
+            }
+
+            filtered.forEach(ev => {
+                const start = new Date(ev.start_time);
+                const end = new Date(ev.end_time);
+                const isLive = now >= start && now <= end;
+                const isFinished = now > end;
+
+                let progress = isLive ? ((now - start) / (end - start)) * 100 : (isFinished ? 100 : 0);
+                const fTime = (d) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+                const fDate = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+                let statusLabel, statusClass;
+                if (isLive) { statusLabel = "EM ANDAMENTO"; statusClass = "status-andamento"; }
+                else if (isFinished) { statusLabel = "ENCERRADO"; statusClass = "status-encerrado"; }
+                else { statusLabel = "EM BREVE"; statusClass = "status-breve"; }
+
+                const card = document.createElement('div');
+                card.className = "card-stream flex flex-col overflow-hidden";
+                card.innerHTML = `
+                    <div class="relative h-48 overflow-hidden bg-slate-800">
+                        <img src="${ev.poster}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
+                    </div>
+                    <div class="p-6 flex flex-col flex-1">
+                        <div class="flex items-baseline gap-3 mb-2 h-14 line-clamp-2">
+                            <span class="text-sm font-extrabold text-slate-500 whitespace-nowrap">${fDate(start)}</span>
+                            <h3 class="font-bold text-lg text-white leading-tight no-italic uppercase">${ev.title}</h3>
+                        </div>
+                        <p class="text-[11px] font-bold text-blue-400 uppercase tracking-widest mb-4">${ev.description || ev.category}</p>
+                        <div class="mb-5">
+                            <span class="text-[10px] font-black tracking-[0.15em] ${statusClass}">● ${statusLabel}</span>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-white/5">
+                            <div class="flex justify-between text-[11px] text-slate-400 font-bold mb-2">
+                                <span class="${isLive ? 'text-blue-300' : ''}">${fTime(start)}</span>
+                                <span>${fTime(end)}</span>
+                            </div>
+                            <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden shadow-inner">
+                                <div class="h-full ${isLive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : isFinished ? 'bg-slate-500' : 'bg-slate-600'}" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        document.getElementById('search-input').oninput = render;
+        init();
+    </script>
+</body>
+</html>
