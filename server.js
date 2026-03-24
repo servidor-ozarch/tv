@@ -3,23 +3,12 @@ const puppeteer = require('puppeteer');
 
 const app = express();
 
-console.log("🔥 IPTV IFRAME MASTER");
+console.log("🔥 IPTV FLEX PLAYER");
 
-// 🌐 BASE
+// 🌐 BASE FIXA
 const BASE = "https://www3.embedtv.best/";
 
-// 🖼️ LOGOS
-const BASE_LOGO = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
-
-// 📺 CANAIS
-let canais = [
-    { nome: "A&E", slug: "ae", url: null },
-    { nome: "Cinemax", slug: "cinemax", url: null },
-    { nome: "HBO", slug: "hbo", url: null },
-    { nome: "Premiere", slug: "premiere", url: null }
-];
-
-// 🚀 CAPTURA REAL
+// 🚀 CAPTURA DINÂMICA
 async function capturarStream(slug) {
     let browser;
 
@@ -37,12 +26,12 @@ async function capturarStream(slug) {
 
         let streamEncontrado = null;
 
-        // 🎯 CAPTURA QUALQUER .TXT
+        // 🎯 CAPTURA .TXT
         page.on('response', async (response) => {
             const resUrl = response.url();
 
             if (resUrl.includes('.txt')) {
-                console.log("🎯 TXT encontrado:", resUrl);
+                console.log("🎯 TXT:", resUrl);
                 streamEncontrado = resUrl;
             }
         });
@@ -55,16 +44,13 @@ async function capturarStream(slug) {
         // ❌ REMOVE BOTÃO FAKE
         await page.evaluate(() => {
             const btn = document.querySelector('.startplayer');
-            if (btn) {
-                btn.remove();
-                console.log("Botão fake removido");
-            }
+            if (btn) btn.remove();
         });
 
-        // ⏳ espera DOM estabilizar
+        // ⏳ espera carregar
         await new Promise(r => setTimeout(r, 4000));
 
-        // 🔍 PERCORRE IFRAMES
+        // 🔍 IFRAMES
         const frames = page.frames();
 
         for (let frame of frames) {
@@ -76,29 +62,24 @@ async function capturarStream(slug) {
                     frameUrl.includes("player") ||
                     frameUrl.includes("video")
                 ) {
-                    console.log("🎥 Iframe encontrado:", frameUrl);
+                    console.log("🎥 Iframe:", frameUrl);
 
-                    // ▶️ força player dentro do iframe
                     await frame.evaluate(() => {
                         const video = document.querySelector('video');
-
                         if (video) {
                             video.muted = true;
                             video.play().catch(() => {});
                         }
 
-                        // tenta clicar em possíveis players JS
                         const btnPlay = document.querySelector('.vjs-big-play-button');
                         if (btnPlay) btnPlay.click();
                     });
                 }
 
-            } catch (e) {
-                console.log("Erro no iframe:", e.message);
-            }
+            } catch (e) {}
         }
 
-        // ⏳ tempo para stream aparecer
+        // ⏳ aguarda stream
         await new Promise(r => setTimeout(r, 8000));
 
         await browser.close();
@@ -106,7 +87,7 @@ async function capturarStream(slug) {
         return streamEncontrado;
 
     } catch (e) {
-        console.log("Erro capturarStream:", e.message);
+        console.log("Erro:", e.message);
 
         if (browser) await browser.close();
 
@@ -114,66 +95,31 @@ async function capturarStream(slug) {
     }
 }
 
-// 🔄 ATUALIZA CANAIS
-async function atualizarCanais() {
-    console.log("🔄 Atualizando canais...");
+// 🚀 ROTA FLEXÍVEL
+app.get('/api/lista-top.m3u8', async (req, res) => {
 
-    for (let canal of canais) {
+    const canal = req.query.canal;
 
-        console.log("🔍 Buscando:", canal.nome);
-
-        const novoLink = await capturarStream(canal.slug);
-
-        if (novoLink) {
-            if (novoLink !== canal.url) {
-                console.log("🔥 Atualizado:", canal.nome);
-                canal.url = novoLink;
-            } else {
-                console.log("✔️ Mesmo link:", canal.nome);
-            }
-        } else {
-            console.log("⚠️ Mantendo cache:", canal.nome);
-        }
+    if (!canal) {
+        return res.send("Informe o canal: ?canal=nome");
     }
-}
 
-// ⏱️ Atualiza a cada 5 minutos
-setInterval(atualizarCanais, 300000);
+    console.log("🎯 Canal solicitado:", canal);
 
-// 🚀 Primeira execução
-atualizarCanais();
+    const stream = await capturarStream(canal);
 
-// 📺 LISTA IPTV
-app.get('/api/lista-top.m3u8', (req, res) => {
-    let m3u = "#EXTM3U\n";
+    if (stream) {
+        console.log("🚀 Redirecionando...");
 
-    canais.forEach(c => {
-        const logo = `${BASE_LOGO}${c.slug}.png`;
+        return res.redirect(stream);
+    }
 
-        if (c.url) {
-            m3u += `#EXTINF:-1 tvg-name="${c.slug}" tvg-logo="${logo}" group-title="Canais",${c.nome}\n${c.url}\n`;
-        } else {
-            m3u += `#EXTINF:-1 tvg-name="${c.slug}" tvg-logo="${logo}" group-title="Canais",${c.nome}\n# aguardando stream\n`;
-        }
-    });
-
-    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.send(m3u);
-});
-
-// 📊 DEBUG
-app.get('/api/canais', (req, res) => {
-    res.json(canais);
+    res.send("Stream não encontrado ❌");
 });
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV IFRAME ativo 🚀");
-});
-
-// 🚫 FALLBACK
-app.use((req, res) => {
-    res.status(404).send("Rota não encontrada ❌");
+    res.send("IPTV FLEX ativo 🚀");
 });
 
 // 🚀 START
