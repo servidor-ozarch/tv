@@ -3,21 +3,29 @@ const https = require('https');
 
 const app = express();
 
-console.log("🔥 SERVER IPTV AVANÇADO RODANDO");
+console.log("🔥 IPTV MASTER COM LOGO RODANDO");
 
-let canal = {
-    nome: "Aracati",
-    url: null
-};
+// 🌐 BASE DAS PÁGINAS
+const BASE = "https://www.cxtv.com.br/tv-ao-vivo/";
 
-// 🔧 GET com headers de navegador
+// 🖼️ BASE DOS LOGOS (RAW GITHUB)
+const BASE_LOGO = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
+
+// 📺 LISTA DE CANAIS
+let canais = [
+    { nome: "Aracati", slug: "tv-aracati-hd", url: null },
+    { nome: "Filmes", slug: "tv-filmes-hd", url: null },
+    { nome: "Séries", slug: "tv-series-hd", url: null },
+    { nome: "Música", slug: "tv-musica-hd", url: null }
+];
+
+// 🔧 REQUISIÇÃO HTTP COM HEADER DE NAVEGADOR
 function getHTML(url) {
     return new Promise((resolve, reject) => {
         const options = {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "pt-BR,pt;q=0.9",
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "text/html",
                 "Connection": "keep-alive"
             }
         };
@@ -32,13 +40,13 @@ function getHTML(url) {
     });
 }
 
-// 🔍 extrai .m3u8
+// 🔍 EXTRAI LINK M3U8
 function extrairM3U8(html) {
     const match = html.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
     return match ? match[0] : null;
 }
 
-// 🔍 extrai links relevantes
+// 🔍 EXTRAI LINKS INTERNOS
 function extrairLinks(html) {
     const links = [];
     const regex = /(https?:\/\/[^"' ]+)/g;
@@ -59,66 +67,74 @@ function extrairLinks(html) {
     return links;
 }
 
-// 🔄 busca profunda (até 3 níveis)
-async function buscarStreamProfundo(url, nivel = 0) {
+// 🔄 BUSCA PROFUNDA
+async function buscarStream(url, nivel = 0) {
     if (nivel > 3) return null;
 
     try {
-        console.log(`🔍 Nível ${nivel} -> ${url}`);
-
         const html = await getHTML(url);
 
-        // DEBUG (opcional)
-        // console.log(html.substring(0, 1000));
-
-        // 1️⃣ tenta direto
+        // tenta direto
         const m3u8 = extrairM3U8(html);
-        if (m3u8) {
-            console.log("✅ M3U8 encontrado:", m3u8);
-            return m3u8;
-        }
+        if (m3u8) return m3u8;
 
-        // 2️⃣ tenta links internos
+        // tenta internos
         const links = extrairLinks(html);
 
         for (let link of links) {
-            const resultado = await buscarStreamProfundo(link, nivel + 1);
+            const resultado = await buscarStream(link, nivel + 1);
             if (resultado) return resultado;
         }
 
     } catch (e) {
-        console.log("❌ Erro:", e.message);
+        console.log("Erro:", e.message);
     }
 
     return null;
 }
 
-// 🔄 loop contínuo
-async function atualizarStream() {
-    console.log("🔄 Atualizando stream...");
+// 🔄 ATUALIZA CANAIS COM CACHE INTELIGENTE
+async function atualizarCanais() {
+    console.log("🔄 Atualizando canais...");
 
-    const link = await buscarStreamProfundo("https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd");
+    for (let canal of canais) {
+        const urlPagina = BASE + canal.slug;
 
-    if (link) {
-        canal.url = link;
-        console.log("🎯 LINK FINAL:", canal.url);
-    } else {
-        console.log("⚠️ Nenhum stream encontrado");
+        console.log("🔍 Buscando:", canal.nome);
+
+        const novoLink = await buscarStream(urlPagina);
+
+        if (novoLink) {
+            if (novoLink !== canal.url) {
+                console.log("✅ Atualizado:", canal.nome);
+                canal.url = novoLink;
+            } else {
+                console.log("✔️ Mesmo link:", canal.nome);
+            }
+        } else {
+            console.log("⚠️ Mantendo cache:", canal.nome);
+        }
     }
 }
 
-// roda a cada 15 segundos
-setInterval(atualizarStream, 15000);
+// ⏱️ atualiza a cada 5 minutos
+setInterval(atualizarCanais, 300000);
 
-// 📺 ROTA IPTV
+// 🚀 primeira execução
+atualizarCanais();
+
+// 📺 LISTA IPTV COM LOGO AUTOMÁTICO
 app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
-    if (canal.url) {
-        m3u += `#EXTINF:-1,${canal.nome}\n${canal.url}\n`;
-    } else {
-        m3u += `#EXTINF:-1,${canal.nome}\n# aguardando stream\n`;
-    }
+    canais.forEach(c => {
+        if (c.url) {
+
+            const logo = `${BASE_LOGO}${c.slug}.png`;
+
+            m3u += `#EXTINF:-1 tvg-name="${c.slug}" tvg-logo="${logo}" group-title="Canais",${c.nome}\n${c.url}\n`;
+        }
+    });
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Content-Disposition', 'inline');
@@ -126,14 +142,14 @@ app.get('/api/lista-top.m3u8', (req, res) => {
     res.send(m3u);
 });
 
-// 🧪 TESTE
-app.get('/teste', (req, res) => {
-    res.send("OK FUNCIONANDO");
+// 📊 DEBUG
+app.get('/api/canais', (req, res) => {
+    res.json(canais);
 });
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("API IPTV avançada 🚀");
+    res.send("IPTV sistema com logos ativo 🚀");
 });
 
 // 🚫 FALLBACK
@@ -144,5 +160,5 @@ app.use((req, res) => {
 // 🚀 START
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("🚀 Servidor rodando na porta " + PORT);
+    console.log("Servidor rodando na porta " + PORT);
 });
