@@ -3,18 +3,18 @@ const https = require('https');
 
 const app = express();
 
-console.log("🔥 SERVER IPTV AVANÇADO RODANDO");
+console.log("🔥 SERVER REDIRECT IPTV");
 
-// 🌐 BASE FIXA
+// 🌐 BASE
 const BASE = "https://www.cxtv.com.br/tv-ao-vivo/";
 
-// 🔧 GET com headers
+// 🔧 GET HTML
 function getHTML(url) {
     return new Promise((resolve, reject) => {
         const options = {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "text/html",
                 "Accept-Language": "pt-BR,pt;q=0.9",
                 "Connection": "keep-alive"
             }
@@ -30,13 +30,13 @@ function getHTML(url) {
     });
 }
 
-// 🔍 extrai .m3u8
+// 🔍 EXTRAI M3U8
 function extrairM3U8(html) {
     const match = html.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
     return match ? match[0] : null;
 }
 
-// 🔍 extrai links internos
+// 🔍 EXTRAI LINKS
 function extrairLinks(html) {
     const links = [];
     const regex = /(https?:\/\/[^"' ]+)/g;
@@ -57,23 +57,21 @@ function extrairLinks(html) {
     return links;
 }
 
-// 🔄 busca profunda
+// 🔄 BUSCA PROFUNDA
 async function buscarStreamProfundo(url, nivel = 0) {
     if (nivel > 3) return null;
 
     try {
-        console.log(`🔍 Nível ${nivel} -> ${url}`);
+        console.log(`🔍 Nível ${nivel}: ${url}`);
 
         const html = await getHTML(url);
 
-        // tenta direto
         const m3u8 = extrairM3U8(html);
         if (m3u8) {
-            console.log("✅ M3U8 encontrado:", m3u8);
+            console.log("✅ Encontrado:", m3u8);
             return m3u8;
         }
 
-        // tenta links internos
         const links = extrairLinks(html);
 
         for (let link of links) {
@@ -82,49 +80,38 @@ async function buscarStreamProfundo(url, nivel = 0) {
         }
 
     } catch (e) {
-        console.log("❌ Erro:", e.message);
+        console.log("Erro:", e.message);
     }
 
     return null;
 }
 
-// 🚀 ROTA DINÂMICA (NOVO CAMINHO)
+// 🚀 ROTA REDIRECT
 app.get('/live/chucks.m3u8', async (req, res) => {
 
     const canal = req.query.canal;
 
     if (!canal) {
-        return res.send("#EXTM3U\n# canal não informado");
+        return res.status(400).send("Canal não informado");
     }
 
-    const urlFinal = BASE + canal;
+    const url = BASE + canal;
 
-    console.log("🎯 Canal solicitado:", canal);
+    console.log("🎯 Canal:", canal);
 
-    const link = await buscarStreamProfundo(urlFinal);
+    const stream = await buscarStreamProfundo(url);
 
-    let m3u = "#EXTM3U\n";
-
-    if (link) {
-        m3u += `#EXTINF:-1,${canal}\n${link}\n`;
-    } else {
-        m3u += `#EXTINF:-1,${canal}\n# aguardando stream\n`;
+    if (stream) {
+        console.log("🚀 Redirecionando para:", stream);
+        return res.redirect(stream);
     }
 
-    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.setHeader('Content-Disposition', 'inline');
-
-    res.send(m3u);
-});
-
-// 🧪 TESTE
-app.get('/teste', (req, res) => {
-    res.send("OK FUNCIONANDO");
+    res.status(404).send("Stream não encontrado ❌");
 });
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("API IPTV avançada 🚀");
+    res.send("Server IPTV redirect 🚀");
 });
 
 // 🚫 FALLBACK
@@ -135,5 +122,5 @@ app.use((req, res) => {
 // 🚀 START
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("🚀 Servidor rodando na porta " + PORT);
+    console.log("Rodando na porta " + PORT);
 });
