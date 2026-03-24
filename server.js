@@ -15,8 +15,8 @@ let canais = [
     }
 ];
 
-// 📺 Gerar lista com nome específico
-app.get('/teste-010203.m3u8', (req, res) => {
+// 📺 Gerar lista IPTV
+app.get('/api/teste-010203.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
     canais.forEach(c => {
@@ -24,13 +24,33 @@ app.get('/teste-010203.m3u8', (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('Content-Disposition', 'inline');
+
     res.send(m3u);
 });
 
 // ➕ adicionar canal
 app.post('/add', (req, res) => {
-    canais.push(req.body);
-    res.json({ status: "ok" });
+    const { nome, url } = req.body;
+
+    if (!nome || !url) {
+        return res.json({
+            status: "erro",
+            msg: "nome e url são obrigatórios"
+        });
+    }
+
+    canais.push({ nome, url });
+
+    res.json({
+        status: "ok",
+        total: canais.length
+    });
+});
+
+// 📺 listar canais (debug)
+app.get('/canais', (req, res) => {
+    res.json(canais);
 });
 
 // 🟢 status
@@ -38,5 +58,8 @@ app.get('/', (req, res) => {
     res.send("API IPTV online 🚀");
 });
 
+// 🚀 porta
 const PORT = process.env.PORT || 3000;
-app.listen(PORT);
+app.listen(PORT, () => {
+    console.log("Servidor rodando 🚀");
+});
