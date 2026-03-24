@@ -6,8 +6,8 @@ app.use(express.json());
 // 🎬 Lista de canais
 let canais = [
     {
-        nome: "Canal 1",
-        url: "https://exemplo.com/stream1.m3u8"
+        nome: "Aracati",
+        url: "https://video04.logicahost.com.br/tvaracati/tvaracati/chunklist_w1933205625.m3u8"
     },
     {
         nome: "Canal 2",
