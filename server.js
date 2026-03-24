@@ -1,7 +1,7 @@
 const cheerio = require('cheerio');
 const axios = require('axios');
 
-app.get('/api/extrair', async (req, res) => {
+app.get('/api/iptv', async (req, res) => {
     try {
         const { data } = await axios.get('https://www3.embedtv.best/premiere');
         const $ = cheerio.load(data);
