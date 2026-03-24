@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const TOKEN = "Bearer APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010";
 
-app.get('/api/ultimo-pagamento', async (req, res) => {
+app.get('/api/mp', async (req, res) => {
     try {
         const response = await axios.get(
             'https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&limit=1',
