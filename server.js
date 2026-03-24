@@ -31,11 +31,11 @@ async function buscarStream() {
     }
 }
 
-// 🔄 roda a cada 10 segundos
-setInterval(buscarStream, 10000);
+// 🔄 roda a cada 30 segundos
+setInterval(buscarStream, 30000);
 
 // 📺 lista IPTV
-app.get('/api/lista.m3u8', (req, res) => {
+app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
     if (canal.url) {
