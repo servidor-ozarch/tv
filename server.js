@@ -78,7 +78,7 @@ async function buscarStream(url, nivel = 0) {
         const stream = extrairStream(html);
         if (stream) return stream;
 
-        // tenta internos
+        // tenta links internos
         const links = extrairLinks(html);
 
         for (let link of links) {
@@ -91,7 +91,7 @@ async function buscarStream(url, nivel = 0) {
     }
 
     return null;
-            }
+}
 
 // 🔄 ATUALIZA CANAIS COM CACHE INTELIGENTE
 async function atualizarCanais() {
