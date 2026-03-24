@@ -6,22 +6,29 @@ app.get('/api/extrair', async (req, res) => {
         const { data } = await axios.get('https://www3.embedtv.best/premiere');
         const $ = cheerio.load(data);
 
-        let links = [];
+        let m3u8 = [];
+        let txt = [];
 
         $('a').each((i, el) => {
             const link = $(el).attr('href');
 
             if (link) {
-                // 🔥 filtra m3u8 OU txt
-                if (link.includes('.m3u8') || link.includes('.txt')) {
-                    links.push(link);
+                if (link.includes('.m3u8')) {
+                    m3u8.push(link);
+                }
+
+                if (link.includes('.txt')) {
+                    txt.push(link);
                 }
             }
         });
 
-        res.json({ lista: links });
+        res.json({
+            m3u8: m3u8,
+            txt: txt
+        });
 
     } catch (e) {
-        res.json({ erro: true, msg: e.toString() });
+        res.json({ erro: true });
     }
 });
