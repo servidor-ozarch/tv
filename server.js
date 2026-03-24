@@ -5,7 +5,7 @@ app.use(express.json());
 
 let canal = {
     nome: "Aracati",
-    url: "https://exemplo.com/video.m3u8",
+    url: "https://video04.logicahost.com.br/tvaracati/tvaracati/chunklist_w1451000580.m3u8",
     status: "AO_VIVO"
 };
 
