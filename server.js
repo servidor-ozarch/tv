@@ -3,11 +3,11 @@ const axios = require('axios');
 
 app.get('/api/iptv', async (req, res) => {
     try {
-        const { data } = await axios.get('https://www3.embedtv.best/premiere');
+        const { data } = await axios.get('https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd');
         const $ = cheerio.load(data);
 
         let m3u8 = [];
-        let txt = [];
+        let ts = [];
 
         $('a').each((i, el) => {
             const link = $(el).attr('href');
@@ -17,15 +17,15 @@ app.get('/api/iptv', async (req, res) => {
                     m3u8.push(link);
                 }
 
-                if (link.includes('.txt')) {
-                    txt.push(link);
+                if (link.includes('.ts')) {
+                    ts.push(link);
                 }
             }
         });
 
         res.json({
             m3u8: m3u8,
-            txt: txt
+            ts: ts
         });
 
     } catch (e) {
