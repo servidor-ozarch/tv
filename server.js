@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const TOKEN = "SEU_ACCESS_TOKEN"; // ⚠️ nunca expor no app
+const TOKEN = "Bearer APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010";
 
 app.get('/api/ultimo-pagamento', async (req, res) => {
     try {
