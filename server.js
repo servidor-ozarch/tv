@@ -1,34 +1,39 @@
+const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// 1. Definimos o nome do arquivo solicitado
-const nomeArquivo = 'teste_010101.m3u8';
+// O Render define a porta automaticamente, se não houver, usa 10000
+const PORT = process.env.PORT || 10000;
+const NOME_ARQUIVO = 'teste_010101.m3u8';
 
-// 2. Criamos o conteúdo padrão de um índice HLS
-// Se você tiver os links dos vídeos (.ts), pode colocá-los aqui
-const conteudoHLS = `#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:10
-#EXT-X-MEDIA-SEQUENCE:0
-#EXT-X-PLAYLIST-TYPE:VOD
-#EXTINF:10.0,
-video_segmento_001.ts
-#EXTINF:10.0,
-video_segmento_002.ts
-#EXT-X-ENDLIST`;
-
-// 3. Resolvemos o caminho para garantir que salve na mesma pasta do script
-// __dirname garante que ele use a pasta onde o arquivo .js está localizado
-const caminhoCompleto = path.join(__dirname, nomeArquivo);
-
-try {
-  // 4. Gravamos o arquivo de forma síncrona para simplificar
-  fs.writeFileSync(caminhoCompleto, conteudoHLS, 'utf8');
+// Função que cria o arquivo na raiz do projeto no Render
+function ativarGerador() {
+  const conteudo = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nstream.ts\n#EXT-X-ENDLIST`;
   
-  console.log('---');
-  console.log(`✅ Sucesso! Arquivo criado em: ${caminhoCompleto}`);
-  console.log(`📂 Verifique sua pasta, o arquivo "${nomeArquivo}" já deve estar lá.`);
-  console.log('---');
-} catch (erro) {
-  console.error('❌ Erro ao gerar o arquivo:', erro.message);
+  try {
+    // Usamos path.join com process.cwd() para garantir que salve na pasta do projeto no Render
+    const caminho = path.join(process.cwd(), NOME_ARQUIVO);
+    fs.writeFileSync(caminho, conteudo, 'utf8');
+    console.log(`✅ Arquivo ${NOME_ARQUIVO} gerado no servidor Render!`);
+  } catch (err) {
+    console.error('❌ Erro ao criar arquivo no Render:', err);
+  }
 }
+
+const server = http.createServer((req, res) => {
+  if (req.url === `/${NOME_ARQUIVO}`) {
+    // Rota para ler o arquivo gerado
+    const caminho = path.join(process.cwd(), NOME_ARQUIVO);
+    if (fs.existsSync(caminho)) {
+      res.writeHead(200, { 'Content-Type': 'application/x-mpegURL' });
+      return fs.createReadStream(caminho).pipe(res);
+    }
+  }
+  res.end('Servidor HLS Ativo no Render');
+});
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server on port ${PORT}`);
+  ativarGerador(); // Ativa a criação do arquivo assim que sobe
+});
+        
