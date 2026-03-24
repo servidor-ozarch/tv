@@ -1,34 +1,44 @@
-const cheerio = require('cheerio');
-const axios = require('axios');
+const express = require('express');
+const app = express();
 
-app.get('/api/iptv', async (req, res) => {
-    try {
-        const { data } = await axios.get('https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd');
-        const $ = cheerio.load(data);
+app.use(express.json());
 
-        let m3u8 = [];
-        let ts = [];
+let usuarios = [];
 
-        $('a').each((i, el) => {
-            const link = $(el).attr('href');
+// middleware
+app.use((req, res, next) => {
+    console.log(req.method, req.url);
+    next();
+});
 
-            if (link) {
-                if (link.includes('.m3u8')) {
-                    m3u8.push(link);
-                }
+// rotas
+app.get('/', (req, res) => {
+    res.send("API online");
+});
 
-                if (link.includes('.ts')) {
-                    ts.push(link);
-                }
-            }
-        });
+app.get('/api/usuarios', (req, res) => {
+    res.json(usuarios);
+});
 
-        res.json({
-            m3u8: m3u8,
-            ts: ts
-        });
+app.post('/api/usuarios', (req, res) => {
+    usuarios.push(req.body);
+    res.json({ status: "criado" });
+});
 
-    } catch (e) {
-        res.json({ erro: true });
+app.delete('/api/usuarios/:id', (req, res) => {
+    usuarios.splice(req.params.id, 1);
+    res.json({ status: "removido" });
+});
+
+app.post('/api/login', (req, res) => {
+    const { user, pass } = req.body;
+
+    if (user === "admin" && pass === "123") {
+        res.json({ status: "ok" });
+    } else {
+        res.status(401).json({ erro: true });
     }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT);
