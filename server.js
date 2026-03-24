@@ -1,8 +1,11 @@
+const express = require('express');
 const axios = require('axios');
 
-const TOKEN = "Bearer APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010";
+const app = express();
 
-app.get('/api/mp', async (req, res) => {
+const TOKEN = "APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010";
+
+app.get('/api/ultimo', async (req, res) => {
     try {
         const response = await axios.get(
             'https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&limit=1',
@@ -16,17 +19,15 @@ app.get('/api/mp', async (req, res) => {
         const pagamento = response.data.results[0];
 
         res.json({
-            nome: pagamento.payer?.first_name || "Desconhecido",
+            nome: pagamento.payer?.first_name,
             email: pagamento.payer?.email,
             valor: pagamento.transaction_amount,
-            data: pagamento.date_created,
             status: pagamento.status
         });
 
     } catch (e) {
-        res.status(500).json({
-            erro: true,
-            msg: e.message
-        });
+        res.json({ erro: true });
     }
 });
+
+app.listen(process.env.PORT || 3000);
