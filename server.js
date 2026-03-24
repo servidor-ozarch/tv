@@ -96,7 +96,7 @@ async function capturarStream(slug) {
 }
 
 // 🚀 ROTA FLEXÍVEL
-app.get('/lista-top.txt', async (req, res) => {
+app.get('/streaming/lista.m3u8', async (req, res) => {
 
     const canal = req.query.canal;
 
