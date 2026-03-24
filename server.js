@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 
 const app = express();
 
-console.log("🔥 IPTV PUPPETEER TXT MASTER");
+console.log("🔥 IPTV CLICK + TOKEN MASTER");
 
 // 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
@@ -19,7 +19,7 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🚀 CAPTURA REAL DO STREAM (.txt)
+// 🚀 CAPTURA REAL COM CLIQUE
 async function capturarStream(slug) {
     let browser;
 
@@ -37,23 +37,57 @@ async function capturarStream(slug) {
 
         let streamEncontrado = null;
 
-        // 🎯 Captura requisições da página
-        page.on('response', async (response) => {
-            const responseUrl = response.url();
+        // 🚫 BLOQUEAR REDIRECIONAMENTO (ADS)
+        await page.setRequestInterception(true);
 
-            if (responseUrl.includes('.txt')) {
-                console.log("🎯 TXT encontrado:", responseUrl);
-                streamEncontrado = responseUrl;
+        page.on('request', (request) => {
+            const reqUrl = request.url();
+
+            // bloqueia domínios suspeitos
+            if (
+                reqUrl.includes('gappedpeatmen') ||
+                reqUrl.includes('doubleclick') ||
+                reqUrl.includes('ads') ||
+                reqUrl.includes('tracker')
+            ) {
+                return request.abort();
+            }
+
+            request.continue();
+        });
+
+        // 🎯 CAPTURA RESPOSTAS (.txt)
+        page.on('response', async (response) => {
+            const resUrl = response.url();
+
+            if (resUrl.includes('.txt')) {
+                console.log("🎯 TXT encontrado:", resUrl);
+                streamEncontrado = resUrl;
             }
         });
 
         await page.goto(url, {
-            waitUntil: 'networkidle2',
+            waitUntil: 'domcontentloaded',
             timeout: 60000
         });
 
-        // ⏳ Espera o player carregar
-        await new Promise(resolve => setTimeout(resolve, 6000));
+        // ⏳ Espera botão aparecer
+        try {
+            await page.waitForSelector('.startplayer', { timeout: 8000 });
+
+            console.log("🖱️ Botão encontrado, clicando...");
+
+            await page.evaluate(() => {
+                const btn = document.querySelector('.startplayer');
+                if (btn) btn.click();
+            });
+
+        } catch (e) {
+            console.log("⚠️ Botão não apareceu, seguindo...");
+        }
+
+        // ⏳ espera o player carregar e fazer requisições
+        await new Promise(r => setTimeout(r, 8000));
 
         await browser.close();
 
@@ -68,7 +102,7 @@ async function capturarStream(slug) {
     }
 }
 
-// 🔄 ATUALIZA CANAIS (CACHE)
+// 🔄 ATUALIZA CANAIS
 async function atualizarCanais() {
     console.log("🔄 Atualizando canais...");
 
@@ -91,13 +125,13 @@ async function atualizarCanais() {
     }
 }
 
-// ⏱️ Atualiza a cada 5 minutos
+// ⏱️ 5 MIN
 setInterval(atualizarCanais, 300000);
 
-// 🚀 Primeira execução
+// 🚀 PRIMEIRA EXECUÇÃO
 atualizarCanais();
 
-// 📺 GERAR LISTA IPTV
+// 📺 LISTA IPTV
 app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
@@ -122,7 +156,7 @@ app.get('/api/canais', (req, res) => {
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV Puppeteer ativo 🚀");
+    res.send("IPTV CLICK ativo 🚀");
 });
 
 // 🚫 FALLBACK
