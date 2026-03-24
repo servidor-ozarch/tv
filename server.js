@@ -35,7 +35,7 @@ async function buscarStream() {
 setInterval(buscarStream, 10000);
 
 // 📺 lista IPTV
-app.get('/api/teste-010203.m3u8', (req, res) => {
+app.get('/api/lista.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
     if (canal.url) {
