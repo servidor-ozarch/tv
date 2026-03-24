@@ -1,9 +1,9 @@
 const express = require('express');
-const https = require('https');
+const puppeteer = require('puppeteer');
 
 const app = express();
 
-console.log("🔥 IPTV TXT FLEX CORRIGIDO");
+console.log("🔥 IPTV JS CAPTURE MASTER");
 
 // 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
@@ -19,109 +19,50 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🔧 REQUEST COM HEADERS (ANTI-BLOQUEIO)
-function getHTML(url) {
-    return new Promise((resolve, reject) => {
-        const options = {
-            headers: {
-                "User-Agent": "Mozilla/5.0",
-                "Accept": "*/*",
-                "Referer": "https://www3.embedtv.best/",
-                "Origin": "https://www3.embedtv.best"
-            }
-        };
-
-        https.get(url, options, (res) => {
-            let data = "";
-
-            res.on("data", chunk => data += chunk);
-            res.on("end", () => resolve(data));
-
-        }).on("error", reject);
-    });
-}
-
-// 🔍 CAPTURA SOMENTE .TXT (MELHORADO)
-function extrairStreamTXT(html) {
-    const regex = /https?:\/\/[^"' ]+\.txt[^"' ]*/gi;
-    const matches = html.match(regex);
-
-    if (!matches) return null;
-
-    return matches[0];
-}
-
-// 🔍 LINKS INTERNOS
-function extrairLinks(html) {
-    const links = [];
-    const regex = /(https?:\/\/[^"' ]+)/g;
-    let match;
-
-    while ((match = regex.exec(html)) !== null) {
-        if (
-            match[0].includes("embed") ||
-            match[0].includes("player") ||
-            match[0].includes(".php") ||
-            match[0].includes(".html") ||
-            match[0].includes(".js")
-        ) {
-            links.push(match[0]);
-        }
-    }
-
-    return links;
-}
-
-// ✅ VALIDAÇÃO FLEXÍVEL (NÃO TRAVA MAIS)
-async function validarTXT(url) {
-    try {
-        const data = await getHTML(url);
-
-        if (data && data.length > 10) {
-            return true;
-        }
-
-    } catch (e) {
-        console.log("Erro validarTXT:", e.message);
-    }
-
-    return false;
-}
-
-// 🔄 BUSCA PROFUNDA
-async function buscarStream(url, nivel = 0) {
-    if (nivel > 4) return null;
+// 🚀 CAPTURA REAL VIA JS (PUPPETEER)
+async function capturarStream(slug) {
+    let browser;
 
     try {
-        const html = await getHTML(url);
+        const url = BASE + slug;
 
-        // tenta capturar .txt
-        const stream = extrairStreamTXT(html);
+        console.log("🌐 Abrindo:", url);
 
-        if (stream) {
-            console.log("🔗 Encontrado:", stream);
+        browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
 
-            const valido = await validarTXT(stream);
+        const page = await browser.newPage();
 
-            if (valido) {
-                console.log("✅ Válido:", stream);
-                return stream;
+        // capturar requisições de rede
+        let streamEncontrado = null;
+
+        page.on('response', async (response) => {
+            const url = response.url();
+
+            if (url.includes('.txt')) {
+                console.log("🎯 TXT capturado:", url);
+                streamEncontrado = url;
             }
-        }
+        });
 
-        // tenta links internos
-        const links = extrairLinks(html);
+        await page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 60000
+        });
 
-        for (let link of links) {
-            const resultado = await buscarStream(link, nivel + 1);
-            if (resultado) return resultado;
-        }
+        // espera JS carregar
+        await new Promise(r => setTimeout(r, 5000));
+
+        await browser.close();
+
+        return streamEncontrado;
 
     } catch (e) {
-        console.log("Erro buscarStream:", e.message);
+        console.log("Erro Puppeteer:", e.message);
+        if (browser) await browser.close();
+        return null;
     }
-
-    return null;
 }
 
 // 🔄 ATUALIZA CANAIS
@@ -129,11 +70,10 @@ async function atualizarCanais() {
     console.log("🔄 Atualizando canais...");
 
     for (let canal of canais) {
-        const urlPagina = BASE + canal.slug;
 
         console.log("🔍 Buscando:", canal.nome);
 
-        const novoLink = await buscarStream(urlPagina);
+        const novoLink = await capturarStream(canal.slug);
 
         if (novoLink) {
             if (novoLink !== canal.url) {
@@ -148,7 +88,7 @@ async function atualizarCanais() {
     }
 }
 
-// ⏱️ 5 MINUTOS
+// ⏱️ 5 MIN
 setInterval(atualizarCanais, 300000);
 
 // 🚀 PRIMEIRA EXECUÇÃO
@@ -169,8 +109,6 @@ app.get('/api/lista-top.m3u8', (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.setHeader('Content-Disposition', 'inline');
-
     res.send(m3u);
 });
 
@@ -181,7 +119,7 @@ app.get('/api/canais', (req, res) => {
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV TXT FLEX ativo 🚀");
+    res.send("IPTV JS CAPTURE ativo 🚀");
 });
 
 // 🚫 FALLBACK
