@@ -6,7 +6,7 @@ const app = express();
 console.log("🔥 IPTV MASTER COM LOGO RODANDO");
 
 // 🌐 BASE DAS PÁGINAS
-const BASE = "https://www.cinetvembed.bond/embed/";
+const BASE = "https://www3.embedtv.best/";
 
 // 🖼️ BASE DOS LOGOS (RAW GITHUB)
 const BASE_LOGO = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
