@@ -1,98 +1,68 @@
 const express = require('express');
-const https = require('https');
-
 const app = express();
 
+console.log("🔥 SERVER CERTO RODANDO");
+
+app.use(express.json());
+
+// 🎬 canal dinâmico
 let canal = {
     nome: "Aracati",
-    url: null
+    url: "https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd" // pode trocar depois
 };
 
-// 🔧 função simples GET (sem axios)
-function getHTML(url) {
-    return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            let data = "";
-
-            res.on("data", chunk => data += chunk);
-            res.on("end", () => resolve(data));
-
-        }).on("error", reject);
-    });
-}
-
-// 🔍 buscar .m3u8
-function extrairM3U8(html) {
-    const match = html.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
-    return match ? match[0] : null;
-}
-
-// 🔍 extrair iframe
-function extrairIframe(html) {
-    const match = html.match(/<iframe[^>]+src="([^"]+)"/i);
-    return match ? match[1] : null;
-}
-
-// 🔄 processo principal
-async function buscarStream() {
-    try {
-        console.log("Buscando página principal...");
-
-        const html = await getHTML("https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd");
-
-        // 1️⃣ tenta direto
-        let link = extrairM3U8(html);
-
-        if (link) {
-            canal.url = link;
-            console.log("Encontrado direto:", link);
-            return;
-        }
-
-        // 2️⃣ tenta iframe
-        const iframe = extrairIframe(html);
-
-        if (iframe) {
-            console.log("Buscando iframe:", iframe);
-
-            const htmlIframe = await getHTML(iframe);
-
-            link = extrairM3U8(htmlIframe);
-
-            if (link) {
-                canal.url = link;
-                console.log("Encontrado no iframe:", link);
-                return;
-            }
-        }
-
-        console.log("Nenhum link encontrado");
-
-    } catch (e) {
-        console.log("Erro:", e.message);
-    }
-}
-
-// 🔄 loop
-setInterval(buscarStream, 10000);
-
-// 📺 lista IPTV
+// 📺 ROTA PRINCIPAL (SUA LISTA)
 app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
     if (canal.url) {
         m3u += `#EXTINF:-1,${canal.nome}\n${canal.url}\n`;
     } else {
-        m3u += `#EXTINF:-1,${canal.nome}\n# aguardando stream\n`;
+        m3u += `#EXTINF:-1,${canal.nome}\n# sem stream\n`;
     }
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('Content-Disposition', 'inline');
+
     res.send(m3u);
 });
 
-// 🟢 status
-app.get('/', (req, res) => {
-    res.send("Servidor rodando 🚀");
+// 🔄 atualizar link manualmente
+app.post('/api/update', (req, res) => {
+    const { url } = req.body;
+
+    if (!url || !url.includes('.m3u8')) {
+        return res.json({
+            status: "erro",
+            msg: "link inválido"
+        });
+    }
+
+    canal.url = url;
+
+    res.json({
+        status: "ok",
+        canal
+    });
 });
 
-app.listen(process.env.PORT || 3000);
+// 🧪 TESTE SIMPLES
+app.get('/teste', (req, res) => {
+    res.send("OK FUNCIONANDO");
+});
+
+// 🟢 STATUS
+app.get('/', (req, res) => {
+    res.send("API IPTV online 🚀");
+});
+
+// 🚫 FALLBACK (evita Cannot GET)
+app.use((req, res) => {
+    res.status(404).send("Rota não encontrada ❌");
+});
+
+// 🚀 START
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log("Servidor rodando na porta " + PORT);
+});
