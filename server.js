@@ -6,17 +6,17 @@ const app = express();
 console.log("🔥 IPTV MASTER COM LOGO RODANDO");
 
 // 🌐 BASE DAS PÁGINAS
-const BASE = "https://www.cxtv.com.br/tv-ao-vivo/";
+const BASE = "https://www.cinetvembed.bond/embed/";
 
 // 🖼️ BASE DOS LOGOS (RAW GITHUB)
 const BASE_LOGO = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
 
 // 📺 LISTA DE CANAIS
 let canais = [
-    { nome: "Aracati", slug: "tv-aracati-hd", url: null },
-    { nome: "Filmes", slug: "tv-filmes-hd", url: null },
-    { nome: "Séries", slug: "tv-series-hd", url: null },
-    { nome: "Música", slug: "tv-musica-hd", url: null }
+    { nome: "A&E", slug: "ae", url: null },
+    { nome: "Cinemax", slug: "cinemax", url: null },
+    { nome: "HBO", slug: "hbo", url: null },
+    { nome: "Premiere", slug: "premiere", url: null }
 ];
 
 // 🔧 REQUISIÇÃO HTTP COM HEADER DE NAVEGADOR
