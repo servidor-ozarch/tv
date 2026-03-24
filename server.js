@@ -1,27 +1,48 @@
 const express = require('express');
+const axios = require('axios');
+const cheerio = require('cheerio');
+
 const app = express();
 
-app.use(express.json());
+let canal = {
+    nome: "Aracati",
+    url: null
+};
 
-// 🎬 Lista de canais
-let canais = [
-    {
-        nome: "Aracati",
-        url: "https://video04.logicahost.com.br/tvaracati/tvaracati/chunklist_w1933205625.m3u8"
-    },
-    {
-        nome: "Canal 2",
-        url: "https://exemplo.com/stream2.m3u8"
+// 🔍 função que busca o .m3u8
+async function buscarStream() {
+    try {
+        console.log("Buscando stream...");
+
+        const { data } = await axios.get('https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd');
+
+        // 🔎 regex simples pra pegar .m3u8
+        const match = data.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
+
+        if (match && match[0]) {
+            canal.url = match[0];
+            console.log("Link encontrado:", canal.url);
+        } else {
+            console.log("Nenhum .m3u8 encontrado");
+        }
+
+    } catch (e) {
+        console.log("Erro ao buscar:", e.message);
     }
-];
+}
 
-// 📺 Gerar lista IPTV
+// 🔄 roda a cada 10 segundos
+setInterval(buscarStream, 10000);
+
+// 📺 lista IPTV
 app.get('/api/teste-010203.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
-    canais.forEach(c => {
-        m3u += `#EXTINF:-1,${c.nome}\n${c.url}\n`;
-    });
+    if (canal.url) {
+        m3u += `#EXTINF:-1,${canal.nome}\n${canal.url}\n`;
+    } else {
+        m3u += `#EXTINF:-1,${canal.nome}\n# aguardando stream\n`;
+    }
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Content-Disposition', 'inline');
@@ -29,37 +50,9 @@ app.get('/api/teste-010203.m3u8', (req, res) => {
     res.send(m3u);
 });
 
-// ➕ adicionar canal
-app.post('/add', (req, res) => {
-    const { nome, url } = req.body;
-
-    if (!nome || !url) {
-        return res.json({
-            status: "erro",
-            msg: "nome e url são obrigatórios"
-        });
-    }
-
-    canais.push({ nome, url });
-
-    res.json({
-        status: "ok",
-        total: canais.length
-    });
-});
-
-// 📺 listar canais (debug)
-app.get('/canais', (req, res) => {
-    res.json(canais);
-});
-
 // 🟢 status
 app.get('/', (req, res) => {
-    res.send("API IPTV online 🚀");
+    res.send("Servidor IPTV rodando 🚀");
 });
 
-// 🚀 porta
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Servidor rodando 🚀");
-});
+app.listen(process.env.PORT || 3000);
