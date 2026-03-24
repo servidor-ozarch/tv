@@ -3,15 +3,15 @@ const https = require('https');
 
 const app = express();
 
-console.log("🔥 IPTV FLEX MASTER COM LOGO RODANDO");
+console.log("🔥 IPTV FLEX TXT MASTER RODANDO");
 
-// 🌐 Base das páginas
+// 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
 
-// 🖼️ Base dos logos (GitHub RAW)
+// 🖼️ LOGOS
 const BASE_LOGO = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
 
-// 📺 Lista de canais (adicione novos canais facilmente)
+// 📺 CANAIS
 let canais = [
     { nome: "A&E", slug: "ae", url: null },
     { nome: "Cinemax", slug: "cinemax", url: null },
@@ -19,13 +19,13 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🔧 Requisição HTTP com header de navegador
+// 🔧 REQUEST
 function getHTML(url) {
     return new Promise((resolve, reject) => {
         const options = {
             headers: {
                 "User-Agent": "Mozilla/5.0",
-                "Accept": "text/html",
+                "Accept": "*/*",
                 "Connection": "keep-alive"
             }
         };
@@ -38,17 +38,18 @@ function getHTML(url) {
     });
 }
 
-// 🔍 Extrai link .m3u8 ou .txt
-function extrairStream(html) {
-    const match = html.match(/https?:\/\/[^"' ]+\.(m3u8|txt)[^"' ]*/);
+// 🔍 CAPTURA SOMENTE .TXT
+function extrairStreamTXT(html) {
+    const match = html.match(/https?:\/\/[^"' ]+\.txt[^"' ]*/i);
     return match ? match[0] : null;
 }
 
-// 🔍 Extrai links internos para busca recursiva
+// 🔍 LINKS INTERNOS
 function extrairLinks(html) {
     const links = [];
     const regex = /(https?:\/\/[^"' ]+)/g;
     let match;
+
     while ((match = regex.exec(html)) !== null) {
         if (
             match[0].includes("embed") ||
@@ -60,44 +61,73 @@ function extrairLinks(html) {
             links.push(match[0]);
         }
     }
+
     return links;
 }
 
-// 🔄 Busca recursiva de stream (até profundidade 4)
+// ✅ VALIDAR SE É PLAYLIST REAL
+async function validarTXT(url) {
+    try {
+        const data = await getHTML(url);
+
+        if (data.includes("#EXTM3U")) {
+            return true;
+        }
+
+    } catch (e) {
+        console.log("Erro validarTXT:", e.message);
+    }
+
+    return false;
+}
+
+// 🔄 BUSCA PROFUNDA
 async function buscarStream(url, nivel = 0) {
     if (nivel > 4) return null;
+
     try {
         const html = await getHTML(url);
 
-        // tenta direto
-        const stream = extrairStream(html);
-        if (stream) return stream;
+        // tenta pegar .txt
+        const stream = extrairStreamTXT(html);
 
-        // tenta links internos
+        if (stream) {
+            const valido = await validarTXT(stream);
+            if (valido) {
+                console.log("🎯 TXT válido encontrado:", stream);
+                return stream;
+            }
+        }
+
+        // tenta internos
         const links = extrairLinks(html);
+
         for (let link of links) {
             const resultado = await buscarStream(link, nivel + 1);
             if (resultado) return resultado;
         }
 
     } catch (e) {
-        console.log("Erro ao buscar stream:", e.message);
+        console.log("Erro buscarStream:", e.message);
     }
+
     return null;
 }
 
-// 🔄 Atualiza canais com cache inteligente
+// 🔄 ATUALIZA CANAIS (CACHE INTELIGENTE)
 async function atualizarCanais() {
     console.log("🔄 Atualizando canais...");
+
     for (let canal of canais) {
         const urlPagina = BASE + canal.slug;
+
         console.log("🔍 Buscando:", canal.nome);
 
         const novoLink = await buscarStream(urlPagina);
 
         if (novoLink) {
             if (novoLink !== canal.url) {
-                console.log("✅ Atualizado:", canal.nome, "->", novoLink);
+                console.log("✅ Atualizado:", canal.nome);
                 canal.url = novoLink;
             } else {
                 console.log("✔️ Mesmo link:", canal.nome);
@@ -108,18 +138,19 @@ async function atualizarCanais() {
     }
 }
 
-// ⏱️ Atualiza a cada 5 minutos
+// ⏱️ 5 MINUTOS
 setInterval(atualizarCanais, 300000);
 
-// 🚀 Primeira execução
+// 🚀 PRIMEIRA EXECUÇÃO
 atualizarCanais();
 
-// 📺 Lista IPTV dinâmica com logo
+// 📺 LISTA IPTV
 app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
     canais.forEach(c => {
         const logo = `${BASE_LOGO}${c.slug}.png`;
+
         if (c.url) {
             m3u += `#EXTINF:-1 tvg-name="${c.slug}" tvg-logo="${logo}" group-title="Canais",${c.nome}\n${c.url}\n`;
         } else {
@@ -129,25 +160,26 @@ app.get('/api/lista-top.m3u8', (req, res) => {
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Content-Disposition', 'inline');
+
     res.send(m3u);
 });
 
-// 📊 Debug: ver canais e links atuais
+// 📊 DEBUG
 app.get('/api/canais', (req, res) => {
     res.json(canais);
 });
 
-// 🟢 Status do servidor
+// 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV FLEX MASTER ativo 🚀");
+    res.send("IPTV TXT ativo 🚀");
 });
 
-// 🚫 Fallback para rotas inválidas
+// 🚫 FALLBACK
 app.use((req, res) => {
     res.status(404).send("Rota não encontrada ❌");
 });
 
-// 🚀 Start do servidor
+// 🚀 START
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log("Servidor rodando na porta " + PORT);
