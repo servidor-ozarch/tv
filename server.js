@@ -1,6 +1,5 @@
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
+const https = require('https');
 
 const app = express();
 
@@ -9,30 +8,73 @@ let canal = {
     url: null
 };
 
-// 🔍 função que busca o .m3u8
+// 🔧 função simples GET (sem axios)
+function getHTML(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            let data = "";
+
+            res.on("data", chunk => data += chunk);
+            res.on("end", () => resolve(data));
+
+        }).on("error", reject);
+    });
+}
+
+// 🔍 buscar .m3u8
+function extrairM3U8(html) {
+    const match = html.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
+    return match ? match[0] : null;
+}
+
+// 🔍 extrair iframe
+function extrairIframe(html) {
+    const match = html.match(/<iframe[^>]+src="([^"]+)"/i);
+    return match ? match[1] : null;
+}
+
+// 🔄 processo principal
 async function buscarStream() {
     try {
-        console.log("Buscando stream...");
+        console.log("Buscando página principal...");
 
-        const { data } = await axios.get('https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd');
+        const html = await getHTML("https://www.cxtv.com.br/tv-ao-vivo/tv-aracati-hd");
 
-        // 🔎 regex simples pra pegar .m3u8
-        const match = data.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
+        // 1️⃣ tenta direto
+        let link = extrairM3U8(html);
 
-        if (match && match[0]) {
-            canal.url = match[0];
-            console.log("Link encontrado:", canal.url);
-        } else {
-            console.log("Nenhum .m3u8 encontrado");
+        if (link) {
+            canal.url = link;
+            console.log("Encontrado direto:", link);
+            return;
         }
 
+        // 2️⃣ tenta iframe
+        const iframe = extrairIframe(html);
+
+        if (iframe) {
+            console.log("Buscando iframe:", iframe);
+
+            const htmlIframe = await getHTML(iframe);
+
+            link = extrairM3U8(htmlIframe);
+
+            if (link) {
+                canal.url = link;
+                console.log("Encontrado no iframe:", link);
+                return;
+            }
+        }
+
+        console.log("Nenhum link encontrado");
+
     } catch (e) {
-        console.log("Erro ao buscar:", e.message);
+        console.log("Erro:", e.message);
     }
 }
 
-// 🔄 roda a cada 30 segundos
-setInterval(buscarStream, 30000);
+// 🔄 loop
+setInterval(buscarStream, 10000);
 
 // 📺 lista IPTV
 app.get('/api/lista-top.m3u8', (req, res) => {
@@ -45,14 +87,12 @@ app.get('/api/lista-top.m3u8', (req, res) => {
     }
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.setHeader('Content-Disposition', 'inline');
-
     res.send(m3u);
 });
 
 // 🟢 status
 app.get('/', (req, res) => {
-    res.send("Servidor IPTV rodando 🚀");
+    res.send("Servidor rodando 🚀");
 });
 
 app.listen(process.env.PORT || 3000);
