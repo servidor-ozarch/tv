@@ -41,8 +41,8 @@ function getHTML(url) {
 }
 
 // 🔍 EXTRAI LINK M3U8
-function extrairM3U8(html) {
-    const match = html.match(/https?:\/\/[^"' ]+\.m3u8[^"' ]*/);
+function extrairStream(html) {
+    const match = html.match(/https?:\/\/[^"' ]+\.(m3u8|txt)[^"' ]*/);
     return match ? match[0] : null;
 }
 
@@ -75,7 +75,7 @@ async function buscarStream(url, nivel = 0) {
         const html = await getHTML(url);
 
         // tenta direto
-        const m3u8 = extrairM3U8(html);
+        const stream = extrairStream(html);
         if (m3u8) return m3u8;
 
         // tenta internos
