@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 
 const app = express();
 
-console.log("🔥 IPTV JS CAPTURE MASTER");
+console.log("🔥 IPTV PUPPETEER TXT MASTER");
 
 // 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
@@ -19,7 +19,7 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🚀 CAPTURA REAL VIA JS (PUPPETEER)
+// 🚀 CAPTURA REAL DO STREAM (.txt)
 async function capturarStream(slug) {
     let browser;
 
@@ -29,20 +29,21 @@ async function capturarStream(slug) {
         console.log("🌐 Abrindo:", url);
 
         browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            headless: true
         });
 
         const page = await browser.newPage();
 
-        // capturar requisições de rede
         let streamEncontrado = null;
 
+        // 🎯 Captura requisições da página
         page.on('response', async (response) => {
-            const url = response.url();
+            const responseUrl = response.url();
 
-            if (url.includes('.txt')) {
-                console.log("🎯 TXT capturado:", url);
-                streamEncontrado = url;
+            if (responseUrl.includes('.txt')) {
+                console.log("🎯 TXT encontrado:", responseUrl);
+                streamEncontrado = responseUrl;
             }
         });
 
@@ -51,21 +52,23 @@ async function capturarStream(slug) {
             timeout: 60000
         });
 
-        // espera JS carregar
-        await new Promise(r => setTimeout(r, 5000));
+        // ⏳ Espera o player carregar
+        await new Promise(resolve => setTimeout(resolve, 6000));
 
         await browser.close();
 
         return streamEncontrado;
 
     } catch (e) {
-        console.log("Erro Puppeteer:", e.message);
+        console.log("Erro capturarStream:", e.message);
+
         if (browser) await browser.close();
+
         return null;
     }
 }
 
-// 🔄 ATUALIZA CANAIS
+// 🔄 ATUALIZA CANAIS (CACHE)
 async function atualizarCanais() {
     console.log("🔄 Atualizando canais...");
 
@@ -88,13 +91,13 @@ async function atualizarCanais() {
     }
 }
 
-// ⏱️ 5 MIN
+// ⏱️ Atualiza a cada 5 minutos
 setInterval(atualizarCanais, 300000);
 
-// 🚀 PRIMEIRA EXECUÇÃO
+// 🚀 Primeira execução
 atualizarCanais();
 
-// 📺 LISTA IPTV
+// 📺 GERAR LISTA IPTV
 app.get('/api/lista-top.m3u8', (req, res) => {
     let m3u = "#EXTM3U\n";
 
@@ -119,7 +122,7 @@ app.get('/api/canais', (req, res) => {
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV JS CAPTURE ativo 🚀");
+    res.send("IPTV Puppeteer ativo 🚀");
 });
 
 // 🚫 FALLBACK
