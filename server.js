@@ -1,23 +1,27 @@
-const express = require('express');
-const app = express();
+const cheerio = require('cheerio');
+const axios = require('axios');
 
-// rota principal (corrige seu erro)
-app.get('/', (req, res) => {
-    res.send("API online 🚀");
-});
+app.get('/api/extrair', async (req, res) => {
+    try {
+        const { data } = await axios.get('https://www3.embedtv.best/premiere');
+        const $ = cheerio.load(data);
 
-// sua API
-app.get('/api/eventos', (req, res) => {
-    res.json({
-        status: true,
-        data: [
-            { nome: "Flamengo x Palmeiras", hora: "16:00" }
-        ]
-    });
-});
+        let links = [];
 
-// porta dinâmica (Render)
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Servidor rodando");
+        $('a').each((i, el) => {
+            const link = $(el).attr('href');
+
+            if (link) {
+                // 🔥 filtra m3u8 OU txt
+                if (link.includes('.m3u8') || link.includes('.txt')) {
+                    links.push(link);
+                }
+            }
+        });
+
+        res.json({ lista: links });
+
+    } catch (e) {
+        res.json({ erro: true, msg: e.toString() });
+    }
 });
