@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 
 const app = express();
 
-console.log("🔥 IPTV CLICK + TOKEN MASTER");
+console.log("🔥 IPTV IFRAME MASTER");
 
 // 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
@@ -19,7 +19,7 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🚀 CAPTURA REAL COM CLIQUE
+// 🚀 CAPTURA REAL
 async function capturarStream(slug) {
     let browser;
 
@@ -37,26 +37,7 @@ async function capturarStream(slug) {
 
         let streamEncontrado = null;
 
-        // 🚫 BLOQUEAR REDIRECIONAMENTO (ADS)
-        await page.setRequestInterception(true);
-
-        page.on('request', (request) => {
-            const reqUrl = request.url();
-
-            // bloqueia domínios suspeitos
-            if (
-                reqUrl.includes('gappedpeatmen') ||
-                reqUrl.includes('doubleclick') ||
-                reqUrl.includes('ads') ||
-                reqUrl.includes('tracker')
-            ) {
-                return request.abort();
-            }
-
-            request.continue();
-        });
-
-        // 🎯 CAPTURA RESPOSTAS (.txt)
+        // 🎯 CAPTURA QUALQUER .TXT
         page.on('response', async (response) => {
             const resUrl = response.url();
 
@@ -71,22 +52,53 @@ async function capturarStream(slug) {
             timeout: 60000
         });
 
-        // ⏳ Espera botão aparecer
-        try {
-            await page.waitForSelector('.startplayer', { timeout: 8000 });
+        // ❌ REMOVE BOTÃO FAKE
+        await page.evaluate(() => {
+            const btn = document.querySelector('.startplayer');
+            if (btn) {
+                btn.remove();
+                console.log("Botão fake removido");
+            }
+        });
 
-            console.log("🖱️ Botão encontrado, clicando...");
+        // ⏳ espera DOM estabilizar
+        await new Promise(r => setTimeout(r, 4000));
 
-            await page.evaluate(() => {
-                const btn = document.querySelector('.startplayer');
-                if (btn) btn.click();
-            });
+        // 🔍 PERCORRE IFRAMES
+        const frames = page.frames();
 
-        } catch (e) {
-            console.log("⚠️ Botão não apareceu, seguindo...");
+        for (let frame of frames) {
+            try {
+                const frameUrl = frame.url();
+
+                if (
+                    frameUrl.includes("embed") ||
+                    frameUrl.includes("player") ||
+                    frameUrl.includes("video")
+                ) {
+                    console.log("🎥 Iframe encontrado:", frameUrl);
+
+                    // ▶️ força player dentro do iframe
+                    await frame.evaluate(() => {
+                        const video = document.querySelector('video');
+
+                        if (video) {
+                            video.muted = true;
+                            video.play().catch(() => {});
+                        }
+
+                        // tenta clicar em possíveis players JS
+                        const btnPlay = document.querySelector('.vjs-big-play-button');
+                        if (btnPlay) btnPlay.click();
+                    });
+                }
+
+            } catch (e) {
+                console.log("Erro no iframe:", e.message);
+            }
         }
 
-        // ⏳ espera o player carregar e fazer requisições
+        // ⏳ tempo para stream aparecer
         await new Promise(r => setTimeout(r, 8000));
 
         await browser.close();
@@ -125,10 +137,10 @@ async function atualizarCanais() {
     }
 }
 
-// ⏱️ 5 MIN
+// ⏱️ Atualiza a cada 5 minutos
 setInterval(atualizarCanais, 300000);
 
-// 🚀 PRIMEIRA EXECUÇÃO
+// 🚀 Primeira execução
 atualizarCanais();
 
 // 📺 LISTA IPTV
@@ -156,7 +168,7 @@ app.get('/api/canais', (req, res) => {
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV CLICK ativo 🚀");
+    res.send("IPTV IFRAME ativo 🚀");
 });
 
 // 🚫 FALLBACK
