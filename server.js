@@ -76,7 +76,7 @@ async function buscarStream(url, nivel = 0) {
 
         // tenta direto
         const stream = extrairStream(html);
-        if (m3u8) return m3u8;
+        if (stream) return stream;
 
         // tenta internos
         const links = extrairLinks(html);
@@ -91,7 +91,7 @@ async function buscarStream(url, nivel = 0) {
     }
 
     return null;
-}
+            }
 
 // 🔄 ATUALIZA CANAIS COM CACHE INTELIGENTE
 async function atualizarCanais() {
