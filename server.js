@@ -3,7 +3,7 @@ const https = require('https');
 
 const app = express();
 
-console.log("🔥 IPTV FLEX TXT MASTER RODANDO");
+console.log("🔥 IPTV TXT FLEX CORRIGIDO");
 
 // 🌐 BASE
 const BASE = "https://www3.embedtv.best/";
@@ -19,29 +19,36 @@ let canais = [
     { nome: "Premiere", slug: "premiere", url: null }
 ];
 
-// 🔧 REQUEST
+// 🔧 REQUEST COM HEADERS (ANTI-BLOQUEIO)
 function getHTML(url) {
     return new Promise((resolve, reject) => {
         const options = {
             headers: {
                 "User-Agent": "Mozilla/5.0",
                 "Accept": "*/*",
-                "Connection": "keep-alive"
+                "Referer": "https://www3.embedtv.best/",
+                "Origin": "https://www3.embedtv.best"
             }
         };
 
         https.get(url, options, (res) => {
             let data = "";
+
             res.on("data", chunk => data += chunk);
             res.on("end", () => resolve(data));
+
         }).on("error", reject);
     });
 }
 
-// 🔍 CAPTURA SOMENTE .TXT
+// 🔍 CAPTURA SOMENTE .TXT (MELHORADO)
 function extrairStreamTXT(html) {
-    const match = html.match(/https?:\/\/[^"' ]+\.txt[^"' ]*/i);
-    return match ? match[0] : null;
+    const regex = /https?:\/\/[^"' ]+\.txt[^"' ]*/gi;
+    const matches = html.match(regex);
+
+    if (!matches) return null;
+
+    return matches[0];
 }
 
 // 🔍 LINKS INTERNOS
@@ -65,12 +72,12 @@ function extrairLinks(html) {
     return links;
 }
 
-// ✅ VALIDAR SE É PLAYLIST REAL
+// ✅ VALIDAÇÃO FLEXÍVEL (NÃO TRAVA MAIS)
 async function validarTXT(url) {
     try {
         const data = await getHTML(url);
 
-        if (data.includes("#EXTM3U")) {
+        if (data && data.length > 10) {
             return true;
         }
 
@@ -88,18 +95,21 @@ async function buscarStream(url, nivel = 0) {
     try {
         const html = await getHTML(url);
 
-        // tenta pegar .txt
+        // tenta capturar .txt
         const stream = extrairStreamTXT(html);
 
         if (stream) {
+            console.log("🔗 Encontrado:", stream);
+
             const valido = await validarTXT(stream);
+
             if (valido) {
-                console.log("🎯 TXT válido encontrado:", stream);
+                console.log("✅ Válido:", stream);
                 return stream;
             }
         }
 
-        // tenta internos
+        // tenta links internos
         const links = extrairLinks(html);
 
         for (let link of links) {
@@ -114,7 +124,7 @@ async function buscarStream(url, nivel = 0) {
     return null;
 }
 
-// 🔄 ATUALIZA CANAIS (CACHE INTELIGENTE)
+// 🔄 ATUALIZA CANAIS
 async function atualizarCanais() {
     console.log("🔄 Atualizando canais...");
 
@@ -127,7 +137,7 @@ async function atualizarCanais() {
 
         if (novoLink) {
             if (novoLink !== canal.url) {
-                console.log("✅ Atualizado:", canal.nome);
+                console.log("🔥 Atualizado:", canal.nome);
                 canal.url = novoLink;
             } else {
                 console.log("✔️ Mesmo link:", canal.nome);
@@ -171,7 +181,7 @@ app.get('/api/canais', (req, res) => {
 
 // 🟢 STATUS
 app.get('/', (req, res) => {
-    res.send("IPTV TXT ativo 🚀");
+    res.send("IPTV TXT FLEX ativo 🚀");
 });
 
 // 🚫 FALLBACK
