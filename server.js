@@ -4,13 +4,19 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ⚠️ RESPONDE IMEDIATO (CRÍTICO PRO RENDER)
+app.get('/', (req, res) => {
+    res.status(200).send("OK");
+});
+
+// ================= CONFIG =================
 const URL_BASE = "https://www4.embedtv.best";
 
 // ================= CACHE =================
 const cache = {};
 const CACHE_TTL = 1000 * 60 * 10;
 
-// ================= LISTA =================
+// ================= CANAIS =================
 const canais = [
     { nome: "Cinemax", canal: "cinemax", categoria: "Filmes" },
     { nome: "HBO", canal: "hbo", categoria: "Filmes" },
@@ -30,7 +36,7 @@ app.get('/canais', (req, res) => {
     });
 });
 
-// ================= STREAM (SEM PUPPETEER) =================
+// ================= STREAM =================
 app.get('/stream', async (req, res) => {
     const canal = req.query.canal;
 
@@ -40,7 +46,6 @@ app.get('/stream', async (req, res) => {
 
     // CACHE
     if (cache[canal] && Date.now() - cache[canal].time < CACHE_TTL) {
-        console.log("CACHE:", canal);
         return res.send(cache[canal].url);
     }
 
@@ -50,12 +55,11 @@ app.get('/stream', async (req, res) => {
                 "User-Agent": "Mozilla/5.0",
                 "Referer": URL_BASE
             },
-            timeout: 15000
+            timeout: 10000
         });
 
         const html = response.data;
 
-        // 🔍 Extrair .m3u8 direto do HTML
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
 
         if (match) {
@@ -66,7 +70,6 @@ app.get('/stream', async (req, res) => {
                 time: Date.now()
             };
 
-            console.log("CAPTURADO:", canal);
             return res.send(streamUrl);
         }
 
@@ -78,11 +81,7 @@ app.get('/stream', async (req, res) => {
     }
 });
 
-// ================= STATUS =================
-app.get('/', (req, res) => {
-    res.send("Servidor ONLINE 🚀");
-});
-
-app.listen(PORT, () => {
-    console.log(`Rodando na porta ${PORT}`);
+// ⚠️ START RÁPIDO (CRÍTICO)
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
