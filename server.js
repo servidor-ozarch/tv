@@ -3,60 +3,84 @@ const puppeteer = require('puppeteer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/stream', async (req, res) => {
-    const canal = req.query.canal; // Ex: /stream?canal=cinemax
-    
-    if (!canal) {
-        return res.status(400).send("Informe o canal. Ex: ?canal=cinemax");
-    }
+// Variável global para reutilizar o navegador e economizar RAM
+let browserInstance = null;
 
-    let browser;
-    try {
-        // Configuração vital para rodar em servidores (como Render/Heroku)
-        browser = await puppeteer.launch({
+async function getBrowser() {
+    if (!browserInstance) {
+        browserInstance = await puppeteer.launch({
             headless: "new",
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--single-process'
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process' // Essencial para rodar em instâncias pequenas
             ]
         });
+    }
+    return browserInstance;
+}
 
-        const page = await browser.newPage();
+app.get('/stream', async (req, res) => {
+    const canal = req.query.canal;
+    
+    if (!canal) {
+        return res.status(400).send("Informe o canal. Ex: /stream?canal=cinemax");
+    }
+
+    let page;
+    try {
+        const browser = await getBrowser();
+        page = await browser.newPage();
+
+        // Timeout curto para a página para não travar o servidor
+        page.setDefaultNavigationTimeout(30000);
+
         let linkDetectado = null;
 
-        // Escuta as requisições de rede
+        // Interceptação de rede para capturar o .txt ou .m3u8
         await page.setRequestInterception(true);
         page.on('request', (request) => {
             const url = request.url();
-            // Lógica de detecção similar ao seu código Java/Sketchware
-            if (url.includes('.txt') || url.includes('.m3u8') || url.includes('stream')) {
+            if (url.includes('.txt') || url.includes('.m3u8') || url.includes('playlist.m3u8')) {
                 linkDetectado = url;
             }
             request.continue();
         });
 
         const urlAlvo = `https://www4.embedtv.best/${canal}`;
-        await page.goto(urlAlvo, { waitUntil: 'networkidle2', timeout: 30000 });
-
-        // Espera opcional para garantir o carregamento do iframe
-        await new Promise(r => setTimeout(r, 5000));
+        
+        // Navega e aguarda um pouco o carregamento do player
+        await page.goto(urlAlvo, { waitUntil: 'networkidle2' });
+        await new Promise(r => setTimeout(r, 4000)); 
 
         if (linkDetectado) {
-            // Retorna o link em formato texto plano para facilitar pro seu app
+            console.log(`[OZARCH] Capturado: ${canal} -> ${linkDetectado}`);
             res.send(linkDetectado);
         } else {
-            res.status(404).send("Link não encontrado no momento.");
+            res.status(404).send("Stream não detectado. Tente novamente.");
         }
 
     } catch (error) {
-        res.status(500).send("Erro no servidor: " + error.message);
+        console.error("Erro na captura:", error.message);
+        res.status(500).send("Erro interno ao processar o stream.");
     } finally {
-        if (browser) await browser.close();
+        if (page) {
+            await page.close(); // Fecha apenas a aba, mantém o browser vivo
+        }
     }
 });
 
+// Fecha o navegador se o processo do Node for encerrado
+process.on('SIGINT', async () => {
+    if (browserInstance) await browserInstance.close();
+    process.exit();
+});
+
 app.listen(PORT, () => {
-    console.log(`OZARCH rodando na porta ${PORT}`);
+    console.log(`OZARCH ativo na porta ${PORT}`);
 });
