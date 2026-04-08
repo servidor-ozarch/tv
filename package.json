@@ -1,14 +1,14 @@
 {
-  "name": "ozarch",
+  "name": "buzerabug",
   "version": "1.0.0",
-  "description": "Logística de captura de stream dinâmico",
+  "description": "Servidor de captura de stream otimizado",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "puppeteer": "^19.11.1"
+    "puppeteer": "19.11.1"
   },
   "engines": {
     "node": ">=18.0.0"
