@@ -8,7 +8,7 @@ const URL_BASE = "https://www4.embedtv.best";
 
 // ================= CACHE =================
 const cache = {};
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutos
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutos
 
 // ================= BROWSER =================
 let browserInstance = null;
@@ -28,7 +28,7 @@ async function getBrowser() {
         isLaunching = true;
 
         browserInstance = await puppeteer.launch({
-            headless: "new",
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -38,9 +38,13 @@ async function getBrowser() {
             ]
         });
 
-        console.log("Browser iniciado");
+        console.log("✅ Browser iniciado");
         return browserInstance;
 
+    } catch (err) {
+        console.error("❌ ERRO AO INICIAR BROWSER:", err);
+        browserInstance = null;
+        throw err;
     } finally {
         isLaunching = false;
     }
@@ -53,28 +57,22 @@ const canais = [
     { nome: "SBT", canal: "sbt", categoria: "TV Aberta" }
 ];
 
-// ================= GERAR LISTA DINÂMICA =================
-function gerarLista() {
-    return canais.map((c, index) => ({
-        id: index + 1,
-        nome: c.nome,
-        canal: c.canal,
-        categoria: c.categoria,
-        logo: `https://logo.clearbit.com/${c.canal}.com`,
-        stream: `/stream?canal=${c.canal}`
-    }));
-}
-
 // ================= API CANAIS =================
 app.get('/canais', (req, res) => {
     res.json({
         status: "online",
         total: canais.length,
-        canais: gerarLista()
+        canais: canais.map((c, i) => ({
+            id: i + 1,
+            nome: c.nome,
+            categoria: c.categoria,
+            canal: c.canal,
+            stream: `/stream?canal=${c.canal}`
+        }))
     });
 });
 
-// ================= API STREAM =================
+// ================= STREAM =================
 app.get('/stream', async (req, res) => {
     const canal = req.query.canal;
 
@@ -83,10 +81,9 @@ app.get('/stream', async (req, res) => {
     }
 
     // 🔥 CACHE
-    const cached = cache[canal];
-    if (cached && (Date.now() - cached.time < CACHE_TTL)) {
-        console.log("CACHE HIT:", canal);
-        return res.send(cached.url);
+    if (cache[canal] && Date.now() - cache[canal].time < CACHE_TTL) {
+        console.log("⚡ CACHE:", canal);
+        return res.send(cache[canal].url);
     }
 
     let page;
@@ -94,6 +91,10 @@ app.get('/stream', async (req, res) => {
     try {
         const browser = await getBrowser();
         page = await browser.newPage();
+
+        await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        );
 
         await page.setRequestInterception(true);
 
@@ -115,30 +116,29 @@ app.get('/stream', async (req, res) => {
 
         await page.goto(`${URL_BASE}/${canal}`, {
             waitUntil: 'domcontentloaded',
-            timeout: 25000
+            timeout: 30000
         });
 
-        // Espera inteligente
-        for (let i = 0; i < 10; i++) {
+        // ⏳ espera inteligente
+        for (let i = 0; i < 20; i++) {
             if (linkDetectado) break;
             await new Promise(r => setTimeout(r, 500));
         }
 
         if (linkDetectado) {
-            // 🔥 SALVA NO CACHE
             cache[canal] = {
                 url: linkDetectado,
                 time: Date.now()
             };
 
-            console.log("STREAM:", canal);
+            console.log("🎯 CAPTURADO:", canal);
             return res.send(linkDetectado);
         }
 
         res.status(404).send("Stream não detectado");
 
     } catch (err) {
-        console.error("Erro:", err.message);
+        console.error("❌ ERRO COMPLETO:", err);
         res.status(500).send("Erro interno");
 
     } finally {
@@ -148,26 +148,21 @@ app.get('/stream', async (req, res) => {
     }
 });
 
-// ================= STATUS =================
+// ================= HOME =================
 app.get('/', (req, res) => {
     res.send("Servidor ONLINE 🚀");
 });
 
-// ================= PROTEÇÕES =================
+// ================= PROTEÇÃO =================
 process.on('unhandledRejection', err => {
-    console.error('Erro não tratado:', err);
+    console.error('ERRO NÃO TRATADO:', err);
 });
 
 process.on('uncaughtException', err => {
-    console.error('Exceção:', err);
-});
-
-process.on('SIGINT', async () => {
-    if (browserInstance) await browserInstance.close();
-    process.exit();
+    console.error('EXCEÇÃO:', err);
 });
 
 // ================= START =================
 app.listen(PORT, () => {
-    console.log(`Rodando na porta ${PORT}`);
+    console.log(`🚀 Rodando na porta ${PORT}`);
 });
