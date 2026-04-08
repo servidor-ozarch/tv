@@ -1,68 +1,62 @@
+const express = require('express');
 const puppeteer = require('puppeteer');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-async function extrairLinkStream(canal) {
-    const urlAlvo = `https://www4.embedtv.best/${canal}`;
+app.get('/stream', async (req, res) => {
+    const canal = req.query.canal; // Ex: /stream?canal=cinemax
     
-    // Lançar navegador em modo "headless" (escondido)
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    if (!canal) {
+        return res.status(400).send("Informe o canal. Ex: ?canal=cinemax");
+    }
 
-    const page = await browser.newPage();
-
-    // Configurar User-Agent para parecer um navegador real
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36');
-
-    let linkDetectado = null;
-
-    // INTERCEPTAÇÃO DE REDE (Igual ao seu shouldInterceptRequest)
-    await page.setRequestInterception(true);
-
-    page.on('request', request => {
-        const url = request.url();
-        
-        // Filtro lógico baseado no seu código Java
-        if (
-            url.includes('.m3u8') || 
-            url.includes('.txt') || 
-            url.includes('chunklist') ||
-            url.includes('manifest')
-        ) {
-            linkDetectado = url;
-            console.log(`[SUCESSO] Link capturado: ${linkDetectado}`);
-        }
-        
-        request.continue();
-    });
-
+    let browser;
     try {
-        // Navega até o site do canal
+        // Configuração vital para rodar em servidores (como Render/Heroku)
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--single-process'
+            ]
+        });
+
+        const page = await browser.newPage();
+        let linkDetectado = null;
+
+        // Escuta as requisições de rede
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+            const url = request.url();
+            // Lógica de detecção similar ao seu código Java/Sketchware
+            if (url.includes('.txt') || url.includes('.m3u8') || url.includes('stream')) {
+                linkDetectado = url;
+            }
+            request.continue();
+        });
+
+        const urlAlvo = `https://www4.embedtv.best/${canal}`;
         await page.goto(urlAlvo, { waitUntil: 'networkidle2', timeout: 30000 });
 
-        // Aguarda um pouco para o JavaScript interno do iframe rodar
-        await new Promise(r => setTimeout(r, 5000)); 
+        // Espera opcional para garantir o carregamento do iframe
+        await new Promise(r => setTimeout(r, 5000));
 
-    } catch (e) {
-        console.error("Erro na navegação:", e.message);
+        if (linkDetectado) {
+            // Retorna o link em formato texto plano para facilitar pro seu app
+            res.send(linkDetectado);
+        } else {
+            res.status(404).send("Link não encontrado no momento.");
+        }
+
+    } catch (error) {
+        res.status(500).send("Erro no servidor: " + error.message);
     } finally {
-        await browser.close();
+        if (browser) await browser.close();
     }
+});
 
-    return linkDetectado;
-}
-
-// Exemplo de uso para gerar a saída M3U8
-async function gerarLista(canalNome) {
-    const streamUrl = await extrairLinkStream(canalNome);
-    
-    if (streamUrl) {
-        const m3u8Dinamico = `#EXTM3U\n#EXTINF:-1,${canalNome}\n${streamUrl}`;
-        console.log("\n--- SUA LISTA DINÂMICA ---");
-        console.log(m3u8Dinamico);
-    } else {
-        console.log("Não foi possível capturar o stream.");
-    }
-}
-
-gerarLista('cinemax');
+app.listen(PORT, () => {
+    console.log(`OZARCH rodando na porta ${PORT}`);
+});
