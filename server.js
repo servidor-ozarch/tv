@@ -6,86 +6,76 @@ app.get('/stream', async (req, res) => {
     }
 
     try {
-        // ================= 1. PÁGINA PRINCIPAL =================
-        const mainResponse = await axios.get(`${URL_BASE}/${canal}`, {
+        // ================= 1. CARREGA PÁGINA =================
+        const pageResponse = await axios.get(`${URL_BASE}/${canal}`, {
             headers: {
                 "User-Agent": "Mozilla/5.0",
                 "Accept": "text/html",
                 "Referer": URL_BASE
             },
-            timeout: 10000
+            timeout: 15000
         });
 
-        const html = mainResponse.data;
+        const html = pageResponse.data;
 
-        // ================= 2. TENTA PEGAR data-id =================
+        // ================= 2. TENTA EXTRAIR ID =================
         let videoId = null;
-        const idMatch = html.match(/data-id="([^"]+)"/);
 
-        if (idMatch) {
-            videoId = idMatch[1];
+        // método 1 (principal)
+        let match = html.match(/data-id="([^"]+)"/);
+        if (match) videoId = match[1];
+
+        // método 2 (fallback)
+        if (!videoId) {
+            match = html.match(/source['"]?\s*:\s*['"]([^'"]+)['"]/);
+            if (match) videoId = match[1];
         }
 
-        // ================= 3. FALLBACK: PEGAR IFRAME =================
+        // método 3 (fallback mais agressivo)
         if (!videoId) {
-            const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"/);
-
-            if (iframeMatch) {
-                const iframeUrl = iframeMatch[1];
-
-                const iframeResponse = await axios.get(iframeUrl, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0",
-                        "Referer": `${URL_BASE}/${canal}`
-                    },
-                    timeout: 10000
-                });
-
-                const iframeHtml = iframeResponse.data;
-
-                const iframeIdMatch = iframeHtml.match(/data-id="([^"]+)"/);
-
-                if (iframeIdMatch) {
-                    videoId = iframeIdMatch[1];
-                }
-            }
+            match = html.match(/embed\/([a-zA-Z0-9]+)/);
+            if (match) videoId = match[1];
         }
 
-        // ================= 4. SE NÃO ACHOU ID =================
         if (!videoId) {
+            console.log("❌ HTML não contém ID:", html.substring(0, 300));
             return res.status(404).send("ID não encontrado");
         }
 
-        // ================= 5. CHAMA API REAL =================
-        const apiUrl = `https://www4.embedtv.best/api/source/${videoId}`;
+        // ================= 3. CHAMA API INTERNA =================
+        const apiUrl = `${URL_BASE}/api/source/${videoId}`;
 
         const apiResponse = await axios.post(apiUrl, {}, {
             headers: {
                 "User-Agent": "Mozilla/5.0",
                 "Referer": `${URL_BASE}/${canal}`,
-                "Origin": "https://www4.embedtv.best",
-                "Content-Type": "application/json"
+                "Origin": URL_BASE,
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
             },
-            timeout: 10000
+            timeout: 15000
         });
 
         const data = apiResponse.data;
 
-        // ================= 6. EXTRAI STREAM =================
+        // ================= 4. PROCESSA RESPOSTA =================
         if (data && data.data && data.data.length > 0) {
-            const stream = data.data[0].file;
 
-            if (stream && stream.includes(".m3u8")) {
+            // tenta pegar melhor qualidade
+            let stream = data.data.find(s => s.label === "auto") 
+                      || data.data[0];
+
+            if (stream && stream.file) {
                 console.log("🎯 STREAM CAPTURADO:", canal);
-                return res.send(stream);
+                return res.send(stream.file);
             }
         }
 
-        // ================= 7. FALLBACK FINAL =================
-        return res.status(404).send("Stream não encontrado");
+        console.log("❌ API retornou vazio:", data);
+        res.status(404).send("Stream não encontrado");
 
     } catch (err) {
-        console.error("❌ ERRO COMPLETO:", err.message);
-        return res.status(500).send("Erro interno");
+        console.error("❌ ERRO COMPLETO:", err.response?.data || err.message);
+        res.status(500).send("Erro interno");
     }
 });
