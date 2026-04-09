@@ -1,42 +1,3 @@
-const express = require('express');
-const axios = require('axios');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ⚠️ RESPONDE IMEDIATO (CRÍTICO PRO RENDER)
-app.get('/', (req, res) => {
-    res.status(200).send("OK");
-});
-
-// ================= CONFIG =================
-const URL_BASE = "https://www4.embedtv.best";
-
-// ================= CACHE =================
-const cache = {};
-const CACHE_TTL = 1000 * 60 * 10;
-
-// ================= CANAIS =================
-const canais = [
-    { nome: "Cinemax", canal: "cinemax", categoria: "Filmes" },
-    { nome: "HBO", canal: "hbo", categoria: "Filmes" },
-    { nome: "SBT", canal: "sbt", categoria: "TV Aberta" }
-];
-
-// ================= API =================
-app.get('/canais', (req, res) => {
-    res.json({
-        status: "online",
-        canais: canais.map((c, i) => ({
-            id: i + 1,
-            nome: c.nome,
-            categoria: c.categoria,
-            stream: `/stream?canal=${c.canal}`
-        }))
-    });
-});
-
-// ================= STREAM =================
 app.get('/stream', async (req, res) => {
     const canal = req.query.canal;
 
@@ -44,44 +5,87 @@ app.get('/stream', async (req, res) => {
         return res.status(400).send("Informe o canal");
     }
 
-    // CACHE
-    if (cache[canal] && Date.now() - cache[canal].time < CACHE_TTL) {
-        return res.send(cache[canal].url);
-    }
-
     try {
-        const response = await axios.get(`${URL_BASE}/${canal}`, {
+        // ================= 1. PÁGINA PRINCIPAL =================
+        const mainResponse = await axios.get(`${URL_BASE}/${canal}`, {
             headers: {
                 "User-Agent": "Mozilla/5.0",
+                "Accept": "text/html",
                 "Referer": URL_BASE
             },
             timeout: 10000
         });
 
-        const html = response.data;
+        const html = mainResponse.data;
 
-        const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
+        // ================= 2. TENTA PEGAR data-id =================
+        let videoId = null;
+        const idMatch = html.match(/data-id="([^"]+)"/);
 
-        if (match) {
-            const streamUrl = match[0];
-
-            cache[canal] = {
-                url: streamUrl,
-                time: Date.now()
-            };
-
-            return res.send(streamUrl);
+        if (idMatch) {
+            videoId = idMatch[1];
         }
 
-        res.status(404).send("Stream não encontrado");
+        // ================= 3. FALLBACK: PEGAR IFRAME =================
+        if (!videoId) {
+            const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"/);
+
+            if (iframeMatch) {
+                const iframeUrl = iframeMatch[1];
+
+                const iframeResponse = await axios.get(iframeUrl, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0",
+                        "Referer": `${URL_BASE}/${canal}`
+                    },
+                    timeout: 10000
+                });
+
+                const iframeHtml = iframeResponse.data;
+
+                const iframeIdMatch = iframeHtml.match(/data-id="([^"]+)"/);
+
+                if (iframeIdMatch) {
+                    videoId = iframeIdMatch[1];
+                }
+            }
+        }
+
+        // ================= 4. SE NÃO ACHOU ID =================
+        if (!videoId) {
+            return res.status(404).send("ID não encontrado");
+        }
+
+        // ================= 5. CHAMA API REAL =================
+        const apiUrl = `https://www4.embedtv.best/api/source/${videoId}`;
+
+        const apiResponse = await axios.post(apiUrl, {}, {
+            headers: {
+                "User-Agent": "Mozilla/5.0",
+                "Referer": `${URL_BASE}/${canal}`,
+                "Origin": "https://www4.embedtv.best",
+                "Content-Type": "application/json"
+            },
+            timeout: 10000
+        });
+
+        const data = apiResponse.data;
+
+        // ================= 6. EXTRAI STREAM =================
+        if (data && data.data && data.data.length > 0) {
+            const stream = data.data[0].file;
+
+            if (stream && stream.includes(".m3u8")) {
+                console.log("🎯 STREAM CAPTURADO:", canal);
+                return res.send(stream);
+            }
+        }
+
+        // ================= 7. FALLBACK FINAL =================
+        return res.status(404).send("Stream não encontrado");
 
     } catch (err) {
-        console.error("ERRO:", err.message);
-        res.status(500).send("Erro interno");
+        console.error("❌ ERRO COMPLETO:", err.message);
+        return res.status(500).send("Erro interno");
     }
-});
-
-// ⚠️ START RÁPIDO (CRÍTICO)
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
 });
