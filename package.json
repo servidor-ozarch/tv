@@ -1,15 +1,21 @@
 {
-  "name": "ozarch",
-  "version": "2.0.0",
-  "main": "server.js",
+  "name": "projeto-estudantil-consulta",
+  "version": "1.0.0",
+  "description": "Integração de API de consulta com Firebase Realtime Database",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js",
+    "dev": "node --watch index.js"
   },
+  "keywords": [
+    "node",
+    "axios",
+    "firebase",
+    "api"
+  ],
+  "author": "Ikaruh7",
+  "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
     "axios": "^1.6.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
