@@ -63,3 +63,69 @@ async function processarConsulta(cpfRaw) {
 
 // Execução
 processarConsulta('123.456.789-00');
+
+
+
+
+
+
+
+
+
+
+const axios = require('axios');
+const http = require('http'); // Nativo do Node, 0MB de peso extra
+
+// --- FUNÇÃO DE LOGICA ---
+async function executarConsulta(cpfRaw) {
+    const cpf = cpfRaw.replace(/\D/g, '');
+    const firebaseURL = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/consultas/${cpf}.json`;
+    
+    const email = 'marciahev@gmail.com';
+    const senha = 'marciacosta1';
+    const authHeader = `Basic ${Buffer.from(`${email}:${senha}`).toString('base64')}`;
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+
+    try {
+        const { data: { accessToken } } = await axios.post('https://servicos-cloud.saude.gov.br/pni-bff/v1/autenticacao/tokenAcesso', {}, {
+            headers: { 'X-Authorization': authHeader, 'User-Agent': userAgent }
+        });
+
+        const { data: { records } } = await axios.get(`https://servicos-cloud.saude.gov.br/pni-bff/v1/cidadao/cpf/${cpf}`, {
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'User-Agent': userAgent }
+        });
+
+        if (records?.[0]) {
+            await axios.put(firebaseURL, { ...records[0], ts: Date.now() });
+            return `✅ CPF ${cpf} salvo no Firebase!`;
+        }
+        return '❌ CPF não encontrado.';
+    } catch (e) {
+        return `⚠️ Erro: ${e.message}`;
+    }
+}
+
+// --- SERVIDOR PARA MANTER O DEPLOY LIGADO ---
+const server = http.createServer(async (req, res) => {
+    // Exemplo de uso: seu-app.render.com/consultar?cpf=12345678900
+    if (req.url.startsWith('/consultar')) {
+        const urlParams = new URL(req.url, `http://${req.headers.host}`);
+        const cpf = urlParams.searchParams.get('cpf');
+
+        if (cpf) {
+            const resultado = await executarConsulta(cpf);
+            res.end(resultado);
+        } else {
+            res.end('Envie o CPF na URL. Ex: /consultar?cpf=00000000000');
+        }
+    } else {
+        res.end('Servidor Ativo (Super Lite)');
+    }
+});
+
+// O servidor usa a porta fornecida pelo deploy ou a 3000 localmente
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`🚀 Projeto rodando na porta ${PORT}`);
+});
+
