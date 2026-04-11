@@ -2,17 +2,13 @@
   "name": "projeto-estudantil-consulta",
   "version": "1.0.0",
   "description": "Integração de API de consulta com Firebase Realtime Database",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node server.js"
   },
-  "keywords": [
-    "node",
-    "axios",
-    "firebase",
-    "api"
-  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "author": "Ikaruh7",
   "license": "ISC",
   "dependencies": {
