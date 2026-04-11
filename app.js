@@ -18,44 +18,51 @@ app.get('/', (req, res) => {
   res.send('🚀 Servidor online!');
 });
 
-// 🔥 API COMPLETA (tudo em um)
+// 🔥 API COMPLETA (com horário do Brasil)
 app.get('/api/time', (req, res) => {
   const now = new Date();
+
+  // 🔥 força timezone Brasil
+  const brTime = new Date(
+    now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+  );
 
   const dias = [
     'Domingo', 'Segunda-feira', 'Terça-feira',
     'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
   ];
 
-  const diaSemana = dias[now.getDay()];
-  const data = now.toLocaleDateString('pt-BR');
-  const hora = now.getHours().toString().padStart(2, '0') + 'h' +
-               now.getMinutes().toString().padStart(2, '0');
+  const diaSemana = dias[brTime.getDay()];
+  const data = brTime.toLocaleDateString('pt-BR');
+
+  const hora = brTime.getHours().toString().padStart(2, '0') + 'h' +
+               brTime.getMinutes().toString().padStart(2, '0');
 
   res.json({
 
     // 🔥 dados brutos
     raw: {
       timestamp: Date.now(),
-      iso: now.toISOString(),
+      iso_utc: now.toISOString(),
+      iso_br: brTime.toISOString(),
 
       date: {
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
-        day: now.getDate()
+        year: brTime.getFullYear(),
+        month: brTime.getMonth() + 1,
+        day: brTime.getDate()
       },
 
       time: {
-        hours: now.getHours(),
-        minutes: now.getMinutes(),
-        seconds: now.getSeconds()
+        hours: brTime.getHours(),
+        minutes: brTime.getMinutes(),
+        seconds: brTime.getSeconds()
       },
 
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      offset: now.getTimezoneOffset()
+      timezone: 'America/Sao_Paulo',
+      offset: brTime.getTimezoneOffset()
     },
 
-    // 🔥 formatado
+    // 🔥 formatado (como você queria)
     formatado: {
       dia_da_semana: diaSemana,
       data_atual: data,
@@ -77,7 +84,7 @@ app.get('/api/time', (req, res) => {
   });
 });
 
-// 🔥 Função de ping (mantém servidor ativo)
+// 🔥 Função de ping
 function ping() {
   axios.get(URL)
     .then(() => console.log('♻️ Ping OK'))
