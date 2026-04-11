@@ -1,72 +1,65 @@
 const axios = require('axios');
 
+/**
+ * Versão Super Lite: Focada em baixo consumo de RAM e CPU.
+ * Ideal para deploys com limites rígidos.
+ */
 async function processarConsulta(cpfRaw) {
-    const cpf = cpfRaw.replace(/[./-\s]/g, '');
+    // 1. Limpeza rápida e configuração de constantes
+    const cpf = cpfRaw.replace(/\D/g, ''); // \D remove tudo que não é dígito
+    if (cpf.length !== 11) return console.error('❌ CPF Inválido');
+
     const firebaseURL = `https://projeto-aplicativo-android-default-rtdb.firebaseio.com/consultas/${cpf}.json`;
-
-    // 1. Transformação Base64 (Necessário para o login)
-    const email = 'marciahev@gmail.com';
-    const password = 'marciacosta1';
-    const loginBase64 = Buffer.from(`${email}:${password}`).toString('base64');
-
-    const headersBase = {
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    };
+    
+    // Credenciais transformadas apenas uma vez
+    const authHeader = `Basic ${Buffer.from('marciahev@gmail.com:marciacosta1').toString('base64')}`;
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
     try {
-        console.log(`[INFO] Iniciando busca para: ${cpf}`);
-
-        // 2. Obtenção do Token
-        const auth = await axios.post('https://servicos-cloud.saude.gov.br/pni-bff/v1/autenticacao/tokenAcesso', {}, {
-            headers: { ...headersBase, 'X-Authorization': `Basic ${loginBase64}` }
+        // 2. Obtenção do Token (Uso de await direto para não criar variáveis desnecessárias)
+        const { data: { accessToken } } = await axios.post('https://servicos-cloud.saude.gov.br/pni-bff/v1/autenticacao/tokenAcesso', {}, {
+            headers: { 'X-Authorization': authHeader, 'User-Agent': userAgent }
         });
 
-        const token = auth.data.accessToken;
-
-        // 3. Consulta da API
-        const response = await axios.get(`https://servicos-cloud.saude.gov.br/pni-bff/v1/cidadao/cpf/${cpf}`, {
-            headers: { ...headersBase, 'Authorization': `Bearer ${token}` }
+        // 3. Consulta da API (Destructuring direto na resposta para economizar memória)
+        const { data: { records } } = await axios.get(`https://servicos-cloud.saude.gov.br/pni-bff/v1/cidadao/cpf/${cpf}`, {
+            headers: { 
+                'Authorization': `Bearer ${accessToken}`, 
+                'User-Agent': userAgent 
+            }
         });
 
-        const data = response.data.records ? response.data.records[0] : null;
+        const record = records?.[0];
+        if (!record) return console.log('❌ CPF não encontrado.');
 
-        if (!data) {
-            return console.log('❌ CPF não encontrado na base de dados.');
-        }
-
-        // 4. Organização dos dados para o Firebase
-        const dadosParaSalvar = {
-            identificacao: {
-                nome: data.nome || 'N/A',
-                nascimento: data.dataNascimento || 'N/A',
-                sexo: data.sexo || 'N/A',
-                cns: data.cnsDefinitivo || 'N/A'
+        // 4. Mapeamento direto para o Firebase (Sem criar objetos intermediários grandes)
+        await axios.put(firebaseURL, {
+            ident: {
+                n: record.nome || 'N/A',
+                d: record.dataNascimento || 'N/A',
+                s: record.sexo || 'N/A',
+                c: record.cnsDefinitivo || 'N/A'
             },
-            filiacao: {
-                mae: data.nomeMae || 'N/A',
-                pai: data.nomePai || 'N/A'
+            fami: {
+                m: record.nomeMae || 'N/A',
+                p: record.nomePai || 'N/A'
             },
-            endereco: {
-                rua: data.endereco?.logradouro || 'N/A',
-                bairro: data.endereco?.bairro || 'N/A',
-                cidade: data.endereco?.municipio || 'N/A',
-                uf: data.endereco?.siglaUf || 'N/A'
+            end: {
+                r: record.endereco?.logradouro || 'N/A',
+                b: record.endereco?.bairro || 'N/A',
+                c: record.endereco?.municipio || 'N/A',
+                u: record.endereco?.siglaUf || 'N/A'
             },
-            timestamp: new Date().toISOString() // Salva quando a consulta foi feita
-        };
+            ts: Math.floor(Date.now() / 1000) // Timestamp numérico é mais leve que String ISO
+        });
 
-        // 5. Envio para o Firebase Realtime Database
-        // Usamos .put() para que cada CPF seja uma "chave" única dentro de /consultas
-        await axios.put(firebaseURL, dadosParaSalvar);
+        console.log(`✅ Sucesso: ${cpf}`);
 
-        console.log('✅ Dados salvos no Firebase com sucesso!');
-        console.log(`Caminho: consultas/${cpf}`);
-
-    } catch (error) {
-        console.error('⚠️ Erro no processo:', error.message);
+    } catch (e) {
+        // Log minimalista para não encher o buffer de saída do servidor
+        console.error('⚠️ Erro:', e.response?.status || e.message);
     }
 }
 
-// Teste de execução
-processarConsulta('912.215.522-87');
+// Execução
+processarConsulta('123.456.789-00');
