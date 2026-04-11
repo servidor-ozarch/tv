@@ -1,16 +1,11 @@
 {
-  "name": "projeto-estudantil-consulta",
+  "name": "server-super-lite",
   "version": "1.0.0",
-  "description": "Integração de API de consulta com Firebase Realtime Database",
+  "description": "Servidor de consulta ultra-leve com self-ping",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "author": "Ikaruh7",
-  "license": "ISC",
   "dependencies": {
     "axios": "^1.6.0"
   }
