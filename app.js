@@ -2,30 +2,44 @@ const express = require('express');
 const axios = require('axios');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// URL do próprio serviço
+const URL = process.env.RENDER_EXTERNAL_URL || 'https://tv-1-viha.onrender.com';
+
+// Middleware de log (debug profissional)
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.url}`);
+  next();
+});
 
 // Rota principal
 app.get('/', (req, res) => {
-  res.send('🚀 Servidor rodando com sucesso!');
+  res.send('🚀 Servidor online!');
 });
 
-// Rota de status (opcional, útil pra monitoramento)
-app.get('/status', (req, res) => {
+// 🔥 Função útil (API real)
+app.get('/api/time', (req, res) => {
   res.json({
-    status: 'online',
-    uptime: process.uptime(),
-    timestamp: new Date()
+    agora: new Date(),
+    timestamp: Date.now()
   });
 });
 
-// Inicia o servidor
+// Função de ping
+function ping() {
+  axios.get(URL)
+    .then(() => console.log('♻️ Ping OK'))
+    .catch(() => console.log('⚠️ Falha no ping'));
+}
+
+// roda imediatamente
+ping();
+
+// depois a cada 5 minutos
+setInterval(ping, 300000);
+
+// inicia servidor
 app.listen(PORT, () => {
   console.log(`🔥 Servidor rodando na porta ${PORT}`);
 });
-
-// Auto-ping a cada 14 minutos (840.000 ms)
-setInterval(() => {
-  axios.get('https://tv-5p23.onrender.com/')
-    .then(() => console.log('♻️ Self-ping: Mantendo instância ativa'))
-    .catch((err) => console.error('⚠️ Erro no self-ping:', err.message));
-}, 840000);
