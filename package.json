@@ -1,12 +1,23 @@
 {
-  "name": "server-super-lite",
+  "name": "mini-servidor",
   "version": "1.0.0",
-  "description": "Servidor de consulta ultra-leve com self-ping",
-  "main": "server.js",
+  "description": "Servidor Node.js simples com auto-ping para manter instância ativa",
+  "main": "app.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node app.js",
+    "dev": "node app.js"
   },
+  "keywords": [
+    "node",
+    "express",
+    "render",
+    "server",
+    "auto-ping"
+  ],
+  "author": "Amaralzinho",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.8",
+    "express": "^4.19.2"
   }
 }
