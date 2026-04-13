@@ -118,7 +118,7 @@ function ping() {
 ping();
 
 // 🔥 a cada 5 minutos
-setInterval(ping, 300000);
+setInterval(ping, 5000);
 
 // inicia servidor
 app.listen(PORT, () => {
