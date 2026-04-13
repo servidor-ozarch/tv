@@ -4,7 +4,6 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// URL do próprio serviço
 const URL = process.env.RENDER_EXTERNAL_URL || 'https://tv-1-viha.onrender.com';
 
 // Middleware de log
@@ -31,56 +30,32 @@ app.get('/api/time', (req, res) => {
     'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
   ];
 
-  const diaSemana = dias[brTime.getDay()];
-  const data = brTime.toLocaleDateString('pt-BR');
-
   res.json({
     raw: {
       timestamp: Date.now(),
       iso_utc: now.toISOString(),
       iso_br: brTime.toISOString(),
-
-      date: {
-        year: brTime.getFullYear(),
-        month: brTime.getMonth() + 1,
-        day: brTime.getDate()
-      },
-
-      time: {
-        hours: brTime.getHours(),
-        minutes: brTime.getMinutes(),
-        seconds: brTime.getSeconds()
-      },
-
-      timezone: 'America/Sao_Paulo',
-      offset: brTime.getTimezoneOffset()
     },
-
     formatado: {
-      dia_da_semana: diaSemana,
-      data_atual: data
-      // ❌ removido horario_atual
+      dia_da_semana: dias[brTime.getDay()],
+      data_atual: brTime.toLocaleDateString('pt-BR')
     },
-
     server: {
       uptime: process.uptime(),
       status: 'online'
-    },
-
-    request: {
-      ip: req.ip,
-      userAgent: req.headers['user-agent']
     }
   });
 });
 
 
-// 🔥 SSE - TEMPO EM TEMPO REAL
+// 🔥 STREAM OTIMIZADO (1 EVENTO LIMPO POR VEZ)
 app.get('/api/time/stream', (req, res) => {
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+
+  let lastTime = "";
 
   const interval = setInterval(() => {
 
@@ -90,15 +65,21 @@ app.get('/api/time/stream', (req, res) => {
       now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
     );
 
-    const data = {
-      hours: brTime.getHours(),
-      minutes: brTime.getMinutes(),
-      seconds: brTime.getSeconds()
-    };
+    const hora = String(brTime.getHours()).padStart(2, '0');
+    const minuto = String(brTime.getMinutes()).padStart(2, '0');
+    const segundo = String(brTime.getSeconds()).padStart(2, '0');
 
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    const horario = `${hora}:${minuto}:${segundo}`;
 
-  }, 1000); // 🔥 atualiza a cada 1 segundo
+    // 🔥 evita envio duplicado (mais limpo)
+    if (horario !== lastTime) {
+      lastTime = horario;
+
+      // 🔥 envia como evento único
+      res.write(`data: ${horario}\r\n\r\n`);
+    }
+
+  }, 1000);
 
   req.on('close', () => {
     clearInterval(interval);
@@ -117,8 +98,8 @@ function ping() {
 // roda imediatamente
 ping();
 
-// 🔥 a cada 5 minutos
-setInterval(ping, 5000);
+// 🔥 1 minuto
+setInterval(ping, 60000);
 
 // inicia servidor
 app.listen(PORT, () => {
