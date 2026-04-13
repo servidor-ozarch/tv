@@ -18,11 +18,10 @@ app.get('/', (req, res) => {
   res.send('🚀 Servidor online!');
 });
 
-// 🔥 API COMPLETA (com horário do Brasil)
+// 🔥 API SEM horario_atual
 app.get('/api/time', (req, res) => {
   const now = new Date();
 
-  // 🔥 força timezone Brasil
   const brTime = new Date(
     now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
   );
@@ -35,12 +34,7 @@ app.get('/api/time', (req, res) => {
   const diaSemana = dias[brTime.getDay()];
   const data = brTime.toLocaleDateString('pt-BR');
 
-  const hora = brTime.getHours().toString().padStart(2, '0') + 'h' +
-               brTime.getMinutes().toString().padStart(2, '0');
-
   res.json({
-
-    // 🔥 dados brutos
     raw: {
       timestamp: Date.now(),
       iso_utc: now.toISOString(),
@@ -62,27 +56,56 @@ app.get('/api/time', (req, res) => {
       offset: brTime.getTimezoneOffset()
     },
 
-    // 🔥 formatado (como você queria)
     formatado: {
       dia_da_semana: diaSemana,
-      data_atual: data,
-      horario_atual: hora
+      data_atual: data
+      // ❌ removido horario_atual
     },
 
-    // 🔥 servidor
     server: {
       uptime: process.uptime(),
       status: 'online'
     },
 
-    // 🔥 request
     request: {
       ip: req.ip,
       userAgent: req.headers['user-agent']
     }
-
   });
 });
+
+
+// 🔥 SSE - TEMPO EM TEMPO REAL
+app.get('/api/time/stream', (req, res) => {
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const interval = setInterval(() => {
+
+    const now = new Date();
+
+    const brTime = new Date(
+      now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+    );
+
+    const data = {
+      hours: brTime.getHours(),
+      minutes: brTime.getMinutes(),
+      seconds: brTime.getSeconds()
+    };
+
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  }, 1000); // 🔥 atualiza a cada 1 segundo
+
+  req.on('close', () => {
+    clearInterval(interval);
+    res.end();
+  });
+});
+
 
 // 🔥 Função de ping
 function ping() {
