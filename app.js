@@ -11,8 +11,9 @@ const BASE_URL = 'https://www4.embedtv.cv';
 // ==============================
 const CANAIS = [
     { id: 'sbtrj', nome: 'SBT RJ' },
-    { id: 'globo', nome: 'Globo' },
+    { id: 'globoes', nome: 'Globo' },
     { id: 'record', nome: 'Record TV' }
+    { id: 'cinemax', nome: 'Cinemax' }
 ];
 
 // ==============================
@@ -22,6 +23,7 @@ const LOGOS = {
     sbtrj: 'sbt.png',
     globo: 'globo.png',
     record: 'record.png'
+    cinemax: 'cinemax.png'
 };
 
 // ==============================
