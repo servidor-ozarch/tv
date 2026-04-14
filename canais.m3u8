@@ -53,49 +53,49 @@ https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/2c3c05db9b2150700
 #EXTINF:-1 tvg-id="hbo2" tvg-name="HBO 2" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbo2.png?raw=true" group-title="Filmes",HBO 2
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a1875ab5210c83e86a57fd69971ce2a1/hbo2.txt
 
-#EXTINF:-1 tvg-id="hbofamily" tvg-name="HBO Family" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbofamily.png?raw=true" group-title="Filmes",HBO Family
+#EXTINF:-1 tvg-id="hbo.family" tvg-name="HBO Family" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbofamily.png?raw=true" group-title="Filmes",HBO Family
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/5d0c6f1ef3d12a4db65d5511671aefc3/hbofamily.txt
 
-#EXTINF:-1 tvg-id="hbomundi" tvg-name="HBO Mundi" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbomundi.png?raw=true" group-title="Filmes",HBO Mundi
+#EXTINF:-1 tvg-id="hbo.mundi" tvg-name="HBO Mundi" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbomundi.png?raw=true" group-title="Filmes",HBO Mundi
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/f4da63bf62afd03665af58b586d25fd3/hbomundi.txt
 
-#EXTINF:-1 tvg-id="hboplus" tvg-name="HBO Plus" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboplus.png?raw=true" group-title="Filmes",HBO Plus
+#EXTINF:-1 tvg-id="hbo.plus" tvg-name="HBO Plus" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboplus.png?raw=true" group-title="Filmes",HBO Plus
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/d92c55735642c20b1127b9d0714afeaa/hboplus.txt
 
-#EXTINF:-1 tvg-id="hbopop" tvg-name="HBO Pop" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbopop.png?raw=true" group-title="Filmes",HBO Pop
+#EXTINF:-1 tvg-id="hbo.pop" tvg-name="HBO Pop" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hbopop.png?raw=true" group-title="Filmes",HBO Pop
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/2dd60a9cf1dda09f002d592d1d97a1ff/hbopop.txt
 
-#EXTINF:-1 tvg-id="hboxtreme" tvg-name="HBO Xtreme" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboxtreme.png?raw=true" group-title="Filmes",HBO Xtreme
+#EXTINF:-1 tvg-id="hbo.xtreme" tvg-name="HBO Xtreme" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/hboxtreme.png?raw=true" group-title="Filmes",HBO Xtreme
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a5b3f81ef22e492feea202a89046947b/hboxtreme.txt
 
 #EXTINF:-1 tvg-id="megapix" tvg-name="Megapix" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/megapix.png?raw=true" group-title="Filmes",Megapix
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/bb5303555174037bca86694270f27800/megapix.txt
 
-#EXTINF:-1 tvg-id="sonychannel" tvg-name="Sony Channel" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/sonychannel.png?raw=true" group-title="Filmes",Sony Channel
+#EXTINF:-1 tvg-id="sony.channel" tvg-name="Sony Channel" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/sonychannel.png?raw=true" group-title="Filmes",Sony Channel
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/79d4e3589b194fa24cf14c0c13fe3a0b/sonychannel.txt
 
 #EXTINF:-1 tvg-id="space" tvg-name="Space" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/space.png?raw=true" group-title="Filmes",Space
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/9f120050ad05c631d69ebf30ab0f5dbb/space.txt
 
-#EXTINF:-1 tvg-id="studiouniversal" tvg-name="Studio Universal" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/studiouniversal.png?raw=true" group-title="Filmes",Studio Universal
+#EXTINF:-1 tvg-id="studio.universal" tvg-name="Studio Universal" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/studiouniversal.png?raw=true" group-title="Filmes",Studio Universal
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/f5302a4aab9d6c57e550ad23c8607d65/studiouniversal.txt
 
-#EXTINF:-1 tvg-id="telecineaction" tvg-name="Telecine Action" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecineaction.png?raw=true" group-title="Filmes",Telecine Action
+#EXTINF:-1 tvg-id="telecine.action" tvg-name="Telecine Action" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecineaction.png?raw=true" group-title="Filmes",Telecine Action
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/0a650b61f5778b3b5f1b791f5d43015a/telecineaction.txt
 
-#EXTINF:-1 tvg-id="telecinecult" tvg-name="Telecine Cult" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinecult.png?raw=true" group-title="Filmes",Telecine Cult
+#EXTINF:-1 tvg-id="telecine.cult" tvg-name="Telecine Cult" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinecult.png?raw=true" group-title="Filmes",Telecine Cult
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/fd703fd66cf6896cf7eaec88d8d381d6/telecinecult.txt
 
-#EXTINF:-1 tvg-id="telecinefun" tvg-name="Telecine Fun" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinefun.png?raw=true" group-title="Filmes",Telecine Fun
+#EXTINF:-1 tvg-id="telecine.fun" tvg-name="Telecine Fun" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinefun.png?raw=true" group-title="Filmes",Telecine Fun
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/acc34f8af8cd6b8408c4105061690ac2/telecinefun.txt
 
-#EXTINF:-1 tvg-id="telecinepipoca" tvg-name="Telecine Pipoca" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepipoca.png?raw=true" group-title="Filmes",Telecine Pipoca
+#EXTINF:-1 tvg-id="telecine.pipoca" tvg-name="Telecine Pipoca" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepipoca.png?raw=true" group-title="Filmes",Telecine Pipoca
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/ec904566a7281b3652804f0f29d03696/telecinepipoca.txt
 
-#EXTINF:-1 tvg-id="telecinepremium" tvg-name="Telecine Premium" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepremium.png?raw=true" group-title="Filmes",Telecine Premium
+#EXTINF:-1 tvg-id="telecine.premium" tvg-name="Telecine Premium" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinepremium.png?raw=true" group-title="Filmes",Telecine Premium
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/579db1b474d04325a6e6d15f28176516/telecinepremium.txt
 
-#EXTINF:-1 tvg-id="telecinetouch" tvg-name="Telecine Touch" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinetouch.png?raw=true" group-title="Filmes",Telecine Touch
+#EXTINF:-1 tvg-id="telecine.touch" tvg-name="Telecine Touch" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/telecinetouch.png?raw=true" group-title="Filmes",Telecine Touch
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/24f5a1f4ce7e43bee6136522ed737b04/telecinetouch.txt
 
 #EXTINF:-1 tvg-id="warnerchannel" tvg-name="Warner Channel" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/warnerchannel.png?raw=true" group-title="Filmes",Warner Channel
