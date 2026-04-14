@@ -22,7 +22,7 @@ const CANAIS = [
 const LOGOS = {
     sbtrj: 'sbt.png',
     globo: 'globo.png',
-    record: 'record.png'
+    record: 'record.png',
     cinemax: 'cinemax.png'
 };
 
