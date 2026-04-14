@@ -3,24 +3,40 @@ const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
-
-// 🔑 TOKEN MERCADO PAGO
-const TOKEN = 'APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010';
-
-// 🔓 LIBERA ACESSO DO HTML
 app.use(cors());
 
-// 🟢 ROTA PRINCIPAL
+const TOKEN = process.env.TOKEN;
+
+// 🔧 FUNÇÃO QUE FALTAVA
+async function consultar(url) {
+    try {
+        const res = await axios.get(url, {
+            headers: {
+                Authorization: `Bearer ${APP_USR-502214761032345-122408-b5014c99ed3eb38dbfe805e6677eadf1-453884010}`
+            }
+        });
+
+        return { ok: true, dados: res.data };
+
+    } catch (err) {
+
+        return {
+            ok: false,
+            erro: err.response?.data || err.message
+        };
+    }
+}
+
+// 🟢 TESTE
 app.get('/', (req, res) => {
     res.send('API ONLINE 🚀');
 });
 
-// 💰 ROTA DE SALDO
+// 📊 RELATÓRIO
 app.get('/relatorio', async (req, res) => {
 
     const relatorio = {
 
-        // 🔍 DADOS REAIS
         usuario: {
             descricao: "Dados da conta",
             resposta: await consultar('https://api.mercadopago.com/users/me')
@@ -42,54 +58,33 @@ app.get('/relatorio', async (req, res) => {
         },
 
         pedidos: {
-            descricao: "Pedidos (merchant orders)",
+            descricao: "Pedidos",
             resposta: await consultar('https://api.mercadopago.com/merchant_orders/search')
         },
 
-        // 🧠 CAPACIDADES (SEM RISCO)
         pix: {
             descricao: "Pagamento via Pix",
-            disponivel: true,
-            como_usar: "Criar pagamento com payment_method_id = pix"
+            disponivel: true
         },
 
         cartao: {
             descricao: "Pagamento com cartão",
-            disponivel: true,
-            como_usar: "Usar token de cartão na API /v1/payments"
-        },
-
-        parcelamento: {
-            descricao: "Pagamento parcelado",
-            disponivel: true,
-            como_usar: "Usar campo installments"
-        },
-
-        qr_code: {
-            descricao: "Pagamento via QR Code",
-            disponivel: true,
-            como_usar: "Gerado automaticamente em pagamentos Pix ou Point"
+            disponivel: true
         },
 
         nfc: {
-            descricao: "Pagamento por aproximação (NFC)",
-            disponivel: false,
-            detalhe: "Disponível apenas via maquininhas Point ou SDK mobile"
-        },
-
-        link_pagamento: {
-            descricao: "Link de pagamento",
-            disponivel: true,
-            como_usar: "Endpoint /checkout/preferences"
-        },
-
-        transferencia: {
-            descricao: "Transferência de dinheiro",
-            disponivel: false,
-            detalhe: "Restrito para contas com permissão especial"
+            descricao: "Pagamento por aproximação",
+            disponivel: false
         }
 
     };
 
     res.json(relatorio);
+});
+
+// PORTA
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log('Rodando na porta ' + PORT);
 });
