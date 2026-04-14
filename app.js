@@ -15,10 +15,10 @@ app.get('/epg', async (req, res) => {
         });
         const $ = cheerio.load(html);
 
-        // Data atual para o cabeçalho
+        // Data atual formatada para o cabeçalho
         const agora = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
-        // 1. Configuração do Cabeçalho exatamente como no seu exemplo
+        // 1. Criação do cabeçalho conforme o seu exemplo
         const root = create({ version: '1.0', encoding: 'utf-8' })
             .ele('tv', { 
                 'generator-info-name': `@limaalef - Criado em ${agora}`, 
@@ -27,37 +27,37 @@ app.get('/epg', async (req, res) => {
 
         const listaCanais = [];
 
-        // 2. Extração dos Canais
+        // 2. Mapeamento de Canais
         $('.registro.row').each((i, el) => {
-            const nomeBruto = $(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
+            const nomeCanal = $(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
             
-            // Usando o nome bruto como ID para bater com o seu exemplo (ex: "BAND HD")
-            const id = nomeBruto; 
-            listaCanais.push({ id, nomeBruto, element: el });
+            // No seu exemplo, o ID é o próprio nome do canal
+            listaCanais.push({ id: nomeCanal, element: el });
 
-            // Adicionando a tag display-name com lang="pt"
-            root.ele('channel', { id: id })
-                .ele('display-name', { lang: 'pt' }).txt(nomeBruto).up()
+            root.ele('channel', { id: nomeCanal })
+                .ele('display-name', { lang: 'pt' }).txt(nomeCanal).up()
             .up();
         });
 
-        // 3. Extração dos Programas (Programmes)
+        // 3. Mapeamento de Programas
         listaCanais.forEach(item => {
-            $(item.element).find('.evento').each((j, ev) => {
+            const eventos = $(item.element).find('.evento');
+            
+            eventos.each((j, ev) => {
                 const titulo = $(ev).find('.titulo').text().trim();
-                const dataRaw = $(ev).find('time').attr('datetime');
+                const dataRaw = $(ev).find('time').attr('datetime'); // Formato: 2026-04-13 22:44:00
 
                 if (titulo && dataRaw) {
+                    // Início: YYYYMMDDHHMMSS +0000
                     const start = dataRaw.replace(/[- :]/g, '') + ' +0000';
                     
-                    // Cálculo do Stop (Próximo ou +1h)
-                    const proxDataRaw = $(item.element).find('.evento').eq(j + 1).find('time').attr('datetime');
+                    // Fim: Pega o horário do próximo programa ou soma 1 hora
+                    const proxDataRaw = eventos.eq(j + 1).find('time').attr('datetime');
                     let stop = proxDataRaw ? proxDataRaw.replace(/[- :]/g, '') + ' +0000' : start.replace(/(\d{2})(\d{2}) \+0000$/, (m, h, min) => {
                         let nh = (parseInt(h) + 1).toString().padStart(2, '0');
                         return `${nh}${min} +0000`;
                     });
 
-                    // Adicionando programa com título lang="pt"
                     root.ele('programme', { start: start, stop: stop, channel: item.id })
                         .ele('title', { lang: 'pt' }).txt(titulo).up()
                     .up();
@@ -67,11 +67,13 @@ app.get('/epg', async (req, res) => {
 
         const xml = root.end({ prettyPrint: true });
 
+        // Envia como text/xml para máxima compatibilidade com apps IPTV
         res.set('Content-Type', 'text/xml; charset=utf-8');
         res.status(200).send(xml);
 
     } catch (e) {
-        res.status(500).send('Erro ao gerar EPG');
+        console.error(e);
+        res.status(500).send('Erro ao processar EPG');
     }
 });
 
