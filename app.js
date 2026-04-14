@@ -6,14 +6,16 @@ const PORT = process.env.PORT || 3000;
 
 const BASE_URL = 'https://www4.embedtv.cv';
 
+// 🔥 BLOCOS (ADICIONE MAIS AQUI)
 const BLOCOS = [
     'sbtrj',
     'globo',
     'record'
 ];
 
+
 // ==============================
-// 🔎 PEGAR TXT COM VALIDAÇÃO
+// 🔎 PEGA O .TXT DA PÁGINA
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
@@ -24,31 +26,37 @@ async function pegarTxtDaPagina(url) {
             }
         });
 
-        const matches = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+        console.log('\n🌐 HTML RECEBIDO:', url);
 
-        if (!matches || matches.length === 0) {
-            console.log('❌ Nenhum .txt encontrado em:', url);
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+
+        console.log('🔍 MATCH:', match);
+
+        if (!match || match.length === 0) {
+            console.log('❌ Nenhum .txt encontrado');
             return null;
         }
 
-        // 🔥 pega o primeiro válido
-        const txt = matches.find(u =>
+        // pega o primeiro válido
+        const txt = match.find(u =>
             !u.includes('.js') &&
             !u.includes('.css')
         );
 
-        console.log('✅ TXT encontrado:', txt);
+        console.log('✅ TXT FINAL:', txt);
 
         return txt || null;
 
     } catch (e) {
-        console.log('❌ Erro ao acessar:', url);
+        console.log('❌ ERRO AO ACESSAR:', url);
+        console.log('Motivo:', e.message);
         return null;
     }
 }
 
+
 // ==============================
-// 🎯 PROCESSAR BLOCOS
+// 🎯 PROCESSA TODOS OS BLOCOS
 // ==============================
 async function processarBlocos() {
 
@@ -58,7 +66,7 @@ async function processarBlocos() {
 
         const url = `${BASE_URL}/${bloco}`;
 
-        console.log('\n🔎 Processando:', bloco);
+        console.log('\n🔎 Processando bloco:', bloco);
 
         const txtUrl = await pegarTxtDaPagina(url);
 
@@ -78,8 +86,9 @@ async function processarBlocos() {
     return lista;
 }
 
+
 // ==============================
-// 🎬 GERAR M3U
+// 🎬 GERAR PLAYLIST M3U
 // ==============================
 function gerarM3U(lista) {
 
@@ -97,8 +106,9 @@ function gerarM3U(lista) {
     return m3u;
 }
 
+
 // ==============================
-// 🌐 API
+// 🌐 ENDPOINT PLAYLIST
 // ==============================
 app.get('/playlist', async (req, res) => {
 
@@ -106,9 +116,13 @@ app.get('/playlist', async (req, res) => {
 
     const m3u = gerarM3U(lista);
 
-    res.setHeader('Content-Type', 'audio/x-mpegurl');
+    // 🔥 HEADERS CORRETOS
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', 'inline');
+
     res.send(m3u);
 });
+
 
 // ==============================
 // 🚀 START
