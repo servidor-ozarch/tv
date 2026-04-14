@@ -16,59 +16,80 @@ app.get('/', (req, res) => {
 });
 
 // 💰 ROTA DE SALDO
-app.get('/saldo', async (req, res) => {
-    try {
+app.get('/relatorio', async (req, res) => {
 
-        const response = await axios.get(
-            'https://api.mercadopago.com/users/me',
-            {
-                headers: {
-                    Authorization: `Bearer ${TOKEN}`
-                }
-            }
-        );
+    const relatorio = {
 
-        const data = response.data;
+        // 🔍 DADOS REAIS
+        usuario: {
+            descricao: "Dados da conta",
+            resposta: await consultar('https://api.mercadopago.com/users/me')
+        },
 
-        console.log('RESPOSTA MP:', data);
+        pagamentos: {
+            descricao: "Consultar pagamentos",
+            resposta: await consultar('https://api.mercadopago.com/v1/payments/search?limit=5')
+        },
 
-        let saldo = null;
+        clientes: {
+            descricao: "Clientes cadastrados",
+            resposta: await consultar('https://api.mercadopago.com/v1/customers/search')
+        },
 
-        // tenta pegar saldo
-        if (data.account_money && data.account_money.available_balance != null) {
-            saldo = data.account_money.available_balance;
+        assinaturas: {
+            descricao: "Pagamentos recorrentes",
+            resposta: await consultar('https://api.mercadopago.com/preapproval/search')
+        },
+
+        pedidos: {
+            descricao: "Pedidos (merchant orders)",
+            resposta: await consultar('https://api.mercadopago.com/merchant_orders/search')
+        },
+
+        // 🧠 CAPACIDADES (SEM RISCO)
+        pix: {
+            descricao: "Pagamento via Pix",
+            disponivel: true,
+            como_usar: "Criar pagamento com payment_method_id = pix"
+        },
+
+        cartao: {
+            descricao: "Pagamento com cartão",
+            disponivel: true,
+            como_usar: "Usar token de cartão na API /v1/payments"
+        },
+
+        parcelamento: {
+            descricao: "Pagamento parcelado",
+            disponivel: true,
+            como_usar: "Usar campo installments"
+        },
+
+        qr_code: {
+            descricao: "Pagamento via QR Code",
+            disponivel: true,
+            como_usar: "Gerado automaticamente em pagamentos Pix ou Point"
+        },
+
+        nfc: {
+            descricao: "Pagamento por aproximação (NFC)",
+            disponivel: false,
+            detalhe: "Disponível apenas via maquininhas Point ou SDK mobile"
+        },
+
+        link_pagamento: {
+            descricao: "Link de pagamento",
+            disponivel: true,
+            como_usar: "Endpoint /checkout/preferences"
+        },
+
+        transferencia: {
+            descricao: "Transferência de dinheiro",
+            disponivel: false,
+            detalhe: "Restrito para contas com permissão especial"
         }
 
-        if (saldo === null) {
-            return res.json({
-                erro: 'Saldo não disponível nessa conta'
-            });
-        }
+    };
 
-        res.json({
-            saldo: saldo
-        });
-
-    } catch (err) {
-
-        console.error('ERRO:', err.message);
-
-        res.status(500).json({
-            erro: 'Erro ao consultar Mercado Pago',
-            detalhe: err.message
-        });
-
-    }
-});
-
-// 🔄 ROTA PING (ANTI-SLEEP)
-app.get('/ping', (req, res) => {
-    res.send('pong');
-});
-
-// 🌐 PORTA DO RENDER
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log('Servidor rodando na porta ' + PORT);
+    res.json(relatorio);
 });
