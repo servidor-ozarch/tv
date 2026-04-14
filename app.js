@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://www4.embedtv.cv';
 
 // ==============================
-// 📺 CANAIS (ID + NOME BONITO)
+// 📺 CANAIS
 // ==============================
 const CANAIS = [
     { id: 'sbtrj', nome: 'SBT RJ' },
@@ -17,7 +17,7 @@ const CANAIS = [
 ];
 
 // ==============================
-// 🖼️ LOGOS (SEPARADO)
+// 🖼️ LOGOS
 // ==============================
 const LOGOS = {
     sbtrj: 'sbt.png',
@@ -27,38 +27,29 @@ const LOGOS = {
 };
 
 // ==============================
-// 🔎 PEGA O .TXT DA PÁGINA
+// 🧠 CACHE GLOBAL
+// ==============================
+let cacheM3U = null;
+let ultimaAtualizacao = 0;
+const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
+
+// ==============================
+// 🔎 PEGA TXT
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
             timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0'
-            }
+            headers: { 'User-Agent': 'Mozilla/5.0' }
         });
-
-        console.log('\n🌐 HTML:', url);
 
         const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-        if (!match || match.length === 0) {
-            console.log('❌ Sem .txt');
-            return null;
-        }
+        if (!match) return null;
 
-        const txt = match.find(u =>
-            !u.includes('.js') &&
-            !u.includes('.css')
-        );
+        return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
 
-        console.log('✅ TXT:', txt);
-
-        return txt || null;
-
-    } catch (e) {
-        console.log('❌ ERRO:', url);
-        console.log(e.message);
+    } catch {
         return null;
     }
 }
@@ -74,14 +65,9 @@ async function processarCanais() {
 
         const url = `${BASE_URL}/${canal.id}`;
 
-        console.log('\n🔎 Processando:', canal.nome);
-
         const txtUrl = await pegarTxtDaPagina(url);
 
-        if (!txtUrl) {
-            console.log('⚠️ Pulando:', canal.nome);
-            continue;
-        }
+        if (!txtUrl) continue;
 
         lista.push({
             id: canal.id,
@@ -89,8 +75,6 @@ async function processarCanais() {
             url: txtUrl
         });
     }
-
-    console.log('\n📦 TOTAL:', lista.length);
 
     return lista;
 }
@@ -120,23 +104,60 @@ function gerarM3U(lista) {
 }
 
 // ==============================
+// ♻️ ATUALIZA CACHE
+// ==============================
+async function atualizarCache() {
+    console.log('🔄 Atualizando cache...');
+
+    const lista = await processarCanais();
+    cacheM3U = gerarM3U(lista);
+    ultimaAtualizacao = Date.now();
+
+    console.log('✅ Cache atualizado');
+}
+
+// ==============================
 // 🌐 ENDPOINT
 // ==============================
 app.get('/playlist', async (req, res) => {
 
-    const lista = await processarCanais();
+    // se não tem cache ainda → gera
+    if (!cacheM3U) {
+        await atualizarCache();
+    }
 
-    const m3u = gerarM3U(lista);
+    // se cache expirou → atualiza em background
+    if (Date.now() - ultimaAtualizacao > CACHE_TEMPO) {
+        atualizarCache(); // NÃO espera (não trava request)
+    }
 
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Content-Disposition', 'inline');
 
-    res.send(m3u);
+    res.send(cacheM3U);
 });
+
+// ==============================
+// 🔄 AUTO PING (5 MIN)
+// ==============================
+const URL = 'https://tv-5p23.onrender.com/playlist';
+
+function ping() {
+    axios.get(URL)
+        .then(() => console.log('♻️ Ping OK'))
+        .catch(() => console.log('⚠️ Falha no ping'));
+}
 
 // ==============================
 // 🚀 START
 // ==============================
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log('🚀 Servidor rodando na porta', PORT);
+
+    // 🔥 gera cache inicial ao subir
+    await atualizarCache();
+
+    // 🔁 inicia ping
+    ping();
+    setInterval(ping, 300000);
 });
