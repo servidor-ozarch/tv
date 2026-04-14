@@ -2,74 +2,58 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { create } = require('xmlbuilder2');
-const cors = require('cors'); // Adicionado para compatibilidade
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 10000;
 
-// Habilita CORS para que qualquer app consiga ler os dados
-app.use(cors());
-
-const limparId = (texto) => {
-    return texto.toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "") 
-        .replace(/[^a-z0-9]/g, '.')      
-        .replace(/\.+/g, '.')            
-        .trim();
-};
+// Função de limpeza para IDs - Crucial para bater com a M3U
+const limparId = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').trim();
 
 app.get('/epg', async (req, res) => {
     try {
-        const url = 'https://tvinside.com.br/programacao_tv';
-        const { data: html } = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+        const { data: html } = await axios.get('https://tvinside.com.br/programacao_tv', {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
         });
         const $ = cheerio.load(html);
 
-        // Criando XML com declaração standalone para maior compatibilidade
-        const root = create({ version: '1.0', encoding: 'UTF-8', standalone: 'yes' })
-            .ele('tv', { 'generator-info-name': 'EPG Server Pro' });
+        const root = create({ version: '1.0', encoding: 'UTF-8' })
+            .ele('tv', { 'generator-info-name': 'EPG-Server' });
 
-        $('.registro.row').each((index, element) => {
-            const nomeBruto = $(element).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
-            const canalId = limparId(nomeBruto);
-            const canalLogo = $(element).find('.logo img').attr('src');
+        $('.registro.row').each((i, el) => {
+            const nome = $(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
+            const id = limparId(nome);
+            const logo = $(el).find('.logo img').attr('src');
 
-            const channel = root.ele('channel', { id: canalId });
-            channel.ele('display-name').txt(nomeBruto);
-            if (canalLogo) channel.ele('icon', { src: canalLogo });
+            const chan = root.ele('channel', { id: id });
+            chan.ele('display-name').txt(nome).up();
+            if (logo) chan.ele('icon', { src: logo }).up();
         });
 
-        $('.registro.row').each((index, element) => {
-            const nomeBruto = $(element).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
-            const canalId = limparId(nomeBruto);
-
-            $(element).find('.evento').each((i, el) => {
-                const titulo = $(el).find('.titulo').text().trim();
-                const dataRaw = $(el).find('time').attr('datetime'); 
-                const categoria = $(el).find('.box_tc_exp').first().text().replace('•', '').trim();
-
+        $('.registro.row').each((i, el) => {
+            const id = limparId($(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal');
+            
+            $(el).find('.evento').each((j, ev) => {
+                const titulo = $(ev).find('.titulo').text().trim();
+                const dataRaw = $(ev).find('time').attr('datetime');
+                
                 if (titulo && dataRaw) {
-                    // Formato: YYYYMMDDHHMMSS +0000 (Padrão mais aceito mundialmente)
-                    const startFormat = dataRaw.replace(/[- :]/g, '') + ' +0000';
-
-                    const prog = root.ele('programme', { start: startFormat, channel: canalId });
+                    // Formato universal YYYYMMDDHHMMSS +0000
+                    const start = dataRaw.replace(/[- :]/g, '') + ' +0000';
+                    const prog = root.ele('programme', { start: start, channel: id });
                     prog.ele('title', { lang: 'pt' }).txt(titulo);
-                    if (categoria) prog.ele('category', { lang: 'pt' }).txt(categoria);
                 }
             });
         });
 
-        const xml = root.end({ prettyPrint: true });
+        // IMPORTANTE: Alguns apps só leem se o Content-Type for EXATAMENTE este:
+        res.set('Content-Type', 'application/xml; charset=utf-8');
+        res.send(root.end({ prettyPrint: true }));
 
-        // Força o tipo de conteúdo específico que apps IPTV esperam
-        res.set('Content-Type', 'text/xml'); 
-        res.status(200).send(xml);
-
-    } catch (error) {
-        res.status(500).send('Erro ao processar EPG');
+    } catch (e) {
+        res.status(500).send('Erro');
     }
 });
 
-app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`Online na porta ${PORT}`));
