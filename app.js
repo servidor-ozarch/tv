@@ -1,6 +1,18 @@
 const axios = require('axios');
 
-async function pegarTxt(url) {
+const BASE_URL = 'https://www4.embedtv.cv';
+
+// 🔥 LISTA DE BLOCOS (EDITÁVEL)
+const BLOCOS = [
+    'sbtrj',
+    'globo',
+    'record'
+];
+
+// ==============================
+// 🔎 PEGA TXT DA PÁGINA
+// ==============================
+async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
             timeout: 10000,
@@ -9,47 +21,102 @@ async function pegarTxt(url) {
             }
         });
 
-        // 🔎 pega URLs absolutas .txt
-        const regexAbsoluto = /https?:\/\/[^\s"'<>]+\.txt/gi;
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-        // 🔎 pega URLs relativas .txt
-        const regexRelativo = /\/[^\s"'<>]+\.txt/gi;
-
-        let encontrados = [];
-
-        const abs = data.match(regexAbsoluto);
-        const rel = data.match(regexRelativo);
-
-        if (abs) encontrados.push(...abs);
-
-        // 🔧 converte relativo → absoluto
-        if (rel) {
-            const base = new URL(url).origin;
-            const convertidos = rel.map(r => base + r);
-            encontrados.push(...convertidos);
+        if (match) {
+            return match[0];
         }
 
-        // 🚫 remove duplicados
-        encontrados = [...new Set(encontrados)];
-
-        // 🚫 filtra lixo (caso raro mas importante)
-        encontrados = encontrados.filter(u => 
-            !u.endsWith('.js') &&
-            !u.endsWith('.css') &&
-            !u.includes('jquery') &&
-            !u.includes('bootstrap')
-        );
-
-        if (encontrados.length > 0) {
-            console.log('✅ Encontrados:', encontrados);
-            return encontrados[0]; // retorna o primeiro válido
-        }
-
-        console.log('❌ Nenhum .txt encontrado via axios');
         return null;
 
     } catch (e) {
-        console.log('Erro AXIOS:', e.message);
+        console.log('Erro página:', url);
         return null;
     }
 }
+
+// ==============================
+// 📥 LÊ O CONTEÚDO DO TXT
+// ==============================
+async function lerTxt(urlTxt) {
+    try {
+        const { data } = await axios.get(urlTxt, {
+            timeout: 10000
+        });
+
+        const links = data.match(/https?:\/\/[^\s"'<>]+/g) || [];
+
+        return links;
+
+    } catch (e) {
+        console.log('Erro TXT:', urlTxt);
+        return [];
+    }
+}
+
+// ==============================
+// 🎯 PROCESSA TODOS OS BLOCOS
+// ==============================
+async function processarBlocos() {
+
+    let playlistFinal = [];
+
+    for (let bloco of BLOCOS) {
+
+        const url = `${BASE_URL}/${bloco}`;
+
+        console.log('🔎 Processando:', url);
+
+        const txtUrl = await pegarTxtDaPagina(url);
+
+        if (!txtUrl) {
+            console.log('❌ Sem TXT:', bloco);
+            continue;
+        }
+
+        console.log('✅ TXT:', txtUrl);
+
+        const links = await lerTxt(txtUrl);
+
+        // 🔥 adiciona nome do bloco junto
+        links.forEach(link => {
+            playlistFinal.push({
+                canal: bloco,
+                url: link
+            });
+        });
+    }
+
+    return playlistFinal;
+}
+
+// ==============================
+// 🎬 GERAR PLAYLIST (M3U)
+// ==============================
+function gerarM3U(lista) {
+
+    let m3u = '#EXTM3U\n';
+
+    lista.forEach(item => {
+        m3u += `#EXTINF:-1,${item.canal}\n`;
+        m3u += `${item.url}\n`;
+    });
+
+    return m3u;
+}
+
+// ==============================
+// 🚀 EXECUTAR
+// ==============================
+async function iniciar() {
+
+    const lista = await processarBlocos();
+
+    const m3u = gerarM3U(lista);
+
+    console.log('\n🎬 PLAYLIST GERADA:\n');
+    console.log(m3u);
+
+}
+
+iniciar();
