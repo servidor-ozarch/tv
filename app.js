@@ -1,8 +1,12 @@
+const express = require('express');
 const axios = require('axios');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 const BASE_URL = 'https://www4.embedtv.cv';
 
-// 🔥 LISTA DE BLOCOS (EDITÁVEL)
+// 🔥 BLOCOS DINÂMICOS
 const BLOCOS = [
     'sbtrj',
     'globo',
@@ -10,7 +14,7 @@ const BLOCOS = [
 ];
 
 // ==============================
-// 🔎 PEGA TXT DA PÁGINA
+// 🔎 PEGA APENAS O LINK .TXT
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
@@ -36,30 +40,11 @@ async function pegarTxtDaPagina(url) {
 }
 
 // ==============================
-// 📥 LÊ O CONTEÚDO DO TXT
-// ==============================
-async function lerTxt(urlTxt) {
-    try {
-        const { data } = await axios.get(urlTxt, {
-            timeout: 10000
-        });
-
-        const links = data.match(/https?:\/\/[^\s"'<>]+/g) || [];
-
-        return links;
-
-    } catch (e) {
-        console.log('Erro TXT:', urlTxt);
-        return [];
-    }
-}
-
-// ==============================
-// 🎯 PROCESSA TODOS OS BLOCOS
+// 🎯 PROCESSA BLOCOS (SEM ABRIR TXT)
 // ==============================
 async function processarBlocos() {
 
-    let playlistFinal = [];
+    let lista = [];
 
     for (let bloco of BLOCOS) {
 
@@ -74,24 +59,20 @@ async function processarBlocos() {
             continue;
         }
 
-        console.log('✅ TXT:', txtUrl);
+        console.log('✅ TXT encontrado:', txtUrl);
 
-        const links = await lerTxt(txtUrl);
-
-        // 🔥 adiciona nome do bloco junto
-        links.forEach(link => {
-            playlistFinal.push({
-                canal: bloco,
-                url: link
-            });
+        // 🔥 adiciona direto o .txt
+        lista.push({
+            canal: bloco,
+            url: txtUrl
         });
     }
 
-    return playlistFinal;
+    return lista;
 }
 
 // ==============================
-// 🎬 GERAR PLAYLIST (M3U)
+// 🎬 GERAR PLAYLIST (USANDO .TXT)
 // ==============================
 function gerarM3U(lista) {
 
@@ -106,17 +87,21 @@ function gerarM3U(lista) {
 }
 
 // ==============================
-// 🚀 EXECUTAR
+// 🌐 API
 // ==============================
-async function iniciar() {
+app.get('/playlist', async (req, res) => {
 
     const lista = await processarBlocos();
 
     const m3u = gerarM3U(lista);
 
-    console.log('\n🎬 PLAYLIST GERADA:\n');
-    console.log(m3u);
+    res.setHeader('Content-Type', 'audio/x-mpegurl');
+    res.send(m3u);
+});
 
-}
-
-iniciar();
+// ==============================
+// 🚀 START
+// ==============================
+app.listen(PORT, () => {
+    console.log('🚀 Servidor rodando na porta', PORT);
+});
