@@ -9,7 +9,7 @@ const BASE_URL = 'https://www4.embedtv.cv';
 // 🔥 BLOCOS (adicione quantos quiser)
 const BLOCOS = [
     'sbtrj',
-    'globo',
+    'globoes',
     'record'
 ];
 
