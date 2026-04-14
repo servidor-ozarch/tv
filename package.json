@@ -1,10 +1,24 @@
 {
-  "name": "saldo-api",
+  "name": "scraper-tv-inside",
   "version": "1.0.0",
-  "main": "app.js",
+  "description": "Raspador de programação de TV para geração de EPG dinâmica",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "nodejs",
+    "scraper",
+    "epg",
+    "xmltv",
+    "tv-inside"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "axios": "^1.6.0",
-    "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12",
+    "xmlbuilder2": "^3.1.1"
   }
 }
