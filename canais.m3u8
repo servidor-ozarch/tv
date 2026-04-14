@@ -41,7 +41,7 @@ https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/d5392c1d473ec1a25
 #EXTINF:-1 tvg-id="cinemax" tvg-name="Cinemax" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/cinemax.png?raw=true" group-title="Filmes",Cinemax
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/6df3e165e48cb2194bd1a4ec43a37228/cinemax.txt
 
-#EXTINF:-1 tvg-id="a.e" tvg-name="A&E" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/ae.png?raw=true" group-title="Filmes",A&E
+#EXTINF:-1 tvg-id="a.e.mundo" tvg-name="A&E" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/ae.png?raw=true" group-title="Filmes",A&E
 https://d1muf25xa03so8hp16.s27-usa-cloudfront-net.online/token/a50abfc639297715cfcb731ed620913b/ae.txt
 
 #EXTINF:-1 tvg-id="axn" tvg-name="AXN" tvg-logo="https://github.com/servidor-ozarch/tv/blob/main/live/logotipo/axn.png?raw=true" group-title="Filmes",AXN
