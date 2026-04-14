@@ -10,9 +10,10 @@ const BASE_URL = 'https://www4.embedtv.cv';
 // 📺 CANAIS
 // ==============================
 const CANAIS = [
-    { id: 'sbtrj', nome: 'SBT RJ' },
-    { id: 'globoes', nome: 'Globo' },
+    { id: 'hbo', nome: 'HBO' },
+    { id: 'globorj', nome: 'Globo' },
     { id: 'record', nome: 'Record TV' },
+    { id: 'premiere', nome: 'Premiere' },
     { id: 'cinemax', nome: 'Cinemax' }
 ];
 
@@ -20,10 +21,11 @@ const CANAIS = [
 // 🖼️ LOGOS
 // ==============================
 const LOGOS = {
-    sbtrj: 'sbt.png',
-    globoes: 'globo.png',
+    hbo: 'hbo.png',
+    globogrj: 'globo.png',
     record: 'record.png',
     cinemax: 'cinemax.png',
+    premiere: 'premiere.png',
 };
 
 // ==============================
