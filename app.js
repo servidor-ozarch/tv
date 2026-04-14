@@ -6,13 +6,12 @@ const PORT = process.env.PORT || 3000;
 
 const BASE_URL = 'https://www4.embedtv.cv';
 
-// 🔥 BLOCOS (ADICIONE MAIS AQUI)
+// 🔥 BLOCOS (adicione quantos quiser)
 const BLOCOS = [
     'sbtrj',
     'globo',
     'record'
 ];
-
 
 // ==============================
 // 🔎 PEGA O .TXT DA PÁGINA
@@ -37,7 +36,6 @@ async function pegarTxtDaPagina(url) {
             return null;
         }
 
-        // pega o primeiro válido
         const txt = match.find(u =>
             !u.includes('.js') &&
             !u.includes('.css')
@@ -53,7 +51,6 @@ async function pegarTxtDaPagina(url) {
         return null;
     }
 }
-
 
 // ==============================
 // 🎯 PROCESSA TODOS OS BLOCOS
@@ -86,9 +83,8 @@ async function processarBlocos() {
     return lista;
 }
 
-
 // ==============================
-// 🎬 GERAR PLAYLIST M3U
+// 🎬 GERAR PLAYLIST M3U + LOGO
 // ==============================
 function gerarM3U(lista) {
 
@@ -99,13 +95,16 @@ function gerarM3U(lista) {
     let m3u = '#EXTM3U\n';
 
     lista.forEach(item => {
-        m3u += `#EXTINF:-1,${item.canal}\n`;
+
+        // 🔥 monta logo automático
+        const logo = `https://www4.embedtv.cv/assets/images/${item.canal}.png`;
+
+        m3u += `#EXTINF:-1 tvg-logo="${logo}",${item.canal}\n`;
         m3u += `${item.url}\n`;
     });
 
     return m3u;
 }
-
 
 // ==============================
 // 🌐 ENDPOINT PLAYLIST
@@ -122,7 +121,6 @@ app.get('/playlist', async (req, res) => {
 
     res.send(m3u);
 });
-
 
 // ==============================
 // 🚀 START
