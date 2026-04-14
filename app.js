@@ -97,7 +97,7 @@ function gerarM3U(lista) {
     lista.forEach(item => {
 
         // 🔥 monta logo automático
-        const logo = `https://www4.embedtv.cv/assets/images/${item.canal}.png`;
+        const logo = `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${item.canal}.png`;
 
         m3u += `#EXTINF:-1 tvg-logo="${logo}",${item.canal}\n`;
         m3u += `${item.url}\n`;
