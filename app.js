@@ -6,12 +6,23 @@ const PORT = process.env.PORT || 3000;
 
 const BASE_URL = 'https://www4.embedtv.cv';
 
-// 🔥 BLOCOS (adicione quantos quiser)
-const BLOCOS = [
-    'sbtrj',
-    'globoes',
-    'record'
+// ==============================
+// 📺 CANAIS (ID + NOME BONITO)
+// ==============================
+const CANAIS = [
+    { id: 'sbtrj', nome: 'SBT RJ' },
+    { id: 'globo', nome: 'Globo' },
+    { id: 'record', nome: 'Record TV' }
 ];
+
+// ==============================
+// 🖼️ LOGOS (SEPARADO)
+// ==============================
+const LOGOS = {
+    sbtrj: 'sbt.png',
+    globo: 'globo.png',
+    record: 'record.png'
+};
 
 // ==============================
 // 🔎 PEGA O .TXT DA PÁGINA
@@ -25,14 +36,12 @@ async function pegarTxtDaPagina(url) {
             }
         });
 
-        console.log('\n🌐 HTML RECEBIDO:', url);
+        console.log('\n🌐 HTML:', url);
 
         const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-        console.log('🔍 MATCH:', match);
-
         if (!match || match.length === 0) {
-            console.log('❌ Nenhum .txt encontrado');
+            console.log('❌ Sem .txt');
             return null;
         }
 
@@ -41,50 +50,51 @@ async function pegarTxtDaPagina(url) {
             !u.includes('.css')
         );
 
-        console.log('✅ TXT FINAL:', txt);
+        console.log('✅ TXT:', txt);
 
         return txt || null;
 
     } catch (e) {
-        console.log('❌ ERRO AO ACESSAR:', url);
-        console.log('Motivo:', e.message);
+        console.log('❌ ERRO:', url);
+        console.log(e.message);
         return null;
     }
 }
 
 // ==============================
-// 🎯 PROCESSA TODOS OS BLOCOS
+// 🎯 PROCESSA CANAIS
 // ==============================
-async function processarBlocos() {
+async function processarCanais() {
 
     let lista = [];
 
-    for (let bloco of BLOCOS) {
+    for (let canal of CANAIS) {
 
-        const url = `${BASE_URL}/${bloco}`;
+        const url = `${BASE_URL}/${canal.id}`;
 
-        console.log('\n🔎 Processando bloco:', bloco);
+        console.log('\n🔎 Processando:', canal.nome);
 
         const txtUrl = await pegarTxtDaPagina(url);
 
         if (!txtUrl) {
-            console.log('⚠️ Pulando bloco:', bloco);
+            console.log('⚠️ Pulando:', canal.nome);
             continue;
         }
 
         lista.push({
-            canal: bloco,
+            id: canal.id,
+            nome: canal.nome,
             url: txtUrl
         });
     }
 
-    console.log('\n📦 TOTAL NA LISTA:', lista.length);
+    console.log('\n📦 TOTAL:', lista.length);
 
     return lista;
 }
 
 // ==============================
-// 🎬 GERAR PLAYLIST M3U + LOGO
+// 🎬 GERAR M3U
 // ==============================
 function gerarM3U(lista) {
 
@@ -96,10 +106,11 @@ function gerarM3U(lista) {
 
     lista.forEach(item => {
 
-        // 🔥 monta logo automático
-        const logo = `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${item.canal}.png`;
+        const logoFile = LOGOS[item.id] || `${item.id}.png`;
 
-        m3u += `#EXTINF:-1 tvg-logo="${logo}",${item.canal}\n`;
+        const logo = `https://www4.embedtv.cv/assets/images/${logoFile}`;
+
+        m3u += `#EXTINF:-1 tvg-logo="${logo}",${item.nome}\n`;
         m3u += `${item.url}\n`;
     });
 
@@ -107,15 +118,14 @@ function gerarM3U(lista) {
 }
 
 // ==============================
-// 🌐 ENDPOINT PLAYLIST
+// 🌐 ENDPOINT
 // ==============================
 app.get('/playlist', async (req, res) => {
 
-    const lista = await processarBlocos();
+    const lista = await processarCanais();
 
     const m3u = gerarM3U(lista);
 
-    // 🔥 HEADERS CORRETOS
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Content-Disposition', 'inline');
 
