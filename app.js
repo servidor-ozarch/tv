@@ -108,7 +108,7 @@ function gerarM3U(lista) {
 
         const logoFile = LOGOS[item.id] || `${item.id}.png`;
 
-        const logo = `https://www4.embedtv.cv/assets/images/${logoFile}`;
+        const logo = `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${logoFile}`;
 
         m3u += `#EXTINF:-1 tvg-logo="${logo}",${item.nome}\n`;
         m3u += `${item.url}\n`;
