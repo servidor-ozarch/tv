@@ -4,56 +4,75 @@ const cheerio = require('cheerio');
 const { create } = require('xmlbuilder2');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Rota principal para verificar se o servidor está online
+// Função para limpar IDs e torná-los compatíveis com XMLTV e M3U
+const limparId = (texto) => {
+    return texto.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/[^a-z0-9]/g, '.')      // Substitui símbolos (incluindo &) por ponto
+        .replace(/\.+/g, '.')            // Remove pontos duplicados
+        .trim();
+};
+
 app.get('/', (req, res) => {
-    res.send('Servidor EPG ativo. Aceda a /epg para o ficheiro XML.');
+    res.send('Servidor EPG Online. Link da EPG: /epg');
 });
 
-// Rota que gera a EPG dinamicamente
 app.get('/epg', async (req, res) => {
     try {
         const url = 'https://tvinside.com.br/programacao_tv';
-        const { data: html } = await axios.get(url);
+        const { data: html } = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
         const $ = cheerio.load(html);
 
         const root = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('tv', { 'generator-info-name': 'Scraper Express' });
+            .ele('tv', { 
+                'generator-info-name': 'Scraper Pro',
+                'generator-info-url': 'https://render.com'
+            });
 
         $('.registro.row').each((index, element) => {
-            const canalNome = $(element).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
-            // Gera ID limpo (sem acentos ou espaços)
-            const canalId = canalNome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '.');
+            const nomeBruto = $(element).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
+            const canalId = limparId(nomeBruto);
             const canalLogo = $(element).find('.logo img').attr('src');
 
+            // Adiciona Canal
             root.ele('channel', { id: canalId })
-                .ele('display-name').txt(canalNome).up()
+                .ele('display-name').txt(nomeBruto).up()
                 .ele('icon', { src: canalLogo }).up();
 
+            // Adiciona Programas
             $(element).find('.evento').each((i, el) => {
                 const titulo = $(el).find('.titulo').text().trim();
-                const dataRaw = $(el).find('time').attr('datetime');
-                const categoria = $(el).find('.box_tc_exp').first().text().replace('•', '').trim();
+                const dataRaw = $(el).find('time').attr('datetime'); // Formato: 2026-04-13 22:44:00
+                const desc = $(el).find('.box_tc_exp').first().text().replace('•', ' - ').trim();
 
                 if (titulo && dataRaw) {
-                    const startFormat = dataRaw.replace(/[- :]/g, '') + ' +0000';
-                    root.ele('programme', { start: startFormat, channel: canalId })
-                        .ele('title', { lang: 'pt' }).txt(titulo).up()
-                        .ele('category', { lang: 'pt' }).txt(categoria).up();
+                    // Formato XMLTV: YYYYMMDDHHMMSS -0300 (Ajustado para Brasília)
+                    const dataFormatada = dataRaw.replace(/[- :]/g, '') + ' -0300';
+
+                    root.ele('programme', { 
+                        start: dataFormatada, 
+                        channel: canalId 
+                    })
+                    .ele('title', { lang: 'pt' }).txt(titulo).up()
+                    .ele('desc', { lang: 'pt' }).txt(desc).up()
+                    .ele('category', { lang: 'pt' }).txt(desc.split(' - ')[0]).up();
                 }
             });
         });
 
         const xml = root.end({ prettyPrint: true });
 
-        // Configura o cabeçalho para o player reconhecer como XML de TV
-        res.header('Content-Type', 'application/xml');
+        res.header('Content-Type', 'application/xml; charset=utf-8');
         res.status(200).send(xml);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao gerar a EPG.');
+        console.error('Erro:', error.message);
+        res.status(500).send('Erro ao gerar EPG');
     }
 });
 
