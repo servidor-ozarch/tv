@@ -8,7 +8,15 @@ const app = express();
 app.use(cors());
 const PORT = process.env.PORT || 10000;
 
-const limparId = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').trim();
+// Função para gerar IDs 100% seguros (remove tudo que não é letra ou número)
+const limparId = (t) => {
+    return t.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/&/g, 'e')               // Troca & por 'e'
+        .replace(/[^a-z0-9]/g, '')       // Remove QUALQUER símbolo
+        .trim();
+};
 
 app.get('/epg', async (req, res) => {
     try {
@@ -17,71 +25,47 @@ app.get('/epg', async (req, res) => {
         });
         const $ = cheerio.load(html);
 
-        // Criando o XML com cabeçalho completo
+        // O segredo está em deixar a biblioteca xmlbuilder tratar o escape de caracteres especiais
         const root = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('tv', { 
-                'generator-info-name': 'EPG Server',
-                'source-info-name': 'TV Inside'
-            });
+            .ele('tv', { 'generator-info-name': 'EPG-Server-Fixed' });
 
-        const canais = [];
-
-        // 1. Primeiro mapeamos todos os canais (Obrigatório vir antes dos programmes)
         $('.registro.row').each((i, el) => {
-            const nome = $(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
-            const id = limparId(nome);
+            const nomeBruto = $(el).find('a').attr('title')?.replace('Programação do Canal ', '') || 'Canal';
+            const id = limparId(nomeBruto);
             const logo = $(el).find('.logo img').attr('src');
 
-            canais.push({ id, nome, logo, element: el });
-
+            // .txt() faz o escape automático de caracteres como &
             root.ele('channel', { id: id })
-                .ele('display-name').txt(nome).up()
-                .ele('icon', { src: logo }).up()
-            .up();
-        });
+                .ele('display-name').txt(nomeBruto).up()
+                .ele('icon', { src: logo }).up();
 
-        // 2. Depois mapeamos os programas
-        canais.forEach(canal => {
-            const eventos = $(canal.element).find('.evento');
-            
-            eventos.each((j, ev) => {
+            $(el).find('.evento').each((j, ev) => {
                 const titulo = $(ev).find('.titulo').text().trim();
-                const dataRaw = $(ev).find('time').attr('datetime'); // 2026-04-13 22:44:00
+                const dataRaw = $(ev).find('time').attr('datetime');
                 
                 if (titulo && dataRaw) {
                     const start = dataRaw.replace(/[- :]/g, '') + ' +0000';
-                    
-                    // Calculando um "stop" aproximado (próximo programa ou +1h)
-                    // Muitos apps falham sem a tag stop
-                    let stop;
-                    const proximo = $(eventos[j + 1]).find('time').attr('datetime');
-                    if (proximo) {
-                        stop = proximo.replace(/[- :]/g, '') + ' +0000';
-                    } else {
-                        // Se não tem próximo, soma 1 hora (gambiarra técnica para compatibilidade)
-                        stop = start.replace(/(\d{2})(\d{2}) \+0000$/, (m, h, min) => {
-                            let nh = (parseInt(h) + 1).toString().padStart(2, '0');
-                            return `${nh}${min} +0000`;
-                        });
-                    }
+                    // Criamos um stop de 1 hora para evitar erros em players rígidos
+                    const stop = start.replace(/(\d{2})(\d{2}) \+0000$/, (m, h, min) => {
+                        let nh = (parseInt(h) + 1).toString().padStart(2, '0');
+                        return `${nh}${min} +0000`;
+                    });
 
-                    const prog = root.ele('programme', { start: start, stop: stop, channel: canal.id });
-                    prog.ele('title', { lang: 'pt' }).txt(titulo).up();
-                    prog.ele('desc', { lang: 'pt' }).txt('Programação extraída de TV Inside').up();
+                    root.ele('programme', { start: start, stop: stop, channel: id })
+                        .ele('title', { lang: 'pt' }).txt(titulo).up()
+                        .ele('desc', { lang: 'pt' }).txt('Programação via TV Inside').up();
                 }
             });
         });
 
         const xml = root.end({ prettyPrint: true });
 
-        // IMPORTANTE: Alguns apps ignoram se não for text/xml
         res.set('Content-Type', 'text/xml; charset=utf-8');
         res.status(200).send(xml);
 
     } catch (e) {
-        console.error(e);
-        res.status(500).send('Erro interno');
+        res.status(500).send('Erro no processamento');
     }
 });
 
-app.listen(PORT, () => console.log(`Online na porta ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
