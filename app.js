@@ -6,7 +6,6 @@ const PORT = process.env.PORT || 3000;
 
 const BASE_URL = 'https://www4.embedtv.cv';
 
-// 🔥 BLOCOS DINÂMICOS
 const BLOCOS = [
     'sbtrj',
     'globo',
@@ -14,7 +13,7 @@ const BLOCOS = [
 ];
 
 // ==============================
-// 🔎 PEGA APENAS O LINK .TXT
+// 🔎 PEGAR TXT COM VALIDAÇÃO
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
@@ -25,22 +24,31 @@ async function pegarTxtDaPagina(url) {
             }
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+        const matches = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-        if (match) {
-            return match[0];
+        if (!matches || matches.length === 0) {
+            console.log('❌ Nenhum .txt encontrado em:', url);
+            return null;
         }
 
-        return null;
+        // 🔥 pega o primeiro válido
+        const txt = matches.find(u =>
+            !u.includes('.js') &&
+            !u.includes('.css')
+        );
+
+        console.log('✅ TXT encontrado:', txt);
+
+        return txt || null;
 
     } catch (e) {
-        console.log('Erro página:', url);
+        console.log('❌ Erro ao acessar:', url);
         return null;
     }
 }
 
 // ==============================
-// 🎯 PROCESSA BLOCOS (SEM ABRIR TXT)
+// 🎯 PROCESSAR BLOCOS
 // ==============================
 async function processarBlocos() {
 
@@ -50,31 +58,34 @@ async function processarBlocos() {
 
         const url = `${BASE_URL}/${bloco}`;
 
-        console.log('🔎 Processando:', url);
+        console.log('\n🔎 Processando:', bloco);
 
         const txtUrl = await pegarTxtDaPagina(url);
 
         if (!txtUrl) {
-            console.log('❌ Sem TXT:', bloco);
+            console.log('⚠️ Pulando bloco:', bloco);
             continue;
         }
 
-        console.log('✅ TXT encontrado:', txtUrl);
-
-        // 🔥 adiciona direto o .txt
         lista.push({
             canal: bloco,
             url: txtUrl
         });
     }
 
+    console.log('\n📦 TOTAL NA LISTA:', lista.length);
+
     return lista;
 }
 
 // ==============================
-// 🎬 GERAR PLAYLIST (USANDO .TXT)
+// 🎬 GERAR M3U
 // ==============================
 function gerarM3U(lista) {
+
+    if (!lista || lista.length === 0) {
+        return '#EXTM3U\n# Nenhum canal encontrado';
+    }
 
     let m3u = '#EXTM3U\n';
 
