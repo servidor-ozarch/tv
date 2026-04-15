@@ -130,7 +130,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
-    fishtv: 'fish.png',
+    fish: 'fish.png',
     history: 'history.png',
     history2: 'history2.png',
     tcm: 'tcm.png',
@@ -155,6 +155,7 @@ const LOGOS = {
     combate: 'combate.png',
     getv: 'getv.png',
     ufcfightpass: 'ufcfightpass.png',
+    xsports: 'xsports.png',
     premiere: 'premiere.png',
     premiere2: 'premiere.png',
     premiere3: 'premiere.png',
@@ -191,7 +192,7 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-const CACHE_TEMPO = 60 * 60 * 1000; // 60 minutos
+const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
 
 // ==============================
 // 🔎 PEGA TXT
@@ -298,7 +299,7 @@ app.get('/playlist', async (req, res) => {
 });
 
 // ==============================
-// 🔄 AUTO PING (1 MIN)
+// 🔄 AUTO PING (5 MIN)
 // ==============================
 const URL = 'https://iptv-c3lf.onrender.com/playlist';
 
@@ -319,5 +320,5 @@ app.listen(PORT, async () => {
 
     // 🔁 inicia ping
     ping();
-    setInterval(ping, 60000);
+    setInterval(ping, 300000);
 });
