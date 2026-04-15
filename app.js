@@ -41,7 +41,7 @@ const CANAIS = [
     { id: 'discoverytheater', nome: 'Discovery Theater' },
     { id: 'discoveryturbo', nome: 'Discovery Turbo' },
     { id: 'discoveryworld', nome: 'Discovery World' },
-    { id: 'fish', nome: 'Fish TV' },
+    { id: 'fishtv', nome: 'Fish TV' },
     { id: 'history', nome: 'History' },
     { id: 'history2', nome: 'History 2' },
     { id: '000', 000: '000' },
@@ -120,7 +120,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
-    fish: 'fish.png',
+    fishtv: 'fishtv.png',
     history: 'history.png',
     history2: 'history2.png',
     000: '000.png',
@@ -303,5 +303,5 @@ app.listen(PORT, async () => {
 
     // 🔁 inicia ping
     ping();
-    setInterval(ping, 300000);
+    setInterval(ping, 60000);
 });
