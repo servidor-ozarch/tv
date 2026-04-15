@@ -130,7 +130,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
-    fish: 'fish.png',
+    fish: 'fishtv.png',
     history: 'history.png',
     history2: 'history2.png',
     tcm: 'tcm.png',
