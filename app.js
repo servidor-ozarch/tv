@@ -121,7 +121,7 @@ const LOGOS = {
     telecinepremium: 'telecinepremium.png',
     telecinetouch: 'telecinetouch.png',
     universaltv: 'universaltv.png',
-    warnerchannel: 'warnerchannel.png'
+    warnerchannel: 'warnerchannel.png',
     animalplanet: 'animalplanet.png',
     discoverychannel: 'discoverychannel.png',
     discoveryhh: 'discoveryhh.png',
