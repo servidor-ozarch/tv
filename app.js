@@ -91,8 +91,7 @@ const CANAIS = [
     { id: 'bandnews', nome: 'Band News' },
     { id: 'cnnbrasil', nome: 'CNN Brasil' },
     { id: 'cultura', nome: 'TV Cultura' },
-    { id: 'aparecida', nome: 'Aparecida' },
-    { id: 'cancaonova', nome: 'Canção Nova' }
+    { id: 'aparecida', nome: 'Aparecida' }
 ];
 
 // ==============================
@@ -184,7 +183,6 @@ const LOGOS = {
     cnnbrasil: 'cnnbrasil.png',
     cultura: 'cultura.png',
     aparecida: 'aparecida.png',
-    cancaonova: 'cancaonova.png',
 };
 
 // ==============================
@@ -193,7 +191,7 @@ const LOGOS = {
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
 let atualizando = false;
-const CACHE_TEMPO = 1 * 60 * 1000;
+const CACHE_TEMPO = 24 * 60 * 60 * 1000; // A cada 24 horas.
 
 // ==============================
 // 🔎 PEGA M3U8
@@ -289,7 +287,7 @@ async function atualizarCache() {
 // ==============================
 // 🌐 ENDPOINT
 // ==============================
-app.get('/playlist', async (req, res) => {
+app.get('/playlist.m3u8', async (req, res) => {
 
     if (!cacheM3U) {
         await atualizarCache();
