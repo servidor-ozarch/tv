@@ -234,7 +234,7 @@ async function processarCanais() {
     const promises = CANAIS.map(async (canal) => {
 
         const url = `${BASE_URL}/${canal.id}`;
-        const txtUrl = await pegarTxtDaPagina(url);
+        const txtUrl = await pegarTxtDaPagina(url, canal.id);
 
         if (!txtUrl) return null;
 
