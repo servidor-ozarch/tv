@@ -196,7 +196,7 @@ let atualizando = false;
 const CACHE_TEMPO = 1 * 60 * 1000;
 
 // ==============================
-// 🔎 PEGA TXT
+// 🔎 PEGA M3U8
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
@@ -204,7 +204,7 @@ async function pegarTxtDaPagina(url) {
             timeout: 8000
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         if (!match) return null;
 
         return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
