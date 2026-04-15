@@ -130,7 +130,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
-    fish: 'fish.png',
+    fishtv: 'fish.png',
     history: 'history.png',
     history2: 'history2.png',
     tcm: 'tcm.png',
@@ -155,7 +155,6 @@ const LOGOS = {
     combate: 'combate.png',
     getv: 'getv.png',
     ufcfightpass: 'ufcfightpass.png',
-    xsports: 'xsports.png',
     premiere: 'premiere.png',
     premiere2: 'premiere.png',
     premiere3: 'premiere.png',
@@ -192,62 +191,52 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-let atualizando = false;
-const CACHE_TEMPO = 1 * 60 * 1000;
+const CACHE_TEMPO = 60 * 60 * 1000; // 60 minutos
 
 // ==============================
 // 🔎 PEGA TXT
 // ==============================
-async function pegarTxtDaPagina(url, canalId) {
+async function pegarTxtDaPagina(url) {
+    try {
+        const { data } = await axios.get(url, {
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
 
-    const tentativas = [
-        `${BASE_URL}/${canalId}.txt`,
-        `${BASE_URL}/${canalId}/index.txt`,
-        `${BASE_URL}/player/${canalId}.txt`,
-        `${BASE_URL}/${canalId}.m3u8`
-    ];
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-    for (let tentativa of tentativas) {
-        try {
-            const res = await axios.get(tentativa, {
-                timeout: 8000,
-                validateStatus: () => true
-            });
+        if (!match) return null;
 
-            if (res.status === 200 && res.data.includes('http')) {
-                console.log('✅ Encontrado:', tentativa);
-                return tentativa;
-            }
+        return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
 
-        } catch {}
+    } catch {
+        return null;
     }
-
-    console.log('❌ Não encontrado:', canalId);
-    return null;
 }
 
 // ==============================
-// ⚡ PROCESSA CANAIS (PARALELO)
+// 🎯 PROCESSA CANAIS
 // ==============================
 async function processarCanais() {
 
-    const promises = CANAIS.map(async (canal) => {
+    let lista = [];
+
+    for (let canal of CANAIS) {
 
         const url = `${BASE_URL}/${canal.id}`;
-        const txtUrl = await pegarTxtDaPagina(url, canal.id);
 
-        if (!txtUrl) return null;
+        const txtUrl = await pegarTxtDaPagina(url);
 
-        return {
+        if (!txtUrl) continue;
+
+        lista.push({
             id: canal.id,
             nome: canal.nome,
             url: txtUrl
-        };
-    });
+        });
+    }
 
-    const resultados = await Promise.all(promises);
-
-    return resultados.filter(Boolean);
+    return lista;
 }
 
 // ==============================
@@ -278,24 +267,13 @@ function gerarM3U(lista) {
 // ♻️ ATUALIZA CACHE
 // ==============================
 async function atualizarCache() {
-
-    if (atualizando) return;
-
-    atualizando = true;
-
     console.log('🔄 Atualizando cache...');
 
-    try {
-        const lista = await processarCanais();
-        cacheM3U = gerarM3U(lista);
-        ultimaAtualizacao = Date.now();
+    const lista = await processarCanais();
+    cacheM3U = gerarM3U(lista);
+    ultimaAtualizacao = Date.now();
 
-        console.log('✅ Cache atualizado');
-    } catch (e) {
-        console.log('❌ Erro:', e.message);
-    } finally {
-        atualizando = false;
-    }
+    console.log('✅ Cache atualizado');
 }
 
 // ==============================
@@ -303,35 +281,43 @@ async function atualizarCache() {
 // ==============================
 app.get('/playlist', async (req, res) => {
 
+    // se não tem cache ainda → gera
     if (!cacheM3U) {
         await atualizarCache();
     }
 
-    res.setHeader('Content-Type', 'text/plain');
+    // se cache expirou → atualiza em background
+    if (Date.now() - ultimaAtualizacao > CACHE_TEMPO) {
+        atualizarCache(); // NÃO espera (não trava request)
+    }
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', 'inline');
+
     res.send(cacheM3U);
 });
 
 // ==============================
-// 🔄 PING + CACHE
+// 🔄 AUTO PING (1 MIN)
 // ==============================
 const URL = 'https://tv-5p23.onrender.com/playlist';
 
 function ping() {
-
-    axios.get(URL).catch(() => {});
-
-    atualizarCache();
+    axios.get(URL)
+        .then(() => console.log('♻️ Ping OK'))
+        .catch(() => console.log('⚠️ Falha no ping'));
 }
 
 // ==============================
 // 🚀 START
 // ==============================
 app.listen(PORT, async () => {
+    console.log('🚀 Servidor rodando na porta', PORT);
 
-    console.log('🚀 Rodando na porta', PORT);
-
+    // 🔥 gera cache inicial ao subir
     await atualizarCache();
 
+    // 🔁 inicia ping
     ping();
     setInterval(ping, 60000);
 });
