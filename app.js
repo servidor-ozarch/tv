@@ -300,7 +300,7 @@ app.get('/playlist', async (req, res) => {
 // ==============================
 // 🔄 AUTO PING (1 MIN)
 // ==============================
-const URL = 'https://tv-5p23.onrender.com/playlist';
+const URL = 'https://iptv-c3lf.onrender.com/playlist';
 
 function ping() {
     axios.get(URL)
