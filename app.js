@@ -64,7 +64,6 @@ const CANAIS = [
     { id: 'adultswim', nome: 'Adult Swim' },
     { id: 'bandsports', nome: 'Band Sports' },
     { id: 'combate', nome: 'Combate' },
-    { id: 'getv', nome: 'GeTV' },
     { id: 'ufcfightpass', nome: 'UFC Fight Pass' },
     { id: 'xsports', nome: 'XSports' },
     { id: 'premiere', nome: 'Premiere' },
@@ -94,8 +93,7 @@ const CANAIS = [
     { id: 'cnnbrasil', nome: 'CNN Brasil' },
     { id: 'cultura', nome: 'TV Cultura' },
     { id: 'aparecida', nome: 'Aparecida' },
-    { id: 'cancaonova', nome: 'Canção Nova' },
-    { id: '000', 000: '000' }
+    { id: 'cancaonova', nome: 'Canção Nova' }
 ];
 
 // ==============================
@@ -156,7 +154,6 @@ const LOGOS = {
     adultswim: 'adultswim.png',
     bandsports: 'bandsports.png',
     combate: 'combate.png',
-    getv: 'getv.png',
     ufcfightpass: 'ufcfightpass.png',
     xsports: 'xsports.png',
     premiere: 'premiere.png',
