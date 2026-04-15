@@ -204,7 +204,7 @@ async function pegarTxtDaPagina(url) {
             headers: { 'User-Agent': 'Mozilla/5.0' }
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
 
         if (!match) return null;
 
