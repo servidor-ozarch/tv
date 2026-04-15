@@ -121,70 +121,8 @@ const LOGOS = {
     telecinepremium: 'telecinepremium.png',
     telecinetouch: 'telecinetouch.png',
     universaltv: 'universaltv.png',
-    warnerchannel: 'warnerchannel.png',
-    animalplanet: 'animalplanet.png',
-    discoverychannel: 'discoverychannel.png',
-    discoveryhh: 'discoveryhh.png',
-    discoveryid: 'discoverychannel.png',
-    discoveryscience: 'discoveryscience.png',
-    discoverytheater: 'discoverytheater.png',
-    discoveryturbo: 'discoveryturbo.png',
-    discoveryworld: 'discoveryworld.png',
-    fish: 'fish.png',
-    history: 'history.png',
-    history2: 'history2.png',
-    tcm: 'tcm.png',
-    tnt: 'tnt.png',
-    tntnovelas: 'tntnovelas.png',
-    tntseries: 'tntseries.png',
-    tlc: 'tlc.png',
-    comedycentral: 'comedycentral.png',
-    gnt: 'gnt.png',
-    hgtv: 'hgtv.png',
-    off: 'off.png',
-    foodnetwork: 'foodnetwork.png',
-    mtv: 'mtv.png',
-    masterchef: 'masterchef.png',
-    multishow: 'multishow.png',
-    cartoonnetwork: 'cartoonnetwork.png',
-    cartoonito: 'cartoonito.png',
-    discoverykids: 'discoverykids.png',
-    gloob: 'gloob.png',
-    adultswim: 'adultswim.png',
-    bandsports: 'bandsports.png',
-    combate: 'combate.png',
-    getv: 'getv.png',
-    ufcfightpass: 'ufcfightpass.png',
-    xsports: 'xsports.png',
-    premiere: 'premiere.png',
-    premiere2: 'premiere.png',
-    premiere3: 'premiere.png',
-    premiere3: 'premiere.png',
-    premiere4: 'premiere.png',
-    premiere5: 'premiere.png',
-    premiere6: 'premiere.png',
-    premiere7: 'premiere.png',
-    premiere8: 'premiere.png',
-    espn: 'espn.png',
-    espn2: 'espn.png',
-    espn3: 'espn.png',
-    espn4: 'espn.png',
-    espn5: 'espn.png',
-    espn6: 'espn.png',
-    sportv: 'sportv.png',
-    sportv2: 'sportv.png',
-    sportv3: 'sportv.png',
-    sportv4: 'sportv.png',
-    globorj: 'globo.png',
-    globonews: 'globonews.png',
-    sbtrj: 'sbt.png',
-    recordrj: 'record.png',
-    bandrj: 'band.png',
-    bandnews: 'bandnews.png',
-    cnnbrasil: 'cnnbrasil.png',
-    cultura: 'cultura.png',
-    aparecida: 'aparecida.png',
-    cancaonova: 'cancaonova.png',
+    warnerchannel: 'warnerchannel.png'
+    // pode manter o resto igual
 };
 
 // ==============================
@@ -192,7 +130,8 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
+let atualizando = false;
+const CACHE_TEMPO = 1 * 60 * 1000;
 
 // ==============================
 // 🔎 PEGA TXT
@@ -200,12 +139,10 @@ const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
 async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
-            timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0' }
+            timeout: 8000
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
-
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
         if (!match) return null;
 
         return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
@@ -216,28 +153,27 @@ async function pegarTxtDaPagina(url) {
 }
 
 // ==============================
-// 🎯 PROCESSA CANAIS
+// ⚡ PROCESSA CANAIS (PARALELO)
 // ==============================
 async function processarCanais() {
 
-    let lista = [];
-
-    for (let canal of CANAIS) {
+    const promises = CANAIS.map(async (canal) => {
 
         const url = `${BASE_URL}/${canal.id}`;
-
         const txtUrl = await pegarTxtDaPagina(url);
 
-        if (!txtUrl) continue;
+        if (!txtUrl) return null;
 
-        lista.push({
+        return {
             id: canal.id,
             nome: canal.nome,
             url: txtUrl
-        });
-    }
+        };
+    });
 
-    return lista;
+    const resultados = await Promise.all(promises);
+
+    return resultados.filter(Boolean);
 }
 
 // ==============================
@@ -268,13 +204,24 @@ function gerarM3U(lista) {
 // ♻️ ATUALIZA CACHE
 // ==============================
 async function atualizarCache() {
+
+    if (atualizando) return;
+
+    atualizando = true;
+
     console.log('🔄 Atualizando cache...');
 
-    const lista = await processarCanais();
-    cacheM3U = gerarM3U(lista);
-    ultimaAtualizacao = Date.now();
+    try {
+        const lista = await processarCanais();
+        cacheM3U = gerarM3U(lista);
+        ultimaAtualizacao = Date.now();
 
-    console.log('✅ Cache atualizado');
+        console.log('✅ Cache atualizado');
+    } catch (e) {
+        console.log('❌ Erro:', e.message);
+    } finally {
+        atualizando = false;
+    }
 }
 
 // ==============================
@@ -282,43 +229,35 @@ async function atualizarCache() {
 // ==============================
 app.get('/playlist', async (req, res) => {
 
-    // se não tem cache ainda → gera
     if (!cacheM3U) {
         await atualizarCache();
     }
 
-    // se cache expirou → atualiza em background
-    if (Date.now() - ultimaAtualizacao > CACHE_TEMPO) {
-        atualizarCache(); // NÃO espera (não trava request)
-    }
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', 'inline');
-
+    res.setHeader('Content-Type', 'text/plain');
     res.send(cacheM3U);
 });
 
 // ==============================
-// 🔄 AUTO PING (5 MIN)
+// 🔄 PING + CACHE
 // ==============================
-const URL = 'https://iptv-c3lf.onrender.com/playlist';
+const URL = 'https://tv-5p23.onrender.com/playlist';
 
 function ping() {
-    axios.get(URL)
-        .then(() => console.log('♻️ Ping OK'))
-        .catch(() => console.log('⚠️ Falha no ping'));
+
+    axios.get(URL).catch(() => {});
+
+    atualizarCache();
 }
 
 // ==============================
 // 🚀 START
 // ==============================
 app.listen(PORT, async () => {
-    console.log('🚀 Servidor rodando na porta', PORT);
 
-    // 🔥 gera cache inicial ao subir
+    console.log('🚀 Rodando na porta', PORT);
+
     await atualizarCache();
 
-    // 🔁 inicia ping
     ping();
-    setInterval(ping, 300000);
+    setInterval(ping, 60000);
 });
