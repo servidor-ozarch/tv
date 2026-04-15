@@ -201,15 +201,30 @@ const CACHE_TEMPO = 1 * 60 * 1000;
 async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
-            timeout: 8000
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0' }
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
-        if (!match) return null;
+        // 🔎 tenta pegar .txt
+        let match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
 
-        return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
+        if (match) {
+            return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
+        }
 
-    } catch {
+        // 🔎 fallback → tenta .m3u8
+        match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+
+        if (match) {
+            return match[0];
+        }
+
+        console.log('⚠️ Nenhuma URL encontrada em:', url);
+
+        return null;
+
+    } catch (err) {
+        console.log('❌ Erro ao acessar:', url);
         return null;
     }
 }
