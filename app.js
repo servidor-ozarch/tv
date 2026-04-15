@@ -190,7 +190,7 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-const CACHE_TEMPO = 60 * 60 * 1000; // 60 minutos
+const CACHE_TEMPO = 1 * 60 * 1000; // 1 minutos
 
 // ==============================
 // 🔎 PEGA TXT
