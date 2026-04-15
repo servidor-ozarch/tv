@@ -145,7 +145,7 @@ const LOGOS = {
     off: 'off.png',
     foodnetwork: 'foodnetwork.png',
     mtv: 'mtv.png',
-    masterchef: 'masterchef.png',
+    masterchef: 'cheftv.png',
     multishow: 'multishow.png',
     cartoonnetwork: 'cartoonnetwork.png',
     cartoonito: 'cartoonito.png',
