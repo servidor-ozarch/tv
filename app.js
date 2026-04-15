@@ -198,35 +198,32 @@ const CACHE_TEMPO = 1 * 60 * 1000;
 // ==============================
 // 🔎 PEGA TXT
 // ==============================
-async function pegarTxtDaPagina(url) {
-    try {
-        const { data } = await axios.get(url, {
-            timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
+async function pegarTxtDaPagina(url, canalId) {
 
-        // 🔎 tenta pegar .txt
-        let match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
+    const tentativas = [
+        `${BASE_URL}/${canalId}.txt`,
+        `${BASE_URL}/${canalId}/index.txt`,
+        `${BASE_URL}/player/${canalId}.txt`,
+        `${BASE_URL}/${canalId}.m3u8`
+    ];
 
-        if (match) {
-            return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
-        }
+    for (let tentativa of tentativas) {
+        try {
+            const res = await axios.get(tentativa, {
+                timeout: 8000,
+                validateStatus: () => true
+            });
 
-        // 🔎 fallback → tenta .m3u8
-        match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+            if (res.status === 200 && res.data.includes('http')) {
+                console.log('✅ Encontrado:', tentativa);
+                return tentativa;
+            }
 
-        if (match) {
-            return match[0];
-        }
-
-        console.log('⚠️ Nenhuma URL encontrada em:', url);
-
-        return null;
-
-    } catch (err) {
-        console.log('❌ Erro ao acessar:', url);
-        return null;
+        } catch {}
     }
+
+    console.log('❌ Não encontrado:', canalId);
+    return null;
 }
 
 // ==============================
