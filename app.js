@@ -121,7 +121,7 @@ const LOGOS = {
     telecinepremium: 'telecinepremium.png',
     telecinetouch: 'telecinetouch.png',
     universaltv: 'universaltv.png',
-    warnerchannel: 'warnerchannel.png',
+    warnerchannel: 'warnerchannel.png'
     animalplanet: 'animalplanet.png',
     discoverychannel: 'discoverychannel.png',
     discoveryhh: 'discoveryhh.png',
@@ -130,7 +130,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
-    fishtv: 'fishtv.png',
+    fish: 'fish.png',
     history: 'history.png',
     history2: 'history2.png',
     tcm: 'tcm.png',
@@ -144,7 +144,7 @@ const LOGOS = {
     off: 'off.png',
     foodnetwork: 'foodnetwork.png',
     mtv: 'mtv.png',
-    cheftv: 'cheftv.png',
+    masterchef: 'masterchef.png',
     multishow: 'multishow.png',
     cartoonnetwork: 'cartoonnetwork.png',
     cartoonito: 'cartoonito.png',
@@ -153,7 +153,9 @@ const LOGOS = {
     adultswim: 'adultswim.png',
     bandsports: 'bandsports.png',
     combate: 'combate.png',
+    getv: 'getv.png',
     ufcfightpass: 'ufcfightpass.png',
+    xsports: 'xsports.png',
     premiere: 'premiere.png',
     premiere2: 'premiere.png',
     premiere3: 'premiere.png',
@@ -190,7 +192,8 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-const CACHE_TEMPO = 1 * 60 * 1000; // 1 minutos
+let atualizando = false;
+const CACHE_TEMPO = 1 * 60 * 1000;
 
 // ==============================
 // 🔎 PEGA TXT
@@ -198,12 +201,10 @@ const CACHE_TEMPO = 1 * 60 * 1000; // 1 minutos
 async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
-            timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0' }
+            timeout: 8000
         });
 
         const match = data.match(/https?:\/\/[^\s"'<>]+\.txt/gi);
-
         if (!match) return null;
 
         return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
@@ -214,28 +215,27 @@ async function pegarTxtDaPagina(url) {
 }
 
 // ==============================
-// 🎯 PROCESSA CANAIS
+// ⚡ PROCESSA CANAIS (PARALELO)
 // ==============================
 async function processarCanais() {
 
-    let lista = [];
-
-    for (let canal of CANAIS) {
+    const promises = CANAIS.map(async (canal) => {
 
         const url = `${BASE_URL}/${canal.id}`;
-
         const txtUrl = await pegarTxtDaPagina(url);
 
-        if (!txtUrl) continue;
+        if (!txtUrl) return null;
 
-        lista.push({
+        return {
             id: canal.id,
             nome: canal.nome,
             url: txtUrl
-        });
-    }
+        };
+    });
 
-    return lista;
+    const resultados = await Promise.all(promises);
+
+    return resultados.filter(Boolean);
 }
 
 // ==============================
@@ -266,13 +266,24 @@ function gerarM3U(lista) {
 // ♻️ ATUALIZA CACHE
 // ==============================
 async function atualizarCache() {
+
+    if (atualizando) return;
+
+    atualizando = true;
+
     console.log('🔄 Atualizando cache...');
 
-    const lista = await processarCanais();
-    cacheM3U = gerarM3U(lista);
-    ultimaAtualizacao = Date.now();
+    try {
+        const lista = await processarCanais();
+        cacheM3U = gerarM3U(lista);
+        ultimaAtualizacao = Date.now();
 
-    console.log('✅ Cache atualizado');
+        console.log('✅ Cache atualizado');
+    } catch (e) {
+        console.log('❌ Erro:', e.message);
+    } finally {
+        atualizando = false;
+    }
 }
 
 // ==============================
@@ -280,43 +291,35 @@ async function atualizarCache() {
 // ==============================
 app.get('/playlist', async (req, res) => {
 
-    // se não tem cache ainda → gera
     if (!cacheM3U) {
         await atualizarCache();
     }
 
-    // se cache expirou → atualiza em background
-    if (Date.now() - ultimaAtualizacao > CACHE_TEMPO) {
-        atualizarCache(); // NÃO espera (não trava request)
-    }
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', 'inline');
-
+    res.setHeader('Content-Type', 'text/plain');
     res.send(cacheM3U);
 });
 
 // ==============================
-// 🔄 AUTO PING (1 MIN)
+// 🔄 PING + CACHE
 // ==============================
 const URL = 'https://tv-5p23.onrender.com/playlist';
 
 function ping() {
-    axios.get(URL)
-        .then(() => console.log('♻️ Ping OK'))
-        .catch(() => console.log('⚠️ Falha no ping'));
+
+    axios.get(URL).catch(() => {});
+
+    atualizarCache();
 }
 
 // ==============================
 // 🚀 START
 // ==============================
 app.listen(PORT, async () => {
-    console.log('🚀 Servidor rodando na porta', PORT);
 
-    // 🔥 gera cache inicial ao subir
+    console.log('🚀 Rodando na porta', PORT);
+
     await atualizarCache();
 
-    // 🔁 inicia ping
     ping();
     setInterval(ping, 60000);
 });
