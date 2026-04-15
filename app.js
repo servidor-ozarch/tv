@@ -87,7 +87,7 @@ const CANAIS = [
     { id: 'sportv4', nome: 'SPORTV 4' },
     { id: 'globorj', nome: 'Globo RJ' },
     { id: 'globonews', nome: 'Globo News' },
-    { id: 'sbtrj', nome: 'SBT RJ' }
+    { id: 'sbtrj', nome: 'SBT RJ' },
     { id: 'recordrj', nome: 'Record RJ' },
     { id: 'bandrj', nome: 'Band RJ' },
     { id: 'bandnews', nome: 'Band News' },
