@@ -300,7 +300,7 @@ app.get('/playlist.m3u8', async (req, res) => {
 // ==============================
 // 🔄 PING + CACHE
 // ==============================
-const URL = 'https://tv-5p23.onrender.com/playlist';
+const URL = 'https://iptv-c3lf.onrender.com/playlist.m3u8';
 
 function ping() {
 
