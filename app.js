@@ -199,7 +199,8 @@ async function pegarTxtDaPagina(url) {
             timeout: 8000
         });
 
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+        // 🔥 Agora captura .m3u8 + qualquer parâmetro depois
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8(?:\?[^\s"'<>]+)?/gi);
         if (!match) return null;
 
         return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
