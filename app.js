@@ -280,7 +280,7 @@ async function atualizarCache() {
 // ==============================
 // 🌐 ENDPOINT
 // ==============================
-app.get('/playlist', async (req, res) => {
+app.get('/playlist.m3u8', async (req, res) => {
 
     // se não tem cache ainda → gera
     if (!cacheM3U) {
