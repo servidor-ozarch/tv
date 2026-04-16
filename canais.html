@@ -2,22 +2,27 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Playlist</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador M3U Estático</title>
     <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            background: #ffffff;
-            color: #000000;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
+        body { font-family: monospace; background: #121212; color: #00ff00; padding: 20px; line-height: 1.5; }
+        .status { color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .loading { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
-<body><script>
+<body>
+
+<div class="status" id="status">🔄 Inicializando extração de canais...</div>
+<pre id="output">#EXTM3U</pre>
+
+<script>
+// ==============================
+// ⚙️ CONFIGURAÇÕES
+// ==============================
 const BASE_URL = 'https://www5.embedtv.cv';
-const PROXY = 'https://api.allorigins.win/raw?url=';
+const PROXY = 'https://api.allorigins.win/raw?url='; // Proxy para burlar CORS
 
 const CANAIS = [
     { id: 'ae', nome: 'A&E' }, { id: 'amc', nome: 'AMC' }, { id: 'axn', nome: 'AXN' },
@@ -47,52 +52,54 @@ const CANAIS = [
     { id: 'bandsports', nome: 'Band Sports' }, { id: 'combate', nome: 'Combate' },
     { id: 'ufcfightpass', nome: 'UFC Fight Pass' }, { id: 'premiere', nome: 'Premiere' },
     { id: 'premiere2', nome: 'Premiere 2' }, { id: 'premiere3', nome: 'Premiere 3' },
-    { id: 'premiere4', nome: 'Premiere 4' }, { id: 'premiere5', nome: 'Premiere 5' },
-    { id: 'premiere6', nome: 'Premiere 6' }, { id: 'premiere7', nome: 'Premiere 7' },
-    { id: 'premiere8', nome: 'Premiere 8' }, { id: 'espn', nome: 'ESPN' },
-    { id: 'espn2', nome: 'ESPN 2' }, { id: 'espn3', nome: 'ESPN 3' },
-    { id: 'espn4', nome: 'ESPN 4' }, { id: 'espn5', nome: 'ESPN 5' },
-    { id: 'espn6', nome: 'ESPN 6' }, { id: 'sportv', nome: 'SPORTV' },
-    { id: 'sportv2', nome: 'SPORTV 2' }, { id: 'sportv3', nome: 'SPORTV 3' },
-    { id: 'sportv4', nome: 'SPORTV 4' }, { id: 'globorj', nome: 'Globo RJ' },
-    { id: 'globonews', nome: 'Globo News' }, { id: 'sbtrj', nome: 'SBT RJ' },
-    { id: 'recordrj', nome: 'Record RJ' }, { id: 'bandrj', nome: 'Band RJ' },
-    { id: 'bandnews', nome: 'Band News' }, { id: 'cnnbrasil', nome: 'CNN Brasil' },
-    { id: 'cultura', nome: 'TV Cultura' }
+    { id: 'espn', nome: 'ESPN' }, { id: 'espn2', nome: 'ESPN 2' },
+    { id: 'sportv', nome: 'SPORTV' }, { id: 'globorj', nome: 'Globo RJ' }
 ];
 
-async function extrairCanal(canal) {
-    try {
-        const res = await fetch(PROXY + encodeURIComponent(`${BASE_URL}/${canal.id}`));
-        const text = await res.text();
-        const m = text.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
-        if (m) {
-            const url = m.find(u => !u.includes('.js') && !u.includes('.css'));
-            if (url) {
-                const logo = `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${canal.id}.png`;
-                return `#EXTINF:-1 tvg-logo="${logo}",${canal.nome}\n${url}`;
+// Mapeamento simplificado de logos (reaproveitando sua lógica)
+const getLogo = (id) => `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${id}.png`;
+
+// ==============================
+// 🚀 LÓGICA PRINCIPAL
+// ==============================
+async function extrairM3U() {
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    let m3uFinal = "#EXTM3U\n";
+
+    for (let i = 0; i < CANAIS.length; i++) {
+        const canal = CANAIS[i];
+        status.innerText = `🔄 Processando (${i + 1}/${CANAIS.length}): ${canal.nome}`;
+
+        try {
+            // Busca o HTML da página do canal via Proxy
+            const response = await fetch(PROXY + encodeURIComponent(`${BASE_URL}/${canal.id}`));
+            const html = await response.text();
+
+            // Regex para encontrar o link m3u8
+            const regex = /https?:\/\/[^\s"'<>]+\.m3u8/gi;
+            const matches = html.match(regex);
+            
+            if (matches) {
+                const streamUrl = matches.find(u => !u.includes('.js') && !u.includes('.css'));
+                if (streamUrl) {
+                    m3uFinal += `#EXTINF:-1 tvg-logo="${getLogo(canal.id)}",${canal.nome}\n${streamUrl}\n`;
+                    // Atualiza a tela em tempo real
+                    output.innerText = m3uFinal;
+                }
             }
+        } catch (err) {
+            console.error(`Erro no canal ${canal.nome}:`, err);
         }
-    } catch (e) {}
-    return null;
+    }
+
+    status.innerText = "✅ Lista gerada com sucesso! Copie o conteúdo abaixo.";
+    status.style.color = "#00ff00";
 }
 
-async function executar() {
-    const resultados = await Promise.all(CANAIS.map(c => extrairCanal(c)));
-    const listaFinal = "#EXTM3U\n" + resultados.filter(r => r !== null).join("\n");
+// Iniciar ao carregar
+window.onload = extrairM3U;
+</script>
 
-    // Exibe o texto cru na página
-    document.body.innerText = listaFinal;
-
-    // Dispara o download automático
-    const blob = new Blob([listaFinal], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = "playlist.m3u";
-    link.click();
-    URL.revokeObjectURL(link.href);
-}
-
-window.onload = executar;
-</script></body>
+</body>
 </html>
