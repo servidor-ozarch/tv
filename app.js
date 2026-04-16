@@ -90,9 +90,7 @@ const CANAIS = [
     { id: 'bandrj', nome: 'Band RJ' },
     { id: 'bandnews', nome: 'Band News' },
     { id: 'cnnbrasil', nome: 'CNN Brasil' },
-    { id: 'cultura', nome: 'TV Cultura' },
-    { id: 'aparecida', nome: 'Aparecida' },
-    { id: 'cancaonova', nome: 'Canção Nova' }
+    { id: 'cultura', nome: 'TV Cultura' }
 ];
 
 // ==============================
@@ -183,8 +181,6 @@ const LOGOS = {
     bandnews: 'bandnews.png',
     cnnbrasil: 'cnnbrasil.png',
     cultura: 'cultura.png',
-    aparecida: 'aparecida.png',
-    cancaonova: 'cancaonova.png',
 };
 
 // ==============================
