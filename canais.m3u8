@@ -12,14 +12,12 @@
             font-family: monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
-            font-size: 14px;
         }
     </style>
 </head>
 <body><script>
 const BASE_URL = 'https://www5.embedtv.cv';
 const PROXY = 'https://api.allorigins.win/raw?url=';
-const CACHE_KEY = 'm3u_playlist_cache';
 
 const CANAIS = [
     { id: 'ae', nome: 'A&E' }, { id: 'amc', nome: 'AMC' }, { id: 'axn', nome: 'AXN' },
@@ -63,46 +61,38 @@ const CANAIS = [
     { id: 'cultura', nome: 'TV Cultura' }
 ];
 
-async function buscarCanal(canal) {
+async function extrairCanal(canal) {
     try {
-        const response = await fetch(PROXY + encodeURIComponent(`${BASE_URL}/${canal.id}`));
-        const html = await response.text();
-        const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
-        if (match) {
-            const streamUrl = match.find(u => !u.includes('.js') && !u.includes('.css'));
-            if (streamUrl) {
+        const res = await fetch(PROXY + encodeURIComponent(`${BASE_URL}/${canal.id}`));
+        const text = await res.text();
+        const m = text.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+        if (m) {
+            const url = m.find(u => !u.includes('.js') && !u.includes('.css'));
+            if (url) {
                 const logo = `https://raw.githubusercontent.com/servidor-ozarch/tv/refs/heads/main/live/logotipo/${canal.id}.png`;
-                return `#EXTINF:-1 tvg-logo="${logo}",${canal.nome}\n${streamUrl}`;
+                return `#EXTINF:-1 tvg-logo="${logo}",${canal.nome}\n${url}`;
             }
         }
     } catch (e) {}
     return null;
 }
 
-async function atualizarSilenciosamente() {
-    const resultados = await Promise.all(CANAIS.map(c => buscarCanal(c)));
-    const novaPlaylist = "#EXTM3U\n" + resultados.filter(r => r !== null).join("\n");
-    
-    const cacheAntigo = localStorage.getItem(CACHE_KEY);
-    
-    if (novaPlaylist !== cacheAntigo) {
-        localStorage.setItem(CACHE_KEY, novaPlaylist);
-        document.body.innerText = novaPlaylist;
-    }
+async function executar() {
+    const resultados = await Promise.all(CANAIS.map(c => extrairCanal(c)));
+    const listaFinal = "#EXTM3U\n" + resultados.filter(r => r !== null).join("\n");
+
+    // Exibe o texto cru na página
+    document.body.innerText = listaFinal;
+
+    // Dispara o download automático
+    const blob = new Blob([listaFinal], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = "playlist.m3u";
+    link.click();
+    URL.revokeObjectURL(link.href);
 }
 
-function iniciar() {
-    const cache = localStorage.getItem(CACHE_KEY);
-    
-    // Se tem cache, exibe imediatamente
-    if (cache) {
-        document.body.innerText = cache;
-    }
-    
-    // Roda a extração em segundo plano (sem travar a renderização)
-    atualizarSilenciosamente();
-}
-
-iniciar();
+window.onload = executar;
 </script></body>
 </html>
