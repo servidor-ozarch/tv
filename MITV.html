@@ -142,11 +142,10 @@
             height: 100%;
             object-fit: contain;
             background: #000;
-            opacity: 0; /* Começa invisível */
+            opacity: 0; 
             transition: opacity 0.5s ease;
         }
 
-        /* Classe que será aplicada via JS para mostrar o vídeo */
         .video-visible {
             opacity: 1 !important;
         }
@@ -283,13 +282,21 @@ const CANAIS_BASE = [
 const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
 let hlsInstance = null;
 
+// FUNÇÃO ATUALIZADA COM PROXY PARA GITHUB PAGES
 async function fetchM3U8(id) {
     try {
-        const res = await fetch(`https://www4.embedtv.cv/${id}`);
+        const proxy = "https://corsproxy.io/?"; 
+        const targetUrl = `https://www4.embedtv.cv/${id}`;
+        
+        const res = await fetch(proxy + encodeURIComponent(targetUrl));
         const html = await res.text();
+        
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         return match ? match[0] : null;
-    } catch { return null; }
+    } catch (error) {
+        console.error("Erro ao buscar canal:", id, error);
+        return null;
+    }
 }
 
 async function syncCannels() {
@@ -301,7 +308,7 @@ async function syncCannels() {
     );
     const filtrado = updatedList.filter(Boolean);
     if (filtrado.length > 0) {
-        localStorage.setItem("iptv_cache_vFinal_v3", JSON.stringify(filtrado));
+        localStorage.setItem("iptv_cache_gh_v1", JSON.stringify(filtrado));
         render(filtrado);
     }
 }
@@ -328,17 +335,15 @@ function abrirPlayer(url) {
 
     container.style.display = "block";
     loader.style.display = "block"; 
-    video.className = ""; // Limpa a classe de visibilidade
+    video.className = ""; 
 
     if (hlsInstance) hlsInstance.destroy();
 
     const mostrarStreaming = () => {
         video.play().then(() => {
-            // Só mostra o vídeo quando o play for aceito e houver imagem
             video.classList.add('video-visible');
             loader.style.display = "none";
         }).catch(() => {
-            // Fallback para navegadores que bloqueiam autoplay sem som
             video.muted = true;
             video.play();
             video.classList.add('video-visible');
@@ -346,7 +351,6 @@ function abrirPlayer(url) {
         });
     };
 
-    // Monitora quando o vídeo realmente tem frames para mostrar
     video.onplaying = () => {
         video.classList.add('video-visible');
         loader.style.display = "none";
@@ -373,7 +377,7 @@ function fecharPlayer() {
 }
 
 window.onload = () => {
-    const cache = localStorage.getItem("iptv_cache_vFinal_v3");
+    const cache = localStorage.getItem("iptv_cache_gh_v1");
     if (cache) render(JSON.parse(cache));
     syncCannels();
 };
