@@ -1,64 +1,383 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Programação TV → Firebase (mi.tv AJAX)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IPTV ELITE</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #00ff96;
+            --bg-dark: #050505;
+            --icon-circle-bg: #121212;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg-dark);
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .lista-canais {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            grid-auto-rows: min-content; 
+            gap: 15px;
+            justify-items: center;
+        }
+
+        .item {
+            width: 100%;
+            max-width: 90px;
+            padding: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .item:active { transform: scale(0.9); }
+
+        .logo-container {
+            width: 62px;
+            height: 62px;
+            background-color: var(--icon-circle-bg);
+            border-radius: 50%;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #1a1a1a;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .item:hover .logo-container {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 255, 150, 0.2);
+        }
+
+        .logo {
+            max-width: 65%;
+            max-height: 65%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+
+        .channel-name {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-transform: uppercase;
+        }
+
+        #playerContainer {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 100;
+            display: none;
+        }
+
+        #loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem;
+            color: var(--primary);
+            z-index: 115;
+            letter-spacing: 3px;
+            font-weight: 700;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .btn-back {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: rgba(20,20,20,0.8);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 18px;
+            border-radius: 30px;
+            z-index: 120;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            opacity: 0; /* Começa invisível */
+            transition: opacity 0.5s ease;
+        }
+
+        /* Classe que será aplicada via JS para mostrar o vídeo */
+        .video-visible {
+            opacity: 1 !important;
+        }
+
+        video::-webkit-media-controls-panel, 
+        video::-webkit-media-controls-play-button, 
+        video::-webkit-media-controls-start-playback-button { 
+            display: none !important; 
+            -webkit-appearance: none;
+        }
+    </style>
 </head>
 <body>
+
+<div class="app-container">
+    <div id="lista" class="lista-canais"></div>
+</div>
+
+<div id="playerContainer">
+    <div id="loader">CARREGANDO...</div>
+    <div class="btn-back" onclick="fecharPlayer()">VOLTAR</div>
+    <video id="video" playsinline autocomplete="off"></video>
+</div>
+
 <script>
-const API_PROXY = "https://api.allorigins.win/raw?url=";
-// Substitua por endpoint real se encontrado
-const AJAX_URL = "https://mi.tv/xhr/epg"; 
+const LOGOS = {
+    ae: 'ae.png', amc: 'amc.png', axn: 'axn.png', cinemax: 'cinemax.png',
+    hbo: 'hbo.png', hbo2: 'hbo2.png', hbofamily: 'hbofamily.png', hbomundi: 'hbomundi.png',
+    hbopop: 'hbopop.png', hboplus: 'hboplus.png', hboxtreme: 'hboxtreme.png', megapix: 'megapix.png',
+    sonychannel: 'sonychannel.png', space: 'space.png', studiouniversal: 'studiouniversal.png',
+    telecineaction: 'telecineaction.png', telecinecult: 'telecinecult.png', telecinefun: 'telecinefun.png',
+    telecinepipoca: 'telecinepipoca.png', telecinepremium: 'telecinepremium.png', telecinetouch: 'telecinetouch.png',
+    universaltv: 'universaltv.png', warnerchannel: 'warnerchannel.png', animalplanet: 'animalplanet.png',
+    discoverychannel: 'discoverychannel.png', discoveryhh: 'discoveryhh.png', discoveryid: 'discoverychannel.png',
+    discoveryscience: 'discoveryscience.png', discoverytheater: 'discoverytheater.png',
+    discoveryturbo: 'discoveryturbo.png', discoveryworld: 'discoveryworld.png', fish: 'fish.png',
+    history: 'history.png', history2: 'history2.png', tcm: 'tcm.png', tnt: 'tnt.png',
+    tntnovelas: 'tntnovelas.png', tntseries: 'tntseries.png', tlc: 'tlc.png', comedycentral: 'comedycentral.png',
+    gnt: 'gnt.png', hgtv: 'hgtv.png', off: 'off.png', foodnetwork: 'foodnetwork.png', mtv: 'mtv.png',
+    multishow: 'multishow.png', cartoonnetwork: 'cartoonnetwork.png', cartoonito: 'cartoonito.png',
+    discoverykids: 'discoverykids.png', gloob: 'gloob.png', adultswim: 'adultswim.png',
+    bandsports: 'bandsports.png', combate: 'combate.png', getv: 'getv.png', ufcfightpass: 'ufcfightpass.png',
+    xsports: 'xsports.png', premiere: 'premiere.png', premiere2: 'premiere.png', premiere3: 'premiere.png',
+    premiere4: 'premiere.png', premiere5: 'premiere.png', premiere6: 'premiere.png', premiere7: 'premiere.png',
+    premiere8: 'premiere.png', espn: 'espn.png', espn2: 'espn.png', espn3: 'espn.png', espn4: 'espn.png',
+    espn5: 'espn.png', espn6: 'espn.png', sportv: 'sportv.png', sportv2: 'sportv.png', sportv3: 'sportv.png',
+    sportv4: 'sportv.png', globorj: 'globo.png', globonews: 'globonews.png', sbtrj: 'sbt.png',
+    recordrj: 'record.png', bandrj: 'band.png', bandnews: 'bandnews.png', cnnbrasil: 'cnnbrasil.png', cultura: 'cultura.png'
+};
 
-const urlParams = new URLSearchParams(location.search);
-const canal = (urlParams.get('canal') || '').toLowerCase();
+const CANAIS_BASE = [
+    { id: 'ae', nome: 'A&E' },
+    { id: 'amc', nome: 'AMC' },
+    { id: 'axn', nome: 'AXN' },
+    { id: 'cinemax', nome: 'Cinemax' },
+    { id: 'hbo', nome: 'HBO' },
+    { id: 'hbo2', nome: 'HBO 2' },
+    { id: 'hbofamily', nome: 'HBO Family' },
+    { id: 'hbomundi', nome: 'HBO Mundi' },
+    { id: 'hbopop', nome: 'HBO Pop' },
+    { id: 'hboplus', nome: 'HBO Plus' },
+    { id: 'hboxtreme', nome: 'HBO Xtreme' },
+    { id: 'megapix', nome: 'Megapix' },
+    { id: 'sonychannel', nome: 'Sony Channel' },
+    { id: 'space', nome: 'SPACE' },
+    { id: 'studiouniversal', nome: 'Studio Universal' },
+    { id: 'telecineaction', nome: 'Telecine Action' },
+    { id: 'telecinecult', nome: 'Telecine Cult' },
+    { id: 'telecinefun', nome: 'Telecine Fun' },
+    { id: 'telecinepipoca', nome: 'Telecine Pipoca' },
+    { id: 'telecinepremium', nome: 'Telecine Premium' },
+    { id: 'telecinetouch', nome: 'Telecine Touch' },
+    { id: 'universaltv', nome: 'Universal TV' },
+    { id: 'warnerchannel', nome: 'Warner Channel' },
+    { id: 'animalplanet', nome: 'Animal Planet' },
+    { id: 'discoverychannel', nome: 'Discovery Channel' },
+    { id: 'discoveryhh', nome: 'Discovery H&H' },
+    { id: 'discoveryid', nome: 'Discovery ID' },
+    { id: 'discoveryscience', nome: 'Discovery Science' },
+    { id: 'discoverytheater', nome: 'Discovery Theater' },
+    { id: 'discoveryturbo', nome: 'Discovery Turbo' },
+    { id: 'discoveryworld', nome: 'Discovery World' },
+    { id: 'fishtv', nome: 'Fish TV' },
+    { id: 'history', nome: 'History' },
+    { id: 'history2', nome: 'History 2' },
+    { id: 'tcm', nome: 'TCM' },
+    { id: 'tnt', nome: 'TNT' },
+    { id: 'tntnovelas', nome: 'TNT Novelas' },
+    { id: 'tntseries', nome: 'TNT Series' },
+    { id: 'tlc', nome: 'TLC' },
+    { id: 'comedycentral', nome: 'Comedy Central' },
+    { id: 'gnt', nome: 'GNT' },
+    { id: 'hgtv', nome: 'HGTV' },
+    { id: 'off', nome: 'Canal OFF' },
+    { id: 'foodnetwork', nome: 'Food Network' },
+    { id: 'mtv', nome: 'MTV' },
+    { id: 'multishow', nome: 'Multishow' },
+    { id: 'cartoonnetwork', nome: 'Cartoon Network' },
+    { id: 'cartoonito', nome: 'Cartoonito' },
+    { id: 'discoverykids', nome: 'Discovery Kids' },
+    { id: 'gloob', nome: 'Gloob' },
+    { id: 'adultswim', nome: 'Adult Swim' },
+    { id: 'bandsports', nome: 'Band Sports' },
+    { id: 'combate', nome: 'Combate' },
+    { id: 'ufcfightpass', nome: 'UFC Fight Pass' },
+    { id: 'premiere', nome: 'Premiere' },
+    { id: 'premiere2', nome: 'Premiere 2' },
+    { id: 'premiere3', nome: 'Premiere 3' },
+    { id: 'premiere4', nome: 'Premiere 4' },
+    { id: 'premiere5', nome: 'Premiere 5' },
+    { id: 'premiere6', nome: 'Premiere 6' },
+    { id: 'premiere7', nome: 'Premiere 7' },
+    { id: 'premiere8', nome: 'Premiere 8' },
+    { id: 'espn', nome: 'ESPN' },
+    { id: 'espn2', nome: 'ESPN 2' },
+    { id: 'espn3', nome: 'ESPN 3' },
+    { id: 'espn4', nome: 'ESPN 4' },
+    { id: 'espn5', nome: 'ESPN 5' },
+    { id: 'espn6', nome: 'ESPN 6' },
+    { id: 'sportv', nome: 'SPORTV' },
+    { id: 'sportv2', nome: 'SPORTV 2' },
+    { id: 'sportv3', nome: 'SPORTV 3' },
+    { id: 'sportv4', nome: 'SPORTV 4' },
+    { id: 'globorj', nome: 'Globo RJ' },
+    { id: 'globonews', nome: 'Globo News' },
+    { id: 'sbtrj', nome: 'SBT RJ' },
+    { id: 'recordrj', nome: 'Record RJ' },
+    { id: 'bandrj', nome: 'Band RJ' },
+    { id: 'bandnews', nome: 'Band News' },
+    { id: 'cnnbrasil', nome: 'CNN Brasil' },
+    { id: 'cultura', nome: 'TV Cultura' }
+];
 
-function normalizar(t){
-  return (t||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/\s+/g,' ')
-    .trim();
+const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
+let hlsInstance = null;
+
+async function fetchM3U8(id) {
+    try {
+        const res = await fetch(`https://www4.embedtv.cv/${id}`);
+        const html = await res.text();
+        const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+        return match ? match[0] : null;
+    } catch { return null; }
 }
 
-async function getProgramacao() {
-  try {
-    const resp = await fetch(API_PROXY + encodeURIComponent(AJAX_URL));
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json(); // Se for JSON
-    let itens = [];
+async function syncCannels() {
+    const updatedList = await Promise.all(
+        CANAIS_BASE.map(async c => {
+            const url = await fetchM3U8(c.id);
+            return url ? { ...c, url } : null;
+        })
+    );
+    const filtrado = updatedList.filter(Boolean);
+    if (filtrado.length > 0) {
+        localStorage.setItem("iptv_cache_vFinal_v3", JSON.stringify(filtrado));
+        render(filtrado);
+    }
+}
 
-    // Exemplo de parsing – ajuste conforme o formato real
-    data.channels.forEach(ch => {
-      const nome = ch.name || '';
-      if (canal && !normalizar(nome).includes(canal)) return;
+function render(lista) {
+    const container = document.getElementById('lista');
+    container.innerHTML = ""; 
+    lista.forEach(item => {
+        const logoArquivo = LOGOS[item.id] || `${item.id}.png`;
+        const logoUrl = `${BASE_URL_LOGOS}${logoArquivo}`;
 
-      ch.programs.forEach(p => {
-        itens.push({
-          canal: nome,
-          hora_inicio: p.start_time,
-          hora_fim: p.end_time,
-          titulo: p.title,
-          descricao: p.description || ''
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<div class="logo-container"><img class="logo" src="${logoUrl}"></div><div class="channel-name">${item.nome}</div>`;
+        div.onclick = () => abrirPlayer(item.url);
+        container.appendChild(div);
+    });
+}
+
+function abrirPlayer(url) {
+    const video = document.getElementById('video');
+    const container = document.getElementById('playerContainer');
+    const loader = document.getElementById('loader');
+
+    container.style.display = "block";
+    loader.style.display = "block"; 
+    video.className = ""; // Limpa a classe de visibilidade
+
+    if (hlsInstance) hlsInstance.destroy();
+
+    const mostrarStreaming = () => {
+        video.play().then(() => {
+            // Só mostra o vídeo quando o play for aceito e houver imagem
+            video.classList.add('video-visible');
+            loader.style.display = "none";
+        }).catch(() => {
+            // Fallback para navegadores que bloqueiam autoplay sem som
+            video.muted = true;
+            video.play();
+            video.classList.add('video-visible');
+            loader.style.display = "none";
         });
-      });
-    });
+    };
 
-    document.body.textContent = JSON.stringify(itens, null, 2);
+    // Monitora quando o vídeo realmente tem frames para mostrar
+    video.onplaying = () => {
+        video.classList.add('video-visible');
+        loader.style.display = "none";
+    };
 
-    // Envia para Firebase
-    await fetch('https://projeto-aplicativo-android-default-rtdb.firebaseio.com/epg.json', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(itens)
-    });
-
-  } catch (err) {
-    document.body.textContent = JSON.stringify({erro: err.message});
-  }
+    if (Hls.isSupported()) {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, mostrarStreaming);
+    } else {
+        video.src = url;
+        video.onloadedmetadata = mostrarStreaming;
+    }
 }
 
-getProgramacao();
+function fecharPlayer() {
+    const video = document.getElementById('video');
+    document.getElementById('playerContainer').style.display = "none";
+    video.pause();
+    video.src = "";
+    video.className = "";
+    if (hlsInstance) hlsInstance.stopLoad();
+}
+
+window.onload = () => {
+    const cache = localStorage.getItem("iptv_cache_vFinal_v3");
+    if (cache) render(JSON.parse(cache));
+    syncCannels();
+};
 </script>
+
 </body>
 </html>
