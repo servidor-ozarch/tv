@@ -10,7 +10,7 @@ const BASE_URL = 'https://www4.embedtv.cv';
 // 📺 CANAIS
 // ==============================
 const CANAIS = [
-    { id: 'ae', nome: 'A&E' },
+    { id: 'ae', nome: 'A&E - TEXTE DE RÁPIDO' },
     { id: 'amc', nome: 'AMC' },
     { id: 'axn', nome: 'AXN' },
     { id: 'cinemax', nome: 'Cinemax' },
