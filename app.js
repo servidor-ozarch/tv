@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL = 'https://www4.embedtv.cv';
+const BASE_URL = 'https://adult-tv-channels.com';
 
 // ==============================
 // 📺 CANAIS
@@ -90,7 +90,7 @@ const CANAIS = [
     { id: 'bandnews', nome: 'Band News' },
     { id: 'cnnbrasil', nome: 'CNN Brasil' },
     { id: 'cultura', nome: 'TV Cultura' },
-    { id: 'aparecida', nome: 'Aparecida' }
+    { id: 'penthouse-passion-online', nome: 'Penthouse' }
 ];
 
 // ==============================
@@ -179,7 +179,7 @@ const LOGOS = {
     bandnews: 'bandnews.png',
     cnnbrasil: 'cnnbrasil.png',
     cultura: 'cultura.png',
-    aparecida: 'aparecida.png',
+    penthouse-passion-online: 'aparecida.png',
 };
 
 // ==============================
