@@ -120,25 +120,27 @@
             pointer-events: none;
         }
 
-
-
-         .btn-back {
-             position: absolute;
-             top: 20px; 
-             left: 20px;
-             background: rgba(20, 20, 20, 0.7); /* Fundo
-             color: #ffffff;
-             border: 1px solid rgba(255, 255, 255, 0.2);
-             padding: 10px 20px;
-             border-radius: 30px;
-             z-index: 120; /* Garante que fique acima do vídeo */
-             cursor: pointer;
-             font-size: 0.75rem;
-             font-weight: 700;
-             text-transform: uppercase;
-             backdrop-filter: blur(8px); /* Efeito de vidro
-             letter-spacing: 1px;
-         }
+        .btn-back {
+            position: absolute;
+            top: 25px; 
+            left: 25px;
+            background: rgba(30, 30, 30, 0.8);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 30px;
+            z-index: 150; 
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            backdrop-filter: blur(10px);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
 
         video {
             width: 100%;
@@ -174,6 +176,7 @@
 </div>
 
 <script>
+// Mantendo sua lista de Logos e Canais completa conforme o anterior
 const LOGOS = {
     ae: 'ae.png', amc: 'amc.png', axn: 'axn.png', cinemax: 'cinemax.png',
     hbo: 'hbo.png', hbo2: 'hbo2.png', hbofamily: 'hbofamily.png', hbomundi: 'hbomundi.png',
@@ -200,86 +203,31 @@ const LOGOS = {
 };
 
 const CANAIS_BASE = [
-    { id: 'ae', nome: 'A&E' },
-    { id: 'amc', nome: 'AMC' },
-    { id: 'axn', nome: 'AXN' },
-    { id: 'cinemax', nome: 'Cinemax' },
-    { id: 'hbo', nome: 'HBO' },
-    { id: 'hbo2', nome: 'HBO 2' },
-    { id: 'hbofamily', nome: 'HBO Family' },
-    { id: 'hbomundi', nome: 'HBO Mundi' },
-    { id: 'hbopop', nome: 'HBO Pop' },
-    { id: 'hboplus', nome: 'HBO Plus' },
-    { id: 'hboxtreme', nome: 'HBO Xtreme' },
-    { id: 'megapix', nome: 'Megapix' },
-    { id: 'sonychannel', nome: 'Sony Channel' },
-    { id: 'space', nome: 'SPACE' },
-    { id: 'studiouniversal', nome: 'Studio Universal' },
-    { id: 'telecineaction', nome: 'Telecine Action' },
-    { id: 'telecinecult', nome: 'Telecine Cult' },
-    { id: 'telecinefun', nome: 'Telecine Fun' },
-    { id: 'telecinepipoca', nome: 'Telecine Pipoca' },
-    { id: 'telecinepremium', nome: 'Telecine Premium' },
-    { id: 'telecinetouch', nome: 'Telecine Touch' },
-    { id: 'universaltv', nome: 'Universal TV' },
-    { id: 'warnerchannel', nome: 'Warner Channel' },
-    { id: 'animalplanet', nome: 'Animal Planet' },
-    { id: 'discoverychannel', nome: 'Discovery Channel' },
-    { id: 'discoveryhh', nome: 'Discovery H&H' },
-    { id: 'discoveryid', nome: 'Discovery ID' },
-    { id: 'discoveryscience', nome: 'Discovery Science' },
-    { id: 'discoverytheater', nome: 'Discovery Theater' },
-    { id: 'discoveryturbo', nome: 'Discovery Turbo' },
-    { id: 'discoveryworld', nome: 'Discovery World' },
-    { id: 'fishtv', nome: 'Fish TV' },
-    { id: 'history', nome: 'History' },
-    { id: 'history2', nome: 'History 2' },
-    { id: 'tcm', nome: 'TCM' },
-    { id: 'tnt', nome: 'TNT' },
-    { id: 'tntnovelas', nome: 'TNT Novelas' },
-    { id: 'tntseries', nome: 'TNT Series' },
-    { id: 'tlc', nome: 'TLC' },
-    { id: 'comedycentral', nome: 'Comedy Central' },
-    { id: 'gnt', nome: 'GNT' },
-    { id: 'hgtv', nome: 'HGTV' },
-    { id: 'off', nome: 'Canal OFF' },
-    { id: 'foodnetwork', nome: 'Food Network' },
-    { id: 'mtv', nome: 'MTV' },
-    { id: 'multishow', nome: 'Multishow' },
-    { id: 'cartoonnetwork', nome: 'Cartoon Network' },
-    { id: 'cartoonito', nome: 'Cartoonito' },
-    { id: 'discoverykids', nome: 'Discovery Kids' },
-    { id: 'gloob', nome: 'Gloob' },
-    { id: 'adultswim', nome: 'Adult Swim' },
-    { id: 'bandsports', nome: 'Band Sports' },
-    { id: 'combate', nome: 'Combate' },
-    { id: 'ufcfightpass', nome: 'UFC Fight Pass' },
-    { id: 'premiere', nome: 'Premiere' },
-    { id: 'premiere2', nome: 'Premiere 2' },
-    { id: 'premiere3', nome: 'Premiere 3' },
-    { id: 'premiere4', nome: 'Premiere 4' },
-    { id: 'premiere5', nome: 'Premiere 5' },
-    { id: 'premiere6', nome: 'Premiere 6' },
-    { id: 'premiere7', nome: 'Premiere 7' },
-    { id: 'premiere8', nome: 'Premiere 8' },
-    { id: 'espn', nome: 'ESPN' },
-    { id: 'espn2', nome: 'ESPN 2' },
-    { id: 'espn3', nome: 'ESPN 3' },
-    { id: 'espn4', nome: 'ESPN 4' },
-    { id: 'espn5', nome: 'ESPN 5' },
-    { id: 'espn6', nome: 'ESPN 6' },
-    { id: 'sportv', nome: 'SPORTV' },
-    { id: 'sportv2', nome: 'SPORTV 2' },
-    { id: 'sportv3', nome: 'SPORTV 3' },
-    { id: 'sportv4', nome: 'SPORTV 4' },
-    { id: 'globorj', nome: 'Globo RJ' },
-    { id: 'globonews', nome: 'Globo News' },
-    { id: 'sbtrj', nome: 'SBT RJ' },
-    { id: 'recordrj', nome: 'Record RJ' },
-    { id: 'bandrj', nome: 'Band RJ' },
-    { id: 'bandnews', nome: 'Band News' },
-    { id: 'cnnbrasil', nome: 'CNN Brasil' },
-    { id: 'cultura', nome: 'TV Cultura' }
+    { id: 'ae', nome: 'A&E' }, { id: 'amc', nome: 'AMC' }, { id: 'axn', nome: 'AXN' }, { id: 'cinemax', nome: 'Cinemax' },
+    { id: 'hbo', nome: 'HBO' }, { id: 'hbo2', nome: 'HBO 2' }, { id: 'hbofamily', nome: 'HBO Family' },
+    { id: 'hbomundi', nome: 'HBO Mundi' }, { id: 'hbopop', nome: 'HBO Pop' }, { id: 'hboplus', nome: 'HBO Plus' },
+    { id: 'hboxtreme', nome: 'HBO Xtreme' }, { id: 'megapix', nome: 'Megapix' }, { id: 'sonychannel', nome: 'Sony Channel' },
+    { id: 'space', nome: 'SPACE' }, { id: 'studiouniversal', nome: 'Studio Universal' }, { id: 'telecineaction', nome: 'Telecine Action' },
+    { id: 'telecinecult', nome: 'Telecine Cult' }, { id: 'telecinefun', nome: 'Telecine Fun' }, { id: 'telecinepipoca', nome: 'Telecine Pipoca' },
+    { id: 'telecinepremium', nome: 'Telecine Premium' }, { id: 'telecinetouch', nome: 'Telecine Touch' }, { id: 'universaltv', nome: 'Universal TV' },
+    { id: 'warnerchannel', nome: 'Warner Channel' }, { id: 'animalplanet', nome: 'Animal Planet' }, { id: 'discoverychannel', nome: 'Discovery Channel' },
+    { id: 'discoveryhh', nome: 'Discovery H&H' }, { id: 'discoveryid', nome: 'Discovery ID' }, { id: 'discoveryscience', nome: 'Discovery Science' },
+    { id: 'discoverytheater', nome: 'Discovery Theater' }, { id: 'discoveryturbo', nome: 'Discovery Turbo' }, { id: 'discoveryworld', nome: 'Discovery World' },
+    { id: 'fishtv', nome: 'Fish TV' }, { id: 'history', nome: 'History' }, { id: 'history2', nome: 'History 2' },
+    { id: 'tcm', nome: 'TCM' }, { id: 'tnt', nome: 'TNT' }, { id: 'tntnovelas', nome: 'TNT Novelas' }, { id: 'tntseries', nome: 'TNT Series' },
+    { id: 'tlc', nome: 'TLC' }, { id: 'comedycentral', nome: 'Comedy Central' }, { id: 'gnt', nome: 'GNT' }, { id: 'hgtv', nome: 'HGTV' },
+    { id: 'off', nome: 'Canal OFF' }, { id: 'foodnetwork', nome: 'Food Network' }, { id: 'mtv', nome: 'MTV' }, { id: 'multishow', nome: 'Multishow' },
+    { id: 'cartoonnetwork', nome: 'Cartoon Network' }, { id: 'cartoonito', nome: 'Cartoonito' }, { id: 'discoverykids', nome: 'Discovery Kids' },
+    { id: 'gloob', nome: 'Gloob' }, { id: 'adultswim', nome: 'Adult Swim' }, { id: 'bandsports', nome: 'Band Sports' },
+    { id: 'combate', nome: 'Combate' }, { id: 'ufcfightpass', nome: 'UFC Fight Pass' }, { id: 'premiere', nome: 'Premiere' },
+    { id: 'premiere2', nome: 'Premiere 2' }, { id: 'premiere3', nome: 'Premiere 3' }, { id: 'premiere4', nome: 'Premiere 4' },
+    { id: 'premiere5', nome: 'Premiere 5' }, { id: 'premiere6', nome: 'Premiere 6' }, { id: 'premiere7', nome: 'Premiere 7' },
+    { id: 'premiere8', nome: 'Premiere 8' }, { id: 'espn', nome: 'ESPN' }, { id: 'espn2', nome: 'ESPN 2' }, { id: 'espn3', nome: 'ESPN 3' },
+    { id: 'espn4', nome: 'ESPN 4' }, { id: 'espn5', nome: 'ESPN 5' }, { id: 'espn6', nome: 'ESPN 6' }, { id: 'sportv', nome: 'SPORTV' },
+    { id: 'sportv2', nome: 'SPORTV 2' }, { id: 'sportv3', nome: 'SPORTV 3' }, { id: 'sportv4', nome: 'SPORTV 4' },
+    { id: 'globorj', nome: 'Globo RJ' }, { id: 'globonews', nome: 'Globo News' }, { id: 'sbtrj', nome: 'SBT RJ' },
+    { id: 'recordrj', nome: 'Record RJ' }, { id: 'bandrj', nome: 'Band RJ' }, { id: 'bandnews', nome: 'Band News' },
+    { id: 'cnnbrasil', nome: 'CNN Brasil' }, { id: 'cultura', nome: 'TV Cultura' }
 ];
 
 const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
@@ -336,13 +284,10 @@ function abrirPlayer(url) {
     loader.style.display = "block"; 
     video.className = ""; 
 
-    // --- SOLICITAR TELA CHEIA ---
     if (container.requestFullscreen) {
         container.requestFullscreen();
-    } else if (container.webkitRequestFullscreen) { /* Safari */
+    } else if (container.webkitRequestFullscreen) {
         container.webkitRequestFullscreen();
-    } else if (container.msRequestFullscreen) { /* IE11 */
-        container.msRequestFullscreen();
     }
 
     if (hlsInstance) hlsInstance.destroy();
@@ -378,8 +323,7 @@ function abrirPlayer(url) {
 function fecharPlayer() {
     const video = document.getElementById('video');
     document.getElementById('playerContainer').style.display = "none";
-    
-    // --- SAIR DO MODO TELA CHEIA ---
+
     if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
     } else if (document.webkitExitFullscreen) {
