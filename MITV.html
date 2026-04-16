@@ -282,15 +282,12 @@ const CANAIS_BASE = [
 const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
 let hlsInstance = null;
 
-// FUNÇÃO ATUALIZADA COM PROXY PARA GITHUB PAGES
 async function fetchM3U8(id) {
     try {
         const proxy = "https://corsproxy.io/?"; 
         const targetUrl = `https://www4.embedtv.cv/${id}`;
-        
         const res = await fetch(proxy + encodeURIComponent(targetUrl));
         const html = await res.text();
-        
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         return match ? match[0] : null;
     } catch (error) {
@@ -308,7 +305,7 @@ async function syncCannels() {
     );
     const filtrado = updatedList.filter(Boolean);
     if (filtrado.length > 0) {
-        localStorage.setItem("iptv_cache_gh_v1", JSON.stringify(filtrado));
+        localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(filtrado));
         render(filtrado);
     }
 }
@@ -319,7 +316,6 @@ function render(lista) {
     lista.forEach(item => {
         const logoArquivo = LOGOS[item.id] || `${item.id}.png`;
         const logoUrl = `${BASE_URL_LOGOS}${logoArquivo}`;
-
         const div = document.createElement('div');
         div.className = 'item';
         div.innerHTML = `<div class="logo-container"><img class="logo" src="${logoUrl}"></div><div class="channel-name">${item.nome}</div>`;
@@ -336,6 +332,15 @@ function abrirPlayer(url) {
     container.style.display = "block";
     loader.style.display = "block"; 
     video.className = ""; 
+
+    // --- SOLICITAR TELA CHEIA ---
+    if (container.requestFullscreen) {
+        container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) { /* Safari */
+        container.webkitRequestFullscreen();
+    } else if (container.msRequestFullscreen) { /* IE11 */
+        container.msRequestFullscreen();
+    }
 
     if (hlsInstance) hlsInstance.destroy();
 
@@ -370,6 +375,14 @@ function abrirPlayer(url) {
 function fecharPlayer() {
     const video = document.getElementById('video');
     document.getElementById('playerContainer').style.display = "none";
+    
+    // --- SAIR DO MODO TELA CHEIA ---
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+
     video.pause();
     video.src = "";
     video.className = "";
@@ -377,7 +390,7 @@ function fecharPlayer() {
 }
 
 window.onload = () => {
-    const cache = localStorage.getItem("iptv_cache_gh_v1");
+    const cache = localStorage.getItem("iptv_cache_gh_vFinal");
     if (cache) render(JSON.parse(cache));
     syncCannels();
 };
