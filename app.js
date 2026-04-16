@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL = 'https://adult-tv-channels.com';
+const BASE_URL = 'https://www4.embedtv.cv';
 
 // ==============================
 // 📺 CANAIS
@@ -41,6 +41,7 @@ const CANAIS = [
     { id: 'discoverytheater', nome: 'Discovery Theater' },
     { id: 'discoveryturbo', nome: 'Discovery Turbo' },
     { id: 'discoveryworld', nome: 'Discovery World' },
+    { id: 'fishtv', nome: 'Fish TV' },
     { id: 'history', nome: 'History' },
     { id: 'history2', nome: 'History 2' },
     { id: 'tcm', nome: 'TCM' },
@@ -90,7 +91,8 @@ const CANAIS = [
     { id: 'bandnews', nome: 'Band News' },
     { id: 'cnnbrasil', nome: 'CNN Brasil' },
     { id: 'cultura', nome: 'TV Cultura' },
-    { id: 'penthouse-passion-online', nome: 'Penthouse' }
+    { id: 'aparecida', nome: 'Aparecida' },
+    { id: 'cancaonova', nome: 'Canção Nova' }
 ];
 
 // ==============================
@@ -128,6 +130,7 @@ const LOGOS = {
     discoverytheater: 'discoverytheater.png',
     discoveryturbo: 'discoveryturbo.png',
     discoveryworld: 'discoveryworld.png',
+    fish: 'fish.png',
     history: 'history.png',
     history2: 'history2.png',
     tcm: 'tcm.png',
@@ -152,6 +155,7 @@ const LOGOS = {
     combate: 'combate.png',
     getv: 'getv.png',
     ufcfightpass: 'ufcfightpass.png',
+    xsports: 'xsports.png',
     premiere: 'premiere.png',
     premiere2: 'premiere.png',
     premiere3: 'premiere.png',
@@ -179,7 +183,8 @@ const LOGOS = {
     bandnews: 'bandnews.png',
     cnnbrasil: 'cnnbrasil.png',
     cultura: 'cultura.png',
-    'penthouse-passion-online': 'aparecida.png',
+    aparecida: 'aparecida.png',
+    cancaonova: 'cancaonova.png',
 };
 
 // ==============================
@@ -187,20 +192,20 @@ const LOGOS = {
 // ==============================
 let cacheM3U = null;
 let ultimaAtualizacao = 0;
-let atualizando = false;
-const CACHE_TEMPO = 24 * 60 * 60 * 1000; // A cada 24 horas.
+const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
 
 // ==============================
-// 🔎 PEGA M3U8
+// 🔎 PEGA TXT
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
         const { data } = await axios.get(url, {
-            timeout: 8000
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0' }
         });
 
-        // 🔥 Agora captura .m3u8 + qualquer parâmetro depois
-        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8(?:\?[^\s"'<>]+)?/gi);
+        const match = data.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
+
         if (!match) return null;
 
         return match.find(u => !u.includes('.js') && !u.includes('.css')) || null;
@@ -211,27 +216,28 @@ async function pegarTxtDaPagina(url) {
 }
 
 // ==============================
-// ⚡ PROCESSA CANAIS (PARALELO)
+// 🎯 PROCESSA CANAIS
 // ==============================
 async function processarCanais() {
 
-    const promises = CANAIS.map(async (canal) => {
+    let lista = [];
+
+    for (let canal of CANAIS) {
 
         const url = `${BASE_URL}/${canal.id}`;
+
         const txtUrl = await pegarTxtDaPagina(url);
 
-        if (!txtUrl) return null;
+        if (!txtUrl) continue;
 
-        return {
+        lista.push({
             id: canal.id,
             nome: canal.nome,
             url: txtUrl
-        };
-    });
+        });
+    }
 
-    const resultados = await Promise.all(promises);
-
-    return resultados.filter(Boolean);
+    return lista;
 }
 
 // ==============================
@@ -262,60 +268,57 @@ function gerarM3U(lista) {
 // ♻️ ATUALIZA CACHE
 // ==============================
 async function atualizarCache() {
-
-    if (atualizando) return;
-
-    atualizando = true;
-
     console.log('🔄 Atualizando cache...');
 
-    try {
-        const lista = await processarCanais();
-        cacheM3U = gerarM3U(lista);
-        ultimaAtualizacao = Date.now();
+    const lista = await processarCanais();
+    cacheM3U = gerarM3U(lista);
+    ultimaAtualizacao = Date.now();
 
-        console.log('✅ Cache atualizado');
-    } catch (e) {
-        console.log('❌ Erro:', e.message);
-    } finally {
-        atualizando = false;
-    }
+    console.log('✅ Cache atualizado');
 }
 
 // ==============================
 // 🌐 ENDPOINT
 // ==============================
-app.get('/playlist.m3u8', async (req, res) => {
+app.get('/playlist', async (req, res) => {
 
+    // se não tem cache ainda → gera
     if (!cacheM3U) {
         await atualizarCache();
     }
 
-    res.setHeader('Content-Type', 'text/plain');
+    // se cache expirou → atualiza em background
+    if (Date.now() - ultimaAtualizacao > CACHE_TEMPO) {
+        atualizarCache(); // NÃO espera (não trava request)
+    }
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', 'inline');
+
     res.send(cacheM3U);
 });
 
 // ==============================
-// 🔄 PING + CACHE
+// 🔄 AUTO PING (5 MIN)
 // ==============================
-const URL = 'https://iptv-c3lf.onrender.com/playlist.m3u8';
+const URL = 'https://iptv-c3lf.onrender.com/playlist';
 
 function ping() {
-
-    axios.get(URL).catch(() => {});
-
-    atualizarCache();
+    axios.get(URL)
+        .then(() => console.log('♻️ Ping OK'))
+        .catch(() => console.log('⚠️ Falha no ping'));
 }
 
 // ==============================
 // 🚀 START
 // ==============================
 app.listen(PORT, async () => {
+    console.log('🚀 Servidor rodando na porta', PORT);
 
-    console.log('🚀 Rodando na porta', PORT);
-
+    // 🔥 gera cache inicial ao subir
     await atualizarCache();
 
+    // 🔁 inicia ping
     ping();
-    setInterval(ping, 60000);
+    setInterval(ping, 300000);
 });
