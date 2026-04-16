@@ -62,17 +62,17 @@
         .item:active { transform: scale(0.9); }
 
         .logo-container {
-            width: 85px;
-            height: 85px;
+            width: 100px;
+            height: 100px;
             background-color: var(--icon-circle-bg);
-            border-radius: 15px;
-            margin-bottom: 5px;
+            border-radius: 10%;
+            margin-bottom: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 2px solid #1a1a1a;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 50px rgba(0,0,0,0.3);
         }
 
         .item:hover .logo-container {
@@ -81,9 +81,10 @@
         }
 
         .logo {
-            max-width: 60%;
-            max-height: 60%;
+            max-width: 65%;
+            max-height: 65%;
             object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
 
         .channel-name {
@@ -121,19 +122,24 @@
 
         .btn-back {
             position: absolute;
-            top: 20px; 
-            left: 20px;
+            top: 10px; 
+            left: 5px;
             background: rgba(30, 30, 30, 0.8);
             color: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 10px 20px;
+            padding: 12px 8px;
             border-radius: 5px;
             z-index: 150; 
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             backdrop-filter: blur(10px);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
         video {
@@ -148,6 +154,13 @@
         .video-visible {
             opacity: 1 !important;
         }
+
+        video::-webkit-media-controls-panel, 
+        video::-webkit-media-controls-play-button, 
+        video::-webkit-media-controls-start-playback-button { 
+            display: none !important; 
+            -webkit-appearance: none;
+        }
     </style>
 </head>
 <body>
@@ -159,10 +172,11 @@
 <div id="playerContainer">
     <div id="loader">CARREGANDO...</div>
     <div class="btn-back" onclick="fecharPlayer()">VOLTAR</div>
-    <video id="video" playsinline controls></video>
+    <video id="video" playsinline autocomplete="off"></video>
 </div>
 
 <script>
+// Mantendo sua lista de Logos e Canais completa conforme o anterior
 const LOGOS = {
     ae: 'ae.png', amc: 'amc.png', axn: 'axn.png', cinemax: 'cinemax.png',
     hbo: 'hbo.png', hbo2: 'hbo2.png', hbofamily: 'hbofamily.png', hbomundi: 'hbomundi.png',
@@ -221,32 +235,14 @@ let hlsInstance = null;
 
 async function fetchM3U8(id) {
     try {
-        // Tenta usar um proxy alternativo se o principal falhar (comum em redes móveis)
-        const proxies = [
-            "https://api.allorigins.win/raw?url=",
-            "https://corsproxy.io/?"
-        ];
-        
+        const proxy = "https://corsproxy.io/?"; 
         const targetUrl = `https://www5.embedtv.cv/${id}`;
-        let html = "";
-        
-        for(let proxy of proxies) {
-            try {
-                const res = await fetch(proxy + encodeURIComponent(targetUrl));
-                if(res.ok) {
-                    html = await res.text();
-                    break;
-                }
-            } catch(e) {}
-        }
-
+        const res = await fetch(proxy + encodeURIComponent(targetUrl));
+        const html = await res.text();
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
-        if (match) {
-            // Garante que o link use HTTPS para evitar bloqueio de conteúdo misto
-            return match[0].replace("http://", "https://");
-        }
-        return null;
+        return match ? match[0] : null;
     } catch (error) {
+        console.error("Erro ao buscar canal:", id, error);
         return null;
     }
 }
@@ -288,39 +284,56 @@ function abrirPlayer(url) {
     loader.style.display = "block"; 
     video.className = ""; 
 
+    if (container.requestFullscreen) {
+        container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+    }
+
     if (hlsInstance) hlsInstance.destroy();
 
-    const config = {
-        xhrSetup: function(xhr, url) {
-            xhr.withCredentials = false; // Necessário para alguns streams em redes móveis
-        },
-        enableWorker: true,
-        lowLatencyMode: true
-    };
-
-    if (Hls.isSupported()) {
-        hlsInstance = new Hls(config);
-        hlsInstance.loadSource(url);
-        hlsInstance.attachMedia(video);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(() => { video.muted = true; video.play(); });
+    const mostrarStreaming = () => {
+        video.play().then(() => {
+            video.classList.add('video-visible');
+            loader.style.display = "none";
+        }).catch(() => {
+            video.muted = true;
+            video.play();
+            video.classList.add('video-visible');
+            loader.style.display = "none";
         });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-    }
+    };
 
     video.onplaying = () => {
         video.classList.add('video-visible');
         loader.style.display = "none";
     };
+
+    if (Hls.isSupported()) {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, mostrarStreaming);
+    } else {
+        video.src = url;
+        video.onloadedmetadata = mostrarStreaming;
+    }
 }
 
 function fecharPlayer() {
     const video = document.getElementById('video');
     document.getElementById('playerContainer').style.display = "none";
+
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+
     video.pause();
     video.src = "";
-    if (hlsInstance) hlsInstance.destroy();
+    video.className = "";
+    if (hlsInstance) hlsInstance.stopLoad();
 }
 
 window.onload = () => {
@@ -329,5 +342,6 @@ window.onload = () => {
     syncCannels();
 };
 </script>
+
 </body>
 </html>
