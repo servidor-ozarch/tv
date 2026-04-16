@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL = 'https://www4.embedtv.cv';
+const BASE_URL = 'https://www5.embedtv.cv';
 
 // ==============================
 // 📺 CANAIS
