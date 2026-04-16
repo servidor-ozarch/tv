@@ -179,7 +179,7 @@ const LOGOS = {
     bandnews: 'bandnews.png',
     cnnbrasil: 'cnnbrasil.png',
     cultura: 'cultura.png',
-    penthouse-passion-online: 'aparecida.png',
+    'penthouse-passion-online': 'aparecida.png',
 };
 
 // ==============================
