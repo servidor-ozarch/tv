@@ -110,22 +110,24 @@
         #status-container {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            display: flex;
+            display: none; /* Controlado via JS */
             justify-content: center;
             align-items: center;
-            z-index: 1010;
+            z-index: 2000; /* Z-index maior para garantir visibilidade */
             pointer-events: none;
         }
 
         #status-text {
-            background: #77000000;
+            background: rgba(0, 0, 0, 0.7); /* Cor #77000000 adaptada para visualização */
             color: #ffffff;
-            padding: 12px 24px;
+            padding: 15px 30px;
             border-radius: 5px;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             text-align: center;
-            display: block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         video {
@@ -266,23 +268,35 @@ function initPlayer(url) {
     playerContainer.style.display = "block";
     updateStatus("CARREGANDO ...");
     
+    // Limpeza total antes de iniciar novo canal
+    if(hls) {
+        hls.stopLoad();
+        hls.detachMedia();
+        hls.destroy();
+        hls = null;
+    }
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    video.style.opacity = '0';
+
     requestFullscreen();
     history.pushState({ player: true }, '');
 
     if(Hls.isSupported()){
-      if(hls) hls.destroy();
       hls = new Hls({
         autoStartLoad: true,
-        maxBufferLength: 30,
+        maxBufferLength: 30, // Buffet inteligente 30
         maxMaxBufferLength: 60,
-        maxBufferSize: 60 * 1000 * 1000,
+        maxBufferSize: 80 * 1000 * 1000,
         manifestLoadingMaxRetry: Infinity,
         levelLoadingMaxRetry: Infinity,
         enableWorker: true,
         initialLiveManifestSize: 1,
-        liveSyncDuration: 5,
-        fragLoadingMaxRetry: Infinity
+        liveSyncDuration: 3,
+        backBufferLength: 0 // Limpa buffer passado para focar na frente
       });
+      
       hls.loadSource(url);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
@@ -293,7 +307,7 @@ function initPlayer(url) {
           switch(data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
             case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-            default: setTimeout(() => { initPlayer(currentUrl); }, 3000); break;
+            default: setTimeout(() => { initPlayer(currentUrl); }, 2000); break;
           }
         }
       });
@@ -303,17 +317,18 @@ function initPlayer(url) {
     }
 }
 
-// MONITORAMENTO DE CONGELAMENTO E RECONEXÃO
+// MONITORAMENTO DE CONGELAMENTO REAL
 setInterval(() => {
     if (playerContainer.style.display === "block" && !isFirstLoad) {
-        if (video.paused === false) {
+        if (!video.paused) {
             let buffered = video.buffered;
             let currentTime = video.currentTime;
             let isStalled = true;
 
             for (let i = 0; i < buffered.length; i++) {
                 if (currentTime >= buffered.start(i) && currentTime <= buffered.end(i)) {
-                    if (buffered.end(i) - currentTime > 0.3) {
+                    // Só considera estável se tiver mais de 0.5s de buffer à frente
+                    if (buffered.end(i) - currentTime > 0.5) {
                         isStalled = false;
                     }
                 }
@@ -321,25 +336,24 @@ setInterval(() => {
 
             if (isStalled) {
                 updateStatus('RECONECTANDO ...');
-                // Tenta forçar o HLS a buscar novos fragmentos se o buffer zerar
-                if(hls) hls.startLoad();
             } else {
                 updateStatus(null);
             }
         }
     }
-}, 800);
+}, 1000);
 
 function fecharPlayer() {
     playerContainer.style.display = "none";
+    if(hls) {
+        hls.stopLoad();
+        hls.destroy();
+        hls = null;
+    }
     video.pause();
     video.src = "";
     video.style.opacity = '0';
     exitFullscreen();
-    if(hls) {
-        hls.destroy();
-        hls = null;
-    }
 }
 
 window.onpopstate = function(event) {
@@ -350,9 +364,9 @@ window.onpopstate = function(event) {
 
 async function fetchM3U8(id) {
     try {
-        const proxy = "https://corsproxy.io/?"; 
+        // REMOVIDO CORS PROXY PARA CONEXÃO DIRETA
         const targetUrl = `https://www5.embedtv.cv/${id}`;
-        const res = await fetch(proxy + encodeURIComponent(targetUrl));
+        const res = await fetch(targetUrl);
         const html = await res.text();
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         return match ? match[0] : null;
