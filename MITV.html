@@ -106,7 +106,6 @@
             display: none;
         }
 
-        /* NOVO ESTILO DO LOADER */
         #loader {
             position: absolute;
             top: 50%;
@@ -120,11 +119,12 @@
             background: #77000000;
             color: #fff;
             padding: 12px 18px;
-            border-radius: 8px;
+            border-radius: 5px;
             font-size: 0.9rem;
             letter-spacing: 2px;
             font-weight: 700;
             display: inline-block;
+            text-align: center;
         }
 
         video {
@@ -185,7 +185,48 @@ const LOGOS = {
     recordrj: 'record.png', bandrj: 'band.png', bandnews: 'bandnews.png', cnnbrasil: 'cnnbrasil.png', cultura: 'cultura.png'
 };
 
-const CANAIS_BASE = [ /* mantido exatamente igual */ ];
+const CANAIS_BASE = [
+    { id: 'ae', nome: 'A&E' }, { id: 'amc', nome: 'AMC' }, { id: 'axn', nome: 'AXN' },
+    { id: 'cinemax', nome: 'Cinemax' }, { id: 'hbo', nome: 'HBO' }, { id: 'hbo2', nome: 'HBO 2' },
+    { id: 'hbofamily', nome: 'HBO Family' }, { id: 'hbomundi', nome: 'HBO Mundi' },
+    { id: 'hbopop', nome: 'HBO Pop' }, { id: 'hboplus', nome: 'HBO Plus' },
+    { id: 'hboxtreme', nome: 'HBO Xtreme' }, { id: 'megapix', nome: 'Megapix' },
+    { id: 'sonychannel', nome: 'Sony' }, { id: 'space', nome: 'Space' },
+    { id: 'studiouniversal', nome: 'Studio' }, { id: 'telecineaction', nome: 'TC Action' },
+    { id: 'telecinecult', nome: 'TC Cult' }, { id: 'telecinefun', nome: 'TC Fun' },
+    { id: 'telecinepipoca', nome: 'TC Pipoca' }, { id: 'telecinepremium', nome: 'TC Premium' },
+    { id: 'telecinetouch', nome: 'TC Touch' }, { id: 'universaltv', nome: 'Universal' },
+    { id: 'warnerchannel', nome: 'Warner' }, { id: 'animalplanet', nome: 'Animal Planet' },
+    { id: 'discoverychannel', nome: 'Discovery' }, { id: 'discoveryhh', nome: 'Discovery H&H' },
+    { id: 'discoveryid', nome: 'Discovery ID' }, { id: 'discoveryscience', nome: 'D. Science' },
+    { id: 'discoverytheater', nome: 'D. Theater' }, { id: 'discoveryturbo', nome: 'D. Turbo' },
+    { id: 'discoveryworld', nome: 'D. World' }, { id: 'fish', nome: 'Fish TV' },
+    { id: 'history', nome: 'History' }, { id: 'history2', nome: 'History 2' },
+    { id: 'tcm', nome: 'TCM' }, { id: 'tnt', nome: 'TNT' }, { id: 'tntnovelas', nome: 'TNT Novelas' },
+    { id: 'tntseries', nome: 'TNT Series' }, { id: 'tlc', nome: 'TLC' },
+    { id: 'comedycentral', nome: 'Comedy' }, { id: 'gnt', nome: 'GNT' },
+    { id: 'hgtv', nome: 'HGTV' }, { id: 'off', nome: 'OFF' },
+    { id: 'foodnetwork', nome: 'Food Network' }, { id: 'mtv', nome: 'MTV' },
+    { id: 'multishow', nome: 'Multishow' }, { id: 'cartoonnetwork', nome: 'Cartoon' },
+    { id: 'cartoonito', nome: 'Cartoonito' }, { id: 'discoverykids', nome: 'D. Kids' },
+    { id: 'gloob', nome: 'Gloob' }, { id: 'adultswim', nome: 'Adult Swim' },
+    { id: 'bandsports', nome: 'BandSports' }, { id: 'combate', nome: 'Combate' },
+    { id: 'getv', nome: 'GE TV' }, { id: 'ufcfightpass', nome: 'UFC Pass' },
+    { id: 'xsports', nome: 'X Sports' }, { id: 'premiere', nome: 'Premiere' },
+    { id: 'premiere2', nome: 'Premiere 2' }, { id: 'premiere3', nome: 'Premiere 3' },
+    { id: 'premiere4', nome: 'Premiere 4' }, { id: 'premiere5', nome: 'Premiere 5' },
+    { id: 'premiere6', nome: 'Premiere 6' }, { id: 'premiere7', nome: 'Premiere 7' },
+    { id: 'premiere8', nome: 'Premiere 8' }, { id: 'espn', nome: 'ESPN' },
+    { id: 'espn2', nome: 'ESPN 2' }, { id: 'espn3', nome: 'ESPN 3' },
+    { id: 'espn4', nome: 'ESPN 4' }, { id: 'espn5', nome: 'ESPN 5' },
+    { id: 'espn6', nome: 'ESPN 6' }, { id: 'sportv', nome: 'SporTV' },
+    { id: 'sportv2', nome: 'SporTV 2' }, { id: 'sportv3', nome: 'SporTV 3' },
+    { id: 'sportv4', nome: 'SporTV 4' }, { id: 'globorj', nome: 'Globo RJ' },
+    { id: 'globonews', nome: 'Globo News' }, { id: 'sbtrj', nome: 'SBT RJ' },
+    { id: 'recordrj', nome: 'Record RJ' }, { id: 'bandrj', nome: 'Band RJ' },
+    { id: 'bandnews', nome: 'Band News' }, { id: 'cnnbrasil', nome: 'CNN Brasil' },
+    { id: 'cultura', nome: 'Cultura' }
+];
 
 const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
 let hlsInstance = null;
@@ -245,6 +286,9 @@ function abrirPlayer(url) {
     container.style.display = "block";
     setLoader("CARREGANDO...");
     video.className = ""; 
+    
+    // Adiciona estado no histórico para o back da webview funcionar
+    history.pushState({ playerOpen: true }, '');
 
     if (hlsInstance) hlsInstance.destroy();
 
@@ -268,10 +312,11 @@ function abrirPlayer(url) {
 
     if (Hls.isSupported()) {
         hlsInstance = new Hls({
-            maxBufferLength: 30,
+            maxBufferLength: 30, // Buffet configurado para 30
             maxMaxBufferLength: 60,
             liveSyncDuration: 10,
-            liveMaxLatencyDuration: 30
+            liveMaxLatencyDuration: 30,
+            enableWorker: true
         });
 
         hlsInstance.loadSource(url);
@@ -279,7 +324,12 @@ function abrirPlayer(url) {
 
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, mostrarStreaming);
 
-        hlsInstance.on(Hls.Events.ERROR, () => setLoader("RECONECTANDO..."));
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                setLoader("RECONECTANDO...");
+                hlsInstance.startLoad();
+            }
+        });
 
     } else {
         video.src = url;
@@ -294,8 +344,19 @@ function fecharPlayer() {
     video.pause();
     video.src = "";
     video.className = "";
-    if (hlsInstance) hlsInstance.stopLoad();
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
 }
+
+// Escuta o botão voltar nativo/navegador
+window.onpopstate = function(event) {
+    const container = document.getElementById('playerContainer');
+    if (container.style.display === "block") {
+        fecharPlayer();
+    }
+};
 
 window.onload = () => {
     const cache = localStorage.getItem("iptv_cache_gh_vFinal");
