@@ -374,7 +374,7 @@ window.onpopstate = function(event) {
 
 async function fetchM3U8(id) {
     try {
-        const targetUrl = `https://www5.embedtv.cv/${id}`;
+        const targetUrl = `https://corsproxy.io/?url=https://www5.embedtv.cv/${id}`;
         const res = await fetch(targetUrl);
         const html = await res.text();
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
