@@ -22,12 +22,13 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        body {
+        html, body {
             background: var(--bg-dark);
             font-family: 'Inter', sans-serif;
             color: #fff;
             overflow: hidden;
-            height: 100vh;
+            height: 100%;
+            width: 100%;
         }
 
         .app-container {
@@ -98,33 +99,36 @@
             text-transform: uppercase;
         }
 
+        /* PLAYER CONTAINER FULLSCREEN */
         #playerContainer {
             position: fixed;
-            inset: 0;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: #000;
-            z-index: 100;
+            z-index: 1000;
             display: none;
         }
 
-        #loader {
+        /* STATUS BOX MODERNA */
+        #status-container {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 115;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1010;
             pointer-events: none;
         }
 
-        #loader span {
+        #status-text {
             background: #77000000;
             color: #fff;
-            padding: 12px 18px;
+            padding: 12px 24px;
             border-radius: 5px;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            font-weight: 700;
-            display: inline-block;
-            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
         }
 
         video {
@@ -136,16 +140,9 @@
             transition: opacity 0.5s ease;
         }
 
-        .video-visible {
-            opacity: 1 !important;
-        }
+        .video-visible { opacity: 1 !important; }
 
-        video::-webkit-media-controls-panel, 
-        video::-webkit-media-controls-play-button, 
-        video::-webkit-media-controls-start-playback-button { 
-            display: none !important; 
-            -webkit-appearance: none;
-        }
+        video::-webkit-media-controls { display: none !important; }
     </style>
 </head>
 <body>
@@ -155,8 +152,8 @@
 </div>
 
 <div id="playerContainer">
-    <div id="loader"><span>CARREGANDO...</span></div>
-    <video id="video" playsinline autocomplete="off"></video>
+    <div id="status-container"><div id="status-text">CARREGANDO ...</div></div>
+    <video id="video" playsinline autoplay></video>
 </div>
 
 <script>
@@ -229,7 +226,23 @@ const CANAIS_BASE = [
 ];
 
 const BASE_URL_LOGOS = "https://raw.githubusercontent.com/servidor-ozarch/tv/main/live/logotipo/";
-let hlsInstance = null;
+var hls;
+var isFirstLoad = true;
+var currentUrl = "";
+
+const video = document.getElementById('video');
+const statusText = document.getElementById('status-text');
+const statusContainer = document.getElementById('status-container');
+const playerContainer = document.getElementById('playerContainer');
+
+function updateStatus(msg) {
+    if(msg) {
+        statusText.innerText = msg;
+        statusContainer.style.display = 'flex';
+    } else {
+        statusContainer.style.display = 'none';
+    }
+}
 
 async function fetchM3U8(id) {
     try {
@@ -239,19 +252,99 @@ async function fetchM3U8(id) {
         const html = await res.text();
         const match = html.match(/https?:\/\/[^\s"'<>]+\.m3u8/gi);
         return match ? match[0] : null;
-    } catch (error) {
-        console.error("Erro ao buscar canal:", id, error);
-        return null;
+    } catch (error) { return null; }
+}
+
+function render(lista) {
+    const container = document.getElementById('lista');
+    container.innerHTML = ""; 
+    lista.forEach(item => {
+        const logoUrl = `${BASE_URL_LOGOS}${LOGOS[item.id] || item.id + '.png'}`;
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<div class="logo-container"><img class="logo" src="${logoUrl}"></div><div class="channel-name">${item.nome}</div>`;
+        div.onclick = () => initPlayer(item.url);
+        container.appendChild(div);
+    });
+}
+
+function tryPlay() {
+    video.play().then(function() {
+       video.style.opacity = '1';
+       updateStatus(null);
+       isFirstLoad = false;
+    }).catch(function(e) {});
+}
+
+function initPlayer(url) {
+    currentUrl = url;
+    playerContainer.style.display = "block";
+    updateStatus("CARREGANDO ...");
+    isFirstLoad = true;
+    video.style.opacity = '0';
+
+    // Importante para o CALLBACK: Adicionar estado no histórico
+    history.pushState({ player: true }, '');
+
+    if(Hls.isSupported()){
+      if(hls) hls.destroy();
+      hls = new Hls({
+        autoStartLoad:true,
+        maxBufferLength:30,
+        manifestLoadingMaxRetry: Infinity,
+        levelLoadingMaxRetry: Infinity
+      });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function() { tryPlay(); });
+
+      hls.on(Hls.Events.ERROR, function(event, data) {
+        if (data.fatal) {
+          updateStatus('Reconectando ...');
+          switch(data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR: setTimeout(function(){ hls.startLoad(); }, 3000); break;
+            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+            default: setTimeout(function(){ initPlayer(currentUrl); }, 5000); break;
+          }
+        }
+      });
+    } else if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src = url;
+      video.addEventListener('loadedmetadata', tryPlay);
     }
 }
 
+// Eventos de Buffer nativos adaptados
+video.addEventListener('waiting', function() {
+    if(!isFirstLoad) { updateStatus('Reconectando ...'); }
+});
+video.addEventListener('playing', function() {
+    updateStatus(null);
+    isFirstLoad = false;
+});
+
+function fecharPlayer() {
+    playerContainer.style.display = "none";
+    video.pause();
+    video.style.opacity = '0';
+    if(hls) {
+        hls.destroy();
+        hls = null;
+    }
+}
+
+// LÓGICA DO BOTÃO VOLTAR (CALLBACK)
+window.onpopstate = function(event) {
+    if (playerContainer.style.display === "block") {
+        fecharPlayer();
+    }
+};
+
 async function syncCannels() {
-    const updatedList = await Promise.all(
-        CANAIS_BASE.map(async c => {
-            const url = await fetchM3U8(c.id);
-            return url ? { ...c, url } : null;
-        })
-    );
+    const updatedList = await Promise.all(CANAIS_BASE.map(async c => {
+        const url = await fetchM3U8(c.id);
+        return url ? { ...c, url } : null;
+    }));
     const filtrado = updatedList.filter(Boolean);
     if (filtrado.length > 0) {
         localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(filtrado));
@@ -259,111 +352,11 @@ async function syncCannels() {
     }
 }
 
-function render(lista) {
-    const container = document.getElementById('lista');
-    container.innerHTML = ""; 
-    lista.forEach(item => {
-        const logoArquivo = LOGOS[item.id] || `${item.id}.png`;
-        const logoUrl = `${BASE_URL_LOGOS}${logoArquivo}`;
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `<div class="logo-container"><img class="logo" src="${logoUrl}"></div><div class="channel-name">${item.nome}</div>`;
-        div.onclick = () => abrirPlayer(item.url);
-        container.appendChild(div);
-    });
-}
-
-function setLoader(texto){
-    const loader = document.getElementById('loader');
-    loader.style.display = "block";
-    loader.querySelector("span").innerText = texto;
-}
-
-function abrirPlayer(url) {
-    const video = document.getElementById('video');
-    const container = document.getElementById('playerContainer');
-
-    container.style.display = "block";
-    setLoader("CARREGANDO...");
-    video.className = ""; 
-    
-    // Adiciona estado no histórico para o back da webview funcionar
-    history.pushState({ playerOpen: true }, '');
-
-    if (hlsInstance) hlsInstance.destroy();
-
-    const mostrarStreaming = () => {
-        video.play().then(() => {
-            video.classList.add('video-visible');
-            document.getElementById('loader').style.display = "none";
-        }).catch(() => {
-            video.muted = true;
-            video.play();
-            video.classList.add('video-visible');
-            document.getElementById('loader').style.display = "none";
-        });
-    };
-
-    video.onwaiting = () => setLoader("RECONECTANDO...");
-    video.onplaying = () => {
-        video.classList.add('video-visible');
-        document.getElementById('loader').style.display = "none";
-    };
-
-    if (Hls.isSupported()) {
-        hlsInstance = new Hls({
-            maxBufferLength: 30, // Buffet configurado para 30
-            maxMaxBufferLength: 60,
-            liveSyncDuration: 10,
-            liveMaxLatencyDuration: 30,
-            enableWorker: true
-        });
-
-        hlsInstance.loadSource(url);
-        hlsInstance.attachMedia(video);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, mostrarStreaming);
-
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                setLoader("RECONECTANDO...");
-                hlsInstance.startLoad();
-            }
-        });
-
-    } else {
-        video.src = url;
-        video.onloadedmetadata = mostrarStreaming;
-    }
-}
-
-function fecharPlayer() {
-    const video = document.getElementById('video');
-    document.getElementById('playerContainer').style.display = "none";
-
-    video.pause();
-    video.src = "";
-    video.className = "";
-    if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
-    }
-}
-
-// Escuta o botão voltar nativo/navegador
-window.onpopstate = function(event) {
-    const container = document.getElementById('playerContainer');
-    if (container.style.display === "block") {
-        fecharPlayer();
-    }
-};
-
 window.onload = () => {
     const cache = localStorage.getItem("iptv_cache_gh_vFinal");
     if (cache) render(JSON.parse(cache));
     syncCannels();
 };
 </script>
-
 </body>
 </html>
