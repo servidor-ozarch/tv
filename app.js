@@ -189,7 +189,7 @@ let ultimaAtualizacao = 0;
 const CACHE_TEMPO = 5 * 60 * 1000; // 5 minutos
 
 // ==============================
-// 🔎 PEGA TXT
+// 🔎 PEGA A URL M3U8
 // ==============================
 async function pegarTxtDaPagina(url) {
     try {
@@ -295,7 +295,7 @@ app.get('/playlist.m3u8', async (req, res) => {
 // ==============================
 // 🔄 AUTO PING (5 MIN)
 // ==============================
-const URL = 'https://iptv-c3lf.onrender.com/playlist';
+const URL = 'https://iptv-c3lf.onrender.com/playlist.m3u8';
 
 function ping() {
     axios.get(URL)
