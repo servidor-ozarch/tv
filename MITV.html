@@ -118,10 +118,10 @@
         }
 
         #status-text {
-            background: #77000000; /* Cor fundo pedida */
+            background: #77000000;
             color: #ffffff;
             padding: 12px 24px;
-            border-radius: 5px; /* Bordas arredondadas 5 pedido */
+            border-radius: 5px;
             font-size: 14px;
             font-weight: 600;
             text-align: center;
@@ -245,15 +245,11 @@ function requestFullscreen() {
     const el = document.documentElement;
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-    else if (el.msRequestFullscreen) el.msRequestFullscreen();
 }
 
 function exitFullscreen() {
     if (document.exitFullscreen) document.exitFullscreen();
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-    else if (document.msExitFullscreen) document.msExitFullscreen();
 }
 
 function tryPlay() {
@@ -277,12 +273,15 @@ function initPlayer(url) {
       if(hls) hls.destroy();
       hls = new Hls({
         autoStartLoad: true,
-        maxBufferLength: 30, // Buffet 30
-        maxMaxBufferLength: 45,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1000 * 1000,
         manifestLoadingMaxRetry: Infinity,
         levelLoadingMaxRetry: Infinity,
         enableWorker: true,
-        startLevel: -1 // Inicia mais rápido escolhendo nível adequado
+        initialLiveManifestSize: 1,
+        liveSyncDuration: 5,
+        fragLoadingMaxRetry: Infinity
       });
       hls.loadSource(url);
       hls.attachMedia(video);
@@ -294,7 +293,7 @@ function initPlayer(url) {
           switch(data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
             case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-            default: initPlayer(currentUrl); break;
+            default: setTimeout(() => { initPlayer(currentUrl); }, 3000); break;
           }
         }
       });
@@ -304,32 +303,32 @@ function initPlayer(url) {
     }
 }
 
-// MONITORAMENTO INTELIGENTE DE BUFFER
+// MONITORAMENTO DE CONGELAMENTO E RECONEXÃO
 setInterval(() => {
     if (playerContainer.style.display === "block" && !isFirstLoad) {
-        // Verifica se o vídeo está parado mas deveria estar tocando
         if (video.paused === false) {
             let buffered = video.buffered;
             let currentTime = video.currentTime;
-            let bufferEmpty = true;
+            let isStalled = true;
 
             for (let i = 0; i < buffered.length; i++) {
                 if (currentTime >= buffered.start(i) && currentTime <= buffered.end(i)) {
-                    // Tem conteúdo no buffer atual à frente do tempo
-                    if (buffered.end(i) - currentTime > 0.1) {
-                        bufferEmpty = false;
+                    if (buffered.end(i) - currentTime > 0.3) {
+                        isStalled = false;
                     }
                 }
             }
 
-            if (bufferEmpty) {
+            if (isStalled) {
                 updateStatus('RECONECTANDO ...');
+                // Tenta forçar o HLS a buscar novos fragmentos se o buffer zerar
+                if(hls) hls.startLoad();
             } else {
                 updateStatus(null);
             }
         }
     }
-}, 500);
+}, 800);
 
 function fecharPlayer() {
     playerContainer.style.display = "none";
@@ -360,6 +359,20 @@ async function fetchM3U8(id) {
     } catch (e) { return null; }
 }
 
+async function syncCannels() {
+    const updatedList = await Promise.all(
+        CANAIS_BASE.map(async c => {
+            const url = await fetchM3U8(c.id);
+            return url ? { ...c, url } : null;
+        })
+    );
+    const filtrado = updatedList.filter(Boolean);
+    if (filtrado.length > 0) {
+        localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(filtrado));
+        render(filtrado);
+    }
+}
+
 function render(lista) {
     const container = document.getElementById('lista');
     container.innerHTML = ""; 
@@ -371,18 +384,6 @@ function render(lista) {
         div.onclick = () => initPlayer(item.url);
         container.appendChild(div);
     });
-}
-
-async function syncCannels() {
-    const updatedList = await Promise.all(CANAIS_BASE.map(async c => {
-        const url = await fetchM3U8(c.id);
-        return url ? { ...c, url } : null;
-    }));
-    const filtrado = updatedList.filter(Boolean);
-    if (filtrado.length > 0) {
-        localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(filtrado));
-        render(filtrado);
-    }
 }
 
 window.onload = () => {
