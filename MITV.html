@@ -272,8 +272,8 @@ function initPlayer(url) {
         hls.stopLoad();
         hls.detachMedia();
         hls.destroy();
-        hls = null;
     }
+
     video.pause();
     video.removeAttribute('src');
     video.load();
@@ -285,15 +285,16 @@ function initPlayer(url) {
     if(Hls.isSupported()){
       hls = new Hls({
         autoStartLoad: true,
-        maxBufferLength: 60, // Aumentado para cache de 1 minuto à frente
-        maxMaxBufferLength: 120,
-        maxBufferSize: 120 * 1024 * 1024, // 120MB de buffet de RAM
+        maxBufferLength: 40, // Buffet agressivo
+        maxMaxBufferLength: 90, 
+        maxBufferSize: 90 * 1024 * 1024,
         enableWorker: true,
-        liveSyncDuration: 8, // Margem de segurança maior para evitar "pulos"
-        liveMaxLatencyDuration: 15,
-        manifestLoadingMaxRetry: 10,
-        fragLoadingMaxRetry: 10,
-        initialLiveManifestSize: 3
+        lowLatencyMode: true,
+        backBufferLength: 0,
+        manifestLoadingMaxRetry: Infinity,
+        levelLoadingMaxRetry: Infinity,
+        fragLoadingMaxRetry: Infinity,
+        appendErrorMaxRetry: 5
       });
       
       hls.loadSource(url);
@@ -304,14 +305,13 @@ function initPlayer(url) {
         if (data.fatal) {
           switch(data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR: 
-                updateStatus('RECUPERANDO REDE...');
                 hls.startLoad(); 
                 break;
             case Hls.ErrorTypes.MEDIA_ERROR: 
                 hls.recoverMediaError(); 
                 break;
             default: 
-                setTimeout(() => { initPlayer(currentUrl); }, 2000); 
+                setTimeout(() => { initPlayer(currentUrl); }, 3000); 
                 break;
           }
         }
@@ -322,17 +322,36 @@ function initPlayer(url) {
     }
 }
 
-// MONITORAMENTO DE FLUXO REAL (SEM FALSOS POSITIVOS)
+// MONITORAMENTO DO BUFFER 100% VAZIO
 setInterval(() => {
     if (playerContainer.style.display === "block" && !isFirstLoad) {
-        // Só mostra "Reconectando" se o vídeo estiver realmente parado e o buffer zerado
-        if (video.readyState < 3 && !video.paused) {
+        let isStalled = false;
+        
+        // Se o video está tocando mas não há buffer à frente do tempo atual
+        if (!video.paused) {
+            let hasBuffer = false;
+            for (let i = 0; i < video.buffered.length; i++) {
+                if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) {
+                    // Se o resto do buffer for quase zero (menor que 0.2s)
+                    if (video.buffered.end(i) - video.currentTime > 0.2) {
+                        hasBuffer = true;
+                    }
+                }
+            }
+            
+            // Critério de mensagem: Vídeo travado (readyState 0 ou 1) ou Buffer esgotado
+            if (video.readyState < 2 || !hasBuffer) {
+                isStalled = true;
+            }
+        }
+
+        if (isStalled) {
             updateStatus('RECONECTANDO ...');
         } else {
             updateStatus(null);
         }
     }
-}, 1000);
+}, 500);
 
 function fecharPlayer() {
     playerContainer.style.display = "none";
