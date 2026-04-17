@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MiTV</title>
+    <title>MiTV - Live</title>
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -118,8 +118,8 @@
         }
 
         #status-text {
-            background: rgba(0, 0, 0, 0.7);
-            color: #ffffff;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff96;
             padding: 15px 30px;
             border-radius: 5px;
             font-size: 14px;
@@ -127,7 +127,7 @@
             text-align: center;
             text-transform: uppercase;
             letter-spacing: 1px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid var(--primary);
         }
 
         video {
@@ -138,8 +138,6 @@
             opacity: 0; 
             transition: opacity 0.3s ease;
         }
-
-        .video-visible { opacity: 1 !important; }
 
         video::-webkit-media-controls { display: none !important; }
     </style>
@@ -265,7 +263,7 @@ function initPlayer(url) {
     isFirstLoad = true;
     playerContainer.style.display = "block";
     updateStatus("CARREGANDO ...");
-    
+
     if(hls) {
         hls.stopLoad();
         hls.detachMedia();
@@ -283,18 +281,16 @@ function initPlayer(url) {
     if(Hls.isSupported()){
       hls = new Hls({
         autoStartLoad: true,
-        maxBufferLength: 40, // Buffet agressivo
+        maxBufferLength: 40,
         maxMaxBufferLength: 90, 
         maxBufferSize: 90 * 1024 * 1024,
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 0,
         manifestLoadingMaxRetry: Infinity,
         levelLoadingMaxRetry: Infinity,
-        fragLoadingMaxRetry: Infinity,
-        appendErrorMaxRetry: 5
+        fragLoadingMaxRetry: Infinity
       });
-      
+
       hls.loadSource(url);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
@@ -302,15 +298,9 @@ function initPlayer(url) {
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           switch(data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR: 
-                hls.startLoad(); 
-                break;
-            case Hls.ErrorTypes.MEDIA_ERROR: 
-                hls.recoverMediaError(); 
-                break;
-            default: 
-                setTimeout(() => { initPlayer(currentUrl); }, 3000); 
-                break;
+            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+            default: setTimeout(() => { initPlayer(currentUrl); }, 3000); break;
           }
         }
       });
@@ -320,34 +310,20 @@ function initPlayer(url) {
     }
 }
 
-// MONITORAMENTO DO BUFFER 100% VAZIO
 setInterval(() => {
     if (playerContainer.style.display === "block" && !isFirstLoad) {
         let isStalled = false;
-        
-        // Se o video está tocando mas não há buffer à frente do tempo atual
         if (!video.paused) {
             let hasBuffer = false;
             for (let i = 0; i < video.buffered.length; i++) {
                 if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) {
-                    // Se o resto do buffer for quase zero (menor que 0.2s)
-                    if (video.buffered.end(i) - video.currentTime > 0.2) {
-                        hasBuffer = true;
-                    }
+                    if (video.buffered.end(i) - video.currentTime > 0.2) hasBuffer = true;
                 }
             }
-            
-            // Critério de mensagem: Vídeo travado (readyState 0 ou 1) ou Buffer esgotado
-            if (video.readyState < 2 || !hasBuffer) {
-                isStalled = true;
-            }
+            if (video.readyState < 2 || !hasBuffer) isStalled = true;
         }
-
-        if (isStalled) {
-            updateStatus('RECONECTANDO ...');
-        } else {
-            updateStatus(null);
-        }
+        if (isStalled) updateStatus('RECONECTANDO ...');
+        else updateStatus(null);
     }
 }, 500);
 
@@ -365,9 +341,7 @@ function fecharPlayer() {
 }
 
 window.onpopstate = function(event) {
-    if (playerContainer.style.display === "block") {
-        fecharPlayer();
-    }
+    if (playerContainer.style.display === "block") fecharPlayer();
 };
 
 async function fetchM3U8(id) {
@@ -381,17 +355,9 @@ async function fetchM3U8(id) {
 }
 
 async function syncCannels() {
-    const updatedList = await Promise.all(
-        CANAIS_BASE.map(async c => {
-            const url = await fetchM3U8(c.id);
-            return url ? { ...c, url } : null;
-        })
-    );
-    const filtrado = updatedList.filter(Boolean);
-    if (filtrado.length > 0) {
-        localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(filtrado));
-        render(filtrado);
-    }
+    // Sincroniza a lista básica para o cache (apenas estrutura)
+    localStorage.setItem("iptv_cache_gh_vFinal", JSON.stringify(CANAIS_BASE));
+    render(CANAIS_BASE);
 }
 
 function render(lista) {
@@ -402,14 +368,31 @@ function render(lista) {
         const div = document.createElement('div');
         div.className = 'item';
         div.innerHTML = `<div class="logo-container"><img class="logo" src="${logoUrl}"></div><div class="channel-name">${item.nome}</div>`;
-        div.onclick = () => initPlayer(item.url);
+        
+        // NOVO CLIQUE: EXTRAÇÃO DINÂMICA
+        div.onclick = async () => {
+            playerContainer.style.display = "block"; // Mostra o container antes de buscar
+            updateStatus("BUSCANDO LINK...");
+            const urlDinamica = await fetchM3U8(item.id); 
+            if(urlDinamica) {
+                initPlayer(urlDinamica);
+            } else {
+                updateStatus("ERRO AO RECUPERAR LINK");
+                setTimeout(fecharPlayer, 2000);
+            }
+        };
+        
         container.appendChild(div);
     });
 }
 
 window.onload = () => {
     const cache = localStorage.getItem("iptv_cache_gh_vFinal");
-    if (cache) render(JSON.parse(cache));
+    if (cache) {
+        render(JSON.parse(cache));
+    } else {
+        render(CANAIS_BASE);
+    }
     syncCannels();
 };
 </script>
