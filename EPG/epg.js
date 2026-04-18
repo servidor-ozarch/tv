@@ -36,11 +36,11 @@ const canais = [
     { id: 'megapix', nome: 'Megapix' }
 ];
 
-// 🔥 reduzir pra acelerar (pode voltar depois)
+// 🔥 rápido (depois pode expandir)
 const dias = ["", "/amanha"];
 
 // ========================
-// XML BASE INSTANTÂNEO
+// XML BASE
 // ========================
 function gerarXMLBase() {
     return `<?xml version="1.0" encoding="utf-8"?>
@@ -83,72 +83,102 @@ function formatXMLTV(date) {
 }
 
 // ========================
-// PARSER ROBUSTO
+// PARSER COMPLETO
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
+    let programas = [];
+
+    // =========================
+    // LISTA NORMAL
+    // =========================
     let items = [...doc.querySelectorAll('ul.broadcasts > li')];
 
     if (items.length === 0) {
         items = [...doc.querySelectorAll('.broadcasts li')];
     }
 
-    if (items.length === 0) {
-        items = [...doc.querySelectorAll('li')];
-    }
+    if (items.length > 0) {
 
-    let programas = [];
+        for (let i = 0; i < items.length; i++) {
 
-    for (let i = 0; i < items.length; i++) {
+            const el = items[i];
 
-        const el = items[i];
+            const hora = el.querySelector('.time')?.textContent?.trim();
+            const titulo = el.querySelector('h2, h3')?.textContent?.trim();
+            const desc = el.querySelector('.synopsis, p')?.textContent?.trim();
 
-        const hora = el.querySelector('.time')?.textContent?.trim();
-        const titulo = el.querySelector('h2, h3')?.textContent?.trim();
-        const desc = el.querySelector('.synopsis, p')?.textContent?.trim();
+            if (!hora || !titulo || !hora.includes(":")) continue;
 
-        if (!hora || !titulo || !hora.includes(":")) continue;
+            const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
 
-        const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
+            const [h, m] = hora.split(":");
 
-        const [h, m] = hora.split(":");
+            const inicio = new Date();
+            inicio.setHours(parseInt(h), parseInt(m), 0);
+            inicio.setDate(inicio.getDate() + diaOffset);
 
-        const inicio = new Date();
-        inicio.setHours(parseInt(h), parseInt(m), 0);
-        inicio.setDate(inicio.getDate() + diaOffset);
+            let fim = new Date(inicio);
 
-        let fim = new Date(inicio);
+            if (proxHora && proxHora.includes(":")) {
+                const [ph, pm] = proxHora.split(":");
+                fim.setHours(parseInt(ph), parseInt(pm), 0);
+                if (fim <= inicio) fim.setDate(fim.getDate() + 1);
+            } else {
+                fim.setHours(inicio.getHours() + 2);
+            }
 
-        if (proxHora && proxHora.includes(":")) {
-            const [ph, pm] = proxHora.split(":");
-            fim.setHours(parseInt(ph), parseInt(pm), 0);
-
-            if (fim <= inicio) fim.setDate(fim.getDate() + 1);
-        } else {
-            fim.setHours(inicio.getHours() + 2);
-        }
-
-        programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
+            programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
   <desc lang="pt">${escapeXML(desc || titulo)}</desc>
 </programme>`);
+        }
+
+        return programas.join("\n");
     }
 
-    return programas.join("\n");
+    // =========================
+    // FALLBACK
+    // =========================
+
+    const titulo = doc.querySelector('h1.impact-medium')?.textContent?.trim();
+    const desc = doc.querySelector('.sinopsis, p')?.textContent?.trim();
+    const hora = doc.querySelector('.time')?.textContent?.trim();
+
+    if (!titulo || !hora) {
+        return "";
+    }
+
+    const [h, m] = hora.split(":");
+
+    const inicio = new Date();
+    inicio.setHours(parseInt(h), parseInt(m), 0);
+    inicio.setDate(inicio.getDate() + diaOffset);
+
+    const fim = new Date(inicio);
+    fim.setHours(inicio.getHours() + 2);
+
+    console.log(`⚠️ fallback → ${titulo}`);
+
+    return `<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
+  <title lang="pt">${escapeXML(titulo)}</title>
+  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
+</programme>`;
 }
 
 // ========================
-// FETCH MELHORADO
+// FETCH
 // ========================
 async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0",
+                "User-Agent": "Mozilla/5.0 (Linux; Android 10)",
                 "Accept": "text/html",
-                "Accept-Language": "pt-BR"
+                "Accept-Language": "pt-BR",
+                "Referer": "https://mi.tv/"
             }
         });
 
@@ -166,7 +196,7 @@ async function fetchPage(url) {
 }
 
 // ========================
-// CAPTURAR COM RETRY
+// CAPTURAR
 // ========================
 async function capturar(canal) {
 
