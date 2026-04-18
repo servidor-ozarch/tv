@@ -38,70 +38,81 @@ function formatXMLTV(dateStr){
 }
 
 // ========================
-// DESCOBRIR CANAIS (REAL)
+// GERAR CANDIDATOS (BRUTE FORCE)
+// ========================
+function gerarCandidatos(){
+
+    const letras = "abcdefghijklmnopqrstuvwxyz";
+
+    let candidatos = [];
+
+    // letras simples
+    for(let l of letras){
+        candidatos.push(l);
+    }
+
+    // palavras comuns IPTV
+    candidatos.push(
+        "gnt","hbo","hbo2","hbo3",
+        "telecine","telecinepremium",
+        "sportv","sportv2","sportv3",
+        "espn","espn2","espn3","espn4",
+        "premiere","premiere2","premiere3","premiere4",
+        "cartoonnetwork","discoverykids",
+        "globo","sbt","record","band",
+        "cnnbrasil","globonews","bandnews",
+        "nick","nickjr","discovery","tlc","history"
+    );
+
+    // remove duplicados
+    return [...new Set(candidatos)];
+}
+
+// ========================
+// DESCOBRIR CANAIS (VALIDAÇÃO REAL)
 // ========================
 async function descobrirCanais(){
 
     console.log("🔍 Descobrindo canais...");
 
-    const visitados = new Set();
-    const encontrados = new Set();
+    const candidatos = gerarCandidatos();
+    const dia = dias[new Date().getDay()];
 
-    async function explorar(url){
+    const encontrados = [];
 
-        if(visitados.has(url)) return;
-        visitados.add(url);
+    await Promise.all(candidatos.map(async (id)=>{
 
         try{
-            const res = await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
+            const url = `${BASE}${id}/${dia}`;
+
+            const res = await fetch(url,{
+                headers:{'User-Agent':'Mozilla/5.0'}
+            });
+
+            if(!res.ok) return;
+
             const html = await res.text();
 
-            const dom = new JSDOM(html);
-            const doc = dom.window.document;
+            // valida se existe programação real
+            if(html.includes("registro programa_data")){
+                console.log("✅", id);
 
-            const links = [...doc.querySelectorAll("a")];
-
-            for(let a of links){
-
-                const href = a.getAttribute("href");
-                if(!href) continue;
-
-                if(href.startsWith("/programacao_tv/")){
-
-                    const partes = href.split("/");
-                    const id = partes[2];
-
-                    if(id && id.length > 2 && !id.includes("segunda")){
-                        encontrados.add(id);
-                    }
-
-                    const full = "https://tvinside.com.br" + href;
-
-                    if(!visitados.has(full)){
-                        await explorar(full);
-                    }
-                }
+                encontrados.push({
+                    id,
+                    nome: id.toUpperCase()
+                });
             }
 
-        }catch(e){
-            console.log("erro ao explorar");
-        }
-    }
-
-    await explorar(BASE);
-
-    const lista = [...encontrados].map(id => ({
-        id,
-        nome: id.toUpperCase()
+        }catch{}
     }));
 
-    console.log(`✅ ${lista.length} canais encontrados`);
+    console.log(`🎯 ${encontrados.length} canais válidos`);
 
-    return lista;
+    return encontrados;
 }
 
 // ========================
-// PARSE HTML
+// PARSE HTML → XMLTV
 // ========================
 function parseGrade(html, canalId){
 
@@ -113,16 +124,34 @@ function parseGrade(html, canalId){
     return regs.map(el=>{
 
         const titulo = el.querySelector('.titulo')?.textContent?.trim();
-        const desc = el.querySelector('.descricao_programa')?.textContent?.trim();
+
+        const desc =
+            el.querySelector('.descricao_programa')?.textContent?.trim() ||
+            el.querySelector('.sinopse')?.textContent?.trim() ||
+            titulo;
+
+        const classificacao =
+            el.querySelector('.classificacao')?.textContent?.trim();
+
+        const faixa =
+            el.querySelector('.faixa_etaria')?.textContent?.trim();
 
         const dti = el.getAttribute('dti');
         const dtf = el.getAttribute('dtf');
 
         if(!titulo || !dti || !dtf) return "";
 
+        let rating = "";
+        if(classificacao || faixa){
+            rating = `<rating system="Brazil">
+    <value>${escapeXML((faixa||"") + (classificacao ? " | " + classificacao : ""))}</value>
+  </rating>`;
+        }
+
         return `<programme start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
-  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
+  <desc lang="pt">${escapeXML(desc)}</desc>
+  ${rating}
 </programme>`;
 
     }).join("\n");
@@ -136,7 +165,10 @@ async function capturar(canal, dia){
     try{
         const url = `${BASE}${canal.id}/${dia}`;
 
-        const res = await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
+        const res = await fetch(url,{
+            headers:{'User-Agent':'Mozilla/5.0'}
+        });
+
         if(!res.ok) return "";
 
         const html = await res.text();
@@ -149,14 +181,13 @@ async function capturar(canal, dia){
 }
 
 // ========================
-// GERAR XML
+// GERAR XML COMPLETO
 // ========================
 async function gerarXML(){
 
     console.log("🚀 Gerando EPG...");
 
     const canais = await descobrirCanais();
-
     const dia = dias[new Date().getDay()];
 
     const resultados = await Promise.all(
@@ -168,8 +199,10 @@ async function gerarXML(){
   <display-name lang="pt">${c.nome}</display-name>
 </channel>`).join("\n");
 
+    const agora = new Date().toISOString().replace("T"," ").split(".")[0];
+
     const xml = `<?xml version="1.0" encoding="utf-8"?>
-<tv>
+<tv generator-info-name="EPG AUTO - ${agora}">
 
 ${canaisXML}
 
@@ -179,7 +212,28 @@ ${resultados.join("\n")}
 
     fs.writeFileSync("programacao.xml", xml);
 
-    console.log("✅ EPG COMPLETO GERADO");
+    console.log("✅ EPG FINAL GERADO");
+}
+
+// ========================
+// AGENDAR 03:00
+// ========================
+function agendar(){
+
+    const agora = new Date();
+    const proxima = new Date();
+
+    proxima.setHours(3,0,0,0);
+    if(agora >= proxima) proxima.setDate(proxima.getDate()+1);
+
+    const delay = proxima - agora;
+
+    console.log(`⏰ Próxima atualização em ${Math.round(delay/1000)}s`);
+
+    setTimeout(async ()=>{
+        await gerarXML();
+        agendar();
+    }, delay);
 }
 
 // ========================
@@ -190,15 +244,16 @@ app.get("/", (req,res)=>{
 });
 
 app.get("/programacao.xml", (req,res)=>{
-    res.set("Content-Type","application/xml");
-    res.sendFile(__dirname+"/programacao.xml");
+    res.set("Content-Type","application/xml; charset=utf-8");
+    res.sendFile(__dirname + "/programacao.xml");
 });
 
 // ========================
 // START
 // ========================
 app.listen(PORT, async ()=>{
-    console.log("🔥 Servidor ON");
+    console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    await gerarXML();
+    await gerarXML(); // gera ao iniciar
+    agendar();        // agenda 03:00
 });
