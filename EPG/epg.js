@@ -39,7 +39,7 @@ const canais = [
     { id: 'WBT', nome: 'Warner Channel' },
     { id: 'APL', nome: 'Animal Planet' },
     { id: 'DIS', nome: 'Discovery Channel' },
-    { id: 'HEA', nome: 'Discovery Home & Health' },
+    { id: 'HEA', nome: 'Discovery H&H' },
     { id: 'DHD', nome: 'Discovery Theater' },
     { id: 'DSC', nome: 'Discovery Science' },
     { id: 'DTU', nome: 'Discovery Turbo' },
