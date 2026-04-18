@@ -16,7 +16,6 @@ const canais = [
     { id: 'ae', nome: 'A&E' },
     { id: 'a.e', nome: 'A&E' },
     { id: 'a_e', nome: 'A&E' },
-    { id: 'a&e', nome: 'A&E' },
     { id: 'aee', nome: 'A&E' },
     { id: 'gnt', nome: 'GNT' },
     { id: 'hgtv', nome: 'HGTV' },
