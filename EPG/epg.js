@@ -17,6 +17,7 @@ const canais = [
     { id: 'arts_entertainment', nome: 'A&E' },
     { id: 'arts_e_entertainment', nome: 'A&E' },
     { id: 'arts.entertainment', nome: 'A&E' },
+    { id: 'arts-entertainment', nome: 'A&E' },
     { id: 'a.e', nome: 'A&E' },
     { id: 'a_e', nome: 'A&E' },
     { id: 'aee', nome: 'A&E' },
