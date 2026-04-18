@@ -10,7 +10,7 @@ const BASE_URL = "https://tvinside.com.br/programacao_tv/";
 const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 
 // ========================
-// LISTA DE CANAIS
+// LISTA DE CANAIS (AJUSTE CONFORME SUA M3U)
 // ========================
 const canais = [
     { id: 'gnt', nome: 'GNT' },
@@ -21,6 +21,18 @@ const canais = [
     { id: 'sportv', nome: 'SPORTV' },
     { id: 'espn', nome: 'ESPN' }
 ];
+
+// ========================
+// ESCAPE XML (EVITA QUEBRAR)
+// ========================
+function escapeXML(str) {
+    return str
+        ?.replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;") || "";
+}
 
 // ========================
 // FORMATAR DATA XMLTV
@@ -44,12 +56,12 @@ function formatXMLTV(dateStr) {
 // ========================
 function gerarCanais() {
     return canais.map(c => `<channel id="${c.id}">
-  <display-name lang="pt">${c.nome}</display-name>
+  <display-name lang="pt">${escapeXML(c.nome)}</display-name>
 </channel>`).join("\n");
 }
 
 // ========================
-// PARSE HTML
+// PARSE HTML → XMLTV
 // ========================
 function parseGrade(html, canalId) {
     const dom = new JSDOM(html);
@@ -59,13 +71,26 @@ function parseGrade(html, canalId) {
 
     return regs.map(el => {
         const titulo = el.querySelector('.titulo')?.textContent?.trim();
+        const desc = el.querySelector('.descricao_programa')?.textContent?.trim();
+        const classificacao = el.querySelector('.classificacao')?.textContent?.trim();
+        const faixa = el.querySelector('.faixa_etaria')?.textContent?.trim();
+
         const dti = el.getAttribute('dti');
         const dtf = el.getAttribute('dtf');
 
         if (!titulo || !dti || !dtf) return "";
 
+        let rating = "";
+        if (classificacao || faixa) {
+            rating = `<rating system="Brazil">
+    <value>${escapeXML((faixa || "") + (classificacao ? " | " + classificacao : ""))}</value>
+  </rating>`;
+        }
+
         return `<programme start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}" channel="${canalId}">
-  <title lang="pt">${titulo}</title>
+  <title lang="pt">${escapeXML(titulo)}</title>
+  ${desc ? `<desc lang="pt">${escapeXML(desc)}</desc>` : ""}
+  ${rating}
 </programme>`;
     }).join("\n");
 }
@@ -116,8 +141,10 @@ async function gerarXML() {
     const dia = dias[new Date().getDay()];
     const resultados = await processar(canais, dia);
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<tv generator-info-name="EPG Custom" generator-info-url="https://seu-app.onrender.com">
+    const agora = new Date().toISOString().replace("T", " ").split(".")[0];
+
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<tv generator-info-name="EPG Custom - Criado em ${agora}" generator-info-url="https://guia-6zue.onrender.com">
 
 ${gerarCanais()}
 
@@ -127,11 +154,11 @@ ${resultados.join("\n")}
 
     fs.writeFileSync("programacao.xml", xml, "utf-8");
 
-    console.log("✅ EPG gerado com padrão IPTV!");
+    console.log("✅ EPG PROFISSIONAL GERADO");
 }
 
 // ========================
-// AGENDAR 03:00
+// AGENDAR PARA 03:00
 // ========================
 function agendar() {
     const agora = new Date();
@@ -142,7 +169,7 @@ function agendar() {
 
     const delay = proxima - agora;
 
-    console.log(`⏰ Próxima atualização em ${Math.round(delay/1000)}s`);
+    console.log(`⏰ Próxima atualização em ${Math.round(delay / 1000)}s`);
 
     setTimeout(async () => {
         await gerarXML();
@@ -158,6 +185,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/programacao.xml", (req, res) => {
+    res.set("Content-Type", "application/xml; charset=utf-8");
     res.sendFile(__dirname + "/programacao.xml");
 });
 
@@ -168,5 +196,5 @@ app.listen(PORT, async () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
     await gerarXML(); // gera ao iniciar
-    agendar();        // agenda 03:00
+    agendar();        // agenda atualização
 });
