@@ -63,7 +63,7 @@ const CANAIS = [
     { id: 'bandsports', nome: 'Band Sports' },
     { id: 'combate', nome: 'Combate' },
     { id: 'ufcfightpass', nome: 'UFC Fight Pass' },
-    { id: '121', nome: 'Premiere Clubes' },
+    { id: '121', nome: 'Premiere' },
     { id: 'premiere2', nome: 'Premiere 2' },
     { id: 'premiere3', nome: 'Premiere 3' },
     { id: 'premiere4', nome: 'Premiere 4' },
