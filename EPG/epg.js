@@ -6,92 +6,31 @@ const { JSDOM } = require("jsdom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL = "https://tvinside.com.br/programacao_tv/";
-const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+// ========================
+// NOVA BASE (MI.TV)
+// ========================
+const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// LISTA DE CANAIS
+// LISTA DE CANAIS (AJUSTADA)
 // ========================
 const canais = [
-    { id: 'AEBrasil.us', nome: 'A&E' },
-    { id: 'AMCBrasil.us', nome: 'AMC' },
-    { id: 'AXNBrazil.us', nome: 'AXN' },
-    { id: 'CinemaxBrasil.us', nome: 'Cinemax' },
-    { id: 'HBOBrasil.us', nome: 'HBO' },
-    { id: 'HBO2Brasil.us', nome: 'HBO 2' },
-    { id: 'HBOFamilyBrasil.us', nome: 'HBO Family' },
-    { id: 'HBOMundiBrasil.us', nome: 'HBO Mundi' },
-    { id: 'HBOPopBrasil.us', nome: 'HBO Pop' },
-    { id: 'HBOBrasil.us', nome: 'HBO Plus' },
-    { id: 'HBOXtremeBrasil.us', nome: 'HBO Xtreme' },
-    { id: 'Megapix.br', nome: 'Megapix' },
-    { id: 'sonychannel', nome: 'Sony Channel' },
-    { id: 'space', nome: 'SPACE' },
-    { id: 'studiouniversal', nome: 'Studio Universal' },
-    { id: 'telecineaction', nome: 'Telecine Action' },
-    { id: 'telecinecult', nome: 'Telecine Cult' },
-    { id: 'telecinefun', nome: 'Telecine Fun' },
-    { id: 'telecinepipoca', nome: 'Telecine Pipoca' },
-    { id: 'telecinepremium', nome: 'Telecine Premium' },
-    { id: 'telecinetouch', nome: 'Telecine Touch' },
-    { id: 'universaltv', nome: 'Universal TV' },
-    { id: 'warnerchannel', nome: 'Warner Channel' },
-    { id: 'animalplanet', nome: 'Animal Planet' },
-    { id: 'discoverychannel', nome: 'Discovery Channel' },
-    { id: 'discoveryhh', nome: 'Discovery H&H' },
-    { id: 'discoveryid', nome: 'Discovery ID' },
-    { id: 'discoveryscience', nome: 'Discovery Science' },
-    { id: 'discoverytheater', nome: 'Discovery Theater' },
-    { id: 'discoveryturbo', nome: 'Discovery Turbo' },
-    { id: 'discoveryworld', nome: 'Discovery World' },
-    { id: 'history', nome: 'History' },
-    { id: 'history2', nome: 'History 2' },
-    { id: 'tcm', nome: 'TCM' },
+    { id: 'cinemax', nome: 'Cinemax' },
+    { id: 'hbo', nome: 'HBO' },
+    { id: 'hbo2', nome: 'HBO 2' },
+    { id: 'hbofamily', nome: 'HBO Family' },
+    { id: 'hbomundi', nome: 'HBO Mundi' },
+    { id: 'hbopop', nome: 'HBO Pop' },
+    { id: 'hboplus', nome: 'HBO Plus' },
+    { id: 'hboxtreme', nome: 'HBO Xtreme' },
     { id: 'tnt', nome: 'TNT' },
-    { id: 'tntnovelas', nome: 'TNT Novelas' },
     { id: 'tntseries', nome: 'TNT Series' },
-    { id: 'tlc', nome: 'TLC' },
-    { id: 'comedycentral', nome: 'Comedy Central' },
-    { id: 'gnt', nome: 'GNT' },
-    { id: 'hgtv', nome: 'HGTV' },
-    { id: 'off', nome: 'Canal OFF' },
-    { id: 'foodnetwork', nome: 'Food Network' },
-    { id: 'mtv', nome: 'MTV' },
-    { id: 'multishow', nome: 'Multishow' },
-    { id: 'cartoonnetwork', nome: 'Cartoon Network' },
-    { id: 'cartoonito', nome: 'Cartoonito' },
-    { id: 'discoverykids', nome: 'Discovery Kids' },
-    { id: 'gloob', nome: 'Gloob' },
-    { id: 'adultswim', nome: 'Adult Swim' },
-    { id: 'bandsports', nome: 'Band Sports' },
-    { id: 'combate', nome: 'Combate' },
-    { id: 'ufcfightpass', nome: 'UFC Fight Pass' },
-    { id: 'premiere', nome: 'Premiere' },
-    { id: 'premiere2', nome: 'Premiere 2' },
-    { id: 'premiere3', nome: 'Premiere 3' },
-    { id: 'premiere4', nome: 'Premiere 4' },
-    { id: 'premiere5', nome: 'Premiere 5' },
-    { id: 'premiere6', nome: 'Premiere 6' },
-    { id: 'premiere7', nome: 'Premiere 7' },
-    { id: 'premiere8', nome: 'Premiere 8' },
-    { id: 'espn', nome: 'ESPN' },
-    { id: 'espn2', nome: 'ESPN 2' },
-    { id: 'espn3', nome: 'ESPN 3' },
-    { id: 'espn4', nome: 'ESPN 4' },
-    { id: 'espn5', nome: 'ESPN 5' },
-    { id: 'espn6', nome: 'ESPN 6' },
-    { id: 'sportv', nome: 'SPORTV' },
-    { id: 'sportv2', nome: 'SPORTV 2' },
-    { id: 'sportv3', nome: 'SPORTV 3' },
-    { id: 'sportv4', nome: 'SPORTV 4' },
-    { id: 'globorj', nome: 'Globo RJ' },
-    { id: 'globonews', nome: 'Globo News' },
-    { id: 'sbtrj', nome: 'SBT RJ' },
-    { id: 'recordrj', nome: 'Record RJ' },
-    { id: 'bandrj', nome: 'Band RJ' },
-    { id: 'bandnews', nome: 'Band News' },
-    { id: 'cnnbrasil', nome: 'CNN Brasil' },
-    { id: 'cultura', nome: 'TV Cultura' }
+    { id: 'space', nome: 'SPACE' },
+    { id: 'warner', nome: 'Warner Channel' },
+    { id: 'sony', nome: 'Sony Channel' },
+    { id: 'axn', nome: 'AXN' },
+    { id: 'amc', nome: 'AMC' },
+    { id: 'megapix', nome: 'Megapix' }
 ];
 
 // ========================
@@ -109,8 +48,8 @@ function escapeXML(str) {
 // ========================
 // FORMATO XMLTV
 // ========================
-function formatXMLTV(dateStr) {
-    const d = new Date(dateStr.replace(" ", "T"));
+function formatXMLTV(date) {
+    const d = new Date(date);
     const pad = n => String(n).padStart(2, "0");
 
     return d.getFullYear() +
@@ -123,7 +62,7 @@ function formatXMLTV(dateStr) {
 }
 
 // ========================
-// CANAIS XML
+// GERAR CANAIS XML
 // ========================
 function gerarCanais() {
     return canais.map(c => `
@@ -133,88 +72,109 @@ function gerarCanais() {
 }
 
 // ========================
-// PARSE GRADE
+// PARSE MI.TV
 // ========================
 function parseGrade(html, canalId) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    const regs = [...doc.querySelectorAll('.registro.programa_data')];
+    const items = [...doc.querySelectorAll('#listings ul.broadcasts li')];
 
-    return regs.map(el => {
+    let programas = [];
 
-        const titulo = el.querySelector('.titulo')?.textContent?.trim();
+    for (let i = 0; i < items.length; i++) {
 
-        const descRaw =
-            el.querySelector('.descricao_programa')?.textContent?.trim() ||
-            el.querySelector('.sinopse')?.textContent?.trim() ||
-            el.querySelector('.evento_box')?.textContent?.trim();
+        const el = items[i];
 
-        const dti = el.getAttribute('dti');
-        const dtf = el.getAttribute('dtf');
+        const hora = el.querySelector('.time')?.textContent?.trim();
+        const titulo = el.querySelector('h2')?.textContent?.trim();
+        const desc = el.querySelector('.synopsis')?.textContent?.trim();
 
-        if (!titulo || !dti || !dtf) return "";
+        if (!hora || !titulo) continue;
 
-        return `<programme start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}" channel="${canalId}">
+        // PRÓXIMO HORÁRIO
+        const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
+
+        const [h, m] = hora.split(":");
+
+        const inicio = new Date();
+        inicio.setHours(parseInt(h), parseInt(m), 0);
+
+        let fim = new Date(inicio);
+
+        if (proxHora) {
+            const [ph, pm] = proxHora.split(":");
+            fim.setHours(parseInt(ph), parseInt(pm), 0);
+
+            // VIRADA DE DIA
+            if (fim <= inicio) {
+                fim.setDate(fim.getDate() + 1);
+            }
+
+        } else {
+            fim.setHours(inicio.getHours() + 2);
+        }
+
+        programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
-  <desc lang="pt">${escapeXML(descRaw || titulo)}</desc>
-</programme>`;
+  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
+</programme>`);
+    }
 
-    }).join("\n");
+    return programas.join("\n");
 }
 
 // ========================
-// CAPTURAR (SUA VERSÃO FINAL)
+// CAPTURAR
 // ========================
 async function capturar(canal) {
     try {
 
-        for (let i = 0; i < dias.length; i++) {
+        const url = `${BASE_URL}${canal.id}`;
 
-            const dia = dias[i];
-            const url = `${BASE_URL}${canal.id}/${dia}`;
+        const res = await fetch(url, {
+            headers: { "User-Agent": "Mozilla/5.0" }
+        });
 
-            const res = await fetch(url, {
-                headers: { "User-Agent": "Mozilla/5.0" }
-            });
-
-            if (!res.ok) continue;
-
-            const html = await res.text();
-
-            const programas = parseGrade(html, canal.id);
-
-            if (programas && programas.length > 0) {
-                console.log(`✔ ${canal.nome} ok (${dia})`);
-                return programas;
-            }
+        if (!res.ok) {
+            console.log(`❌ erro HTTP ${canal.nome}`);
+            return "";
         }
 
-        console.log(`⚠️ ${canal.nome} sem programação`);
+        const html = await res.text();
+
+        const programas = parseGrade(html, canal.id);
+
+        if (programas.length > 0) {
+            console.log(`✔ ${canal.nome} OK`);
+            return programas;
+        }
+
+        console.log(`⚠️ ${canal.nome} vazio`);
         return "";
 
-    } catch {
+    } catch (e) {
         console.log(`❌ erro ${canal.nome}`);
         return "";
     }
 }
 
 // ========================
-// PROCESSAR (SUA VERSÃO FINAL)
+// PROCESSAR
 // ========================
-async function processar(canais) {
+async function processar() {
     return await Promise.all(
         canais.map(c => capturar(c))
     );
 }
 
 // ========================
-// GERAR XML (SUA VERSÃO FINAL)
+// GERAR XML
 // ========================
 async function gerarXML() {
     console.log("🚀 Gerando EPG...");
 
-    const resultados = await processar(canais);
+    const resultados = await processar();
 
     const xmlProg = resultados
         .filter(Boolean)
@@ -223,7 +183,7 @@ async function gerarXML() {
     const agora = new Date().toISOString().replace("T", " ").split(".")[0];
 
     const xml = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG Custom - ${agora}">
+<tv generator-info-name="EPG mi.tv - ${agora}">
 
 ${gerarCanais()}
 
@@ -256,5 +216,6 @@ app.listen(PORT, async () => {
 
     await gerarXML();
 
+    // Atualiza a cada 24h
     setInterval(gerarXML, 1000 * 60 * 60 * 24);
 });
