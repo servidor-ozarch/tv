@@ -9,15 +9,17 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = "https://tvinside.com.br/programacao_tv/";
 const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 
+// ========================
+// LISTA DE CANAIS
+// ========================
 const canais = [
     { id: 'gnt', nome: 'GNT' },
     { id: 'hgtv', nome: 'HGTV' },
     { id: 'multishow', nome: 'Multishow' },
-    { id: 'cartoon-network', nome: 'Cartoon Network' },
-    { id: 'discovery-kids', nome: 'Discovery Kids' },
+    { id: 'cartoonnetwork', nome: 'Cartoon Network' },
+    { id: 'discoverykids', nome: 'Discovery Kids' },
     { id: 'sportv', nome: 'SPORTV' },
-    { id: 'espn', nome: 'ESPN' },
-    // continua sua lista...
+    { id: 'espn', nome: 'ESPN' }
 ];
 
 // ========================
@@ -29,7 +31,7 @@ function formatXMLTV(dateStr) {
     const pad = n => String(n).padStart(2, "0");
 
     return d.getFullYear() +
-        pad(d.getMonth()+1) +
+        pad(d.getMonth() + 1) +
         pad(d.getDate()) +
         pad(d.getHours()) +
         pad(d.getMinutes()) +
@@ -38,7 +40,16 @@ function formatXMLTV(dateStr) {
 }
 
 // ========================
-// PARSE HTML (SEU MODELO)
+// GERAR <channel>
+// ========================
+function gerarCanais() {
+    return canais.map(c => `<channel id="${c.id}">
+  <display-name lang="pt">${c.nome}</display-name>
+</channel>`).join("\n");
+}
+
+// ========================
+// PARSE HTML
 // ========================
 function parseGrade(html, canalId) {
     const dom = new JSDOM(html);
@@ -51,17 +62,16 @@ function parseGrade(html, canalId) {
         const dti = el.getAttribute('dti');
         const dtf = el.getAttribute('dtf');
 
-        if (!titulo || !dti) return "";
+        if (!titulo || !dti || !dtf) return "";
 
-        return `
-<programme channel="${canalId}" start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}">
-    <title>${titulo}</title>
+        return `<programme start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}" channel="${canalId}">
+  <title lang="pt">${titulo}</title>
 </programme>`;
     }).join("\n");
 }
 
 // ========================
-// CAPTURA POR CANAL
+// CAPTURA CANAL
 // ========================
 async function capturar(canal, dia) {
     try {
@@ -75,6 +85,11 @@ async function capturar(canal, dia) {
             }
         });
 
+        if (!res.ok) {
+            console.log(`❌ ${canal.nome} HTTP ${res.status}`);
+            return "";
+        }
+
         const html = await res.text();
 
         return parseGrade(html, canal.id);
@@ -86,31 +101,33 @@ async function capturar(canal, dia) {
 }
 
 // ========================
-// PARALELISMO CONTROLADO
+// PROCESSAMENTO PARALELO
 // ========================
 async function processar(canais, dia) {
-    const promises = canais.map(c => capturar(c, dia));
-    return await Promise.all(promises);
+    return await Promise.all(canais.map(c => capturar(c, dia)));
 }
 
 // ========================
-// GERAR XML
+// GERAR XML FINAL
 // ========================
 async function gerarXML() {
     console.log("🚀 Gerando EPG...");
 
     const dia = dias[new Date().getDay()];
-
     const resultados = await processar(canais, dia);
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<tv>
+<tv generator-info-name="EPG Custom" generator-info-url="https://seu-app.onrender.com">
+
+${gerarCanais()}
+
 ${resultados.join("\n")}
+
 </tv>`;
 
-    fs.writeFileSync("programacao.xml", xml);
+    fs.writeFileSync("programacao.xml", xml, "utf-8");
 
-    console.log("✅ EPG atualizado!");
+    console.log("✅ EPG gerado com padrão IPTV!");
 }
 
 // ========================
@@ -120,10 +137,12 @@ function agendar() {
     const agora = new Date();
     const proxima = new Date();
 
-    proxima.setHours(3,0,0,0);
-    if (agora >= proxima) proxima.setDate(proxima.getDate()+1);
+    proxima.setHours(3, 0, 0, 0);
+    if (agora >= proxima) proxima.setDate(proxima.getDate() + 1);
 
     const delay = proxima - agora;
+
+    console.log(`⏰ Próxima atualização em ${Math.round(delay/1000)}s`);
 
     setTimeout(async () => {
         await gerarXML();
@@ -146,8 +165,8 @@ app.get("/programacao.xml", (req, res) => {
 // START
 // ========================
 app.listen(PORT, async () => {
-    console.log(`🔥 Porta ${PORT}`);
+    console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    await gerarXML();
-    agendar();
+    await gerarXML(); // gera ao iniciar
+    agendar();        // agenda 03:00
 });
