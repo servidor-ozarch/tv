@@ -18,6 +18,7 @@ const canais = [
     { id: 'a_e', nome: 'A&E' },
     { id: 'aee', nome: 'A&E' },
     { id: 'gnt', nome: 'GNT' },
+    { id: 'a-e', nome: 'A&E' },
     { id: 'hgtv', nome: 'HGTV' },
     { id: 'multishow', nome: 'Multishow' },
     { id: 'cartoonnetwork', nome: 'Cartoon Network' },
