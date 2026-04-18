@@ -1,0 +1,9 @@
+{
+  "name": "epg-generator-streaming",
+  "version": "1.0.0",
+  "main": "epg.js",
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "jsdom": "^22.1.0"
+  }
+}
