@@ -9,7 +9,12 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// CANAIS (CONFIRMADOS)
+// CONTROLE DE EXECUÇÃO
+// ========================
+let gerando = false;
+
+// ========================
+// CANAIS
 // ========================
 const canais = [
     { id: 'cinemax', nome: 'Cinemax' },
@@ -30,14 +35,8 @@ const canais = [
     { id: 'megapix', nome: 'Megapix' }
 ];
 
-// ========================
-// DIAS (7 DIAS)
-// ========================
 const dias = ["", "/amanha", "/segunda", "/terca", "/quarta", "/quinta", "/sexta"];
 
-// ========================
-// UTIL DELAY (ANTI-BAN)
-// ========================
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ========================
@@ -79,7 +78,7 @@ function gerarCanais() {
 }
 
 // ========================
-// PARSER MI.TV (ROBUSTO)
+// PARSER
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
@@ -113,7 +112,6 @@ function parseGrade(html, canalId, diaOffset) {
             const [ph, pm] = proxHora.split(":");
             fim.setHours(parseInt(ph), parseInt(pm), 0);
 
-            // 🔥 VIRADA PERFEITA
             if (fim <= inicio) {
                 fim.setDate(fim.getDate() + 1);
             }
@@ -132,7 +130,7 @@ function parseGrade(html, canalId, diaOffset) {
 }
 
 // ========================
-// FETCH COM ANTI-BLOQUEIO
+// FETCH
 // ========================
 async function fetchPage(url) {
     try {
@@ -153,7 +151,7 @@ async function fetchPage(url) {
 }
 
 // ========================
-// CAPTURAR 7 DIAS
+// CAPTURAR
 // ========================
 async function capturar(canal) {
     let resultadoFinal = "";
@@ -162,25 +160,16 @@ async function capturar(canal) {
 
         const url = `${BASE_URL}${canal.id}${dias[i]}`;
 
-        console.log(`🔎 ${canal.nome} (${dias[i] || "hoje"})`);
-
         const html = await fetchPage(url);
 
-        if (!html) {
-            console.log(`❌ erro ${canal.nome}`);
-            continue;
-        }
+        if (!html) continue;
 
         const programas = parseGrade(html, canal.id, i);
 
         if (programas.length > 0) {
-            console.log(`✔ ${canal.nome} OK (${dias[i] || "hoje"})`);
             resultadoFinal += programas + "\n";
-        } else {
-            console.log(`⚠️ ${canal.nome} vazio (${dias[i] || "hoje"})`);
         }
 
-        // 🔥 ANTI-BAN
         await sleep(1200);
     }
 
@@ -196,8 +185,6 @@ async function processar() {
     for (const canal of canais) {
         const res = await capturar(canal);
         resultados.push(res);
-
-        // 🔥 ANTI-BAN ENTRE CANAIS
         await sleep(1500);
     }
 
@@ -205,20 +192,30 @@ async function processar() {
 }
 
 // ========================
-// GERAR XML
+// GERAR XML (COM LOCK)
 // ========================
 async function gerarXML() {
-    console.log("🚀 Gerando EPG...");
 
-    const resultados = await processar();
+    if (gerando) {
+        console.log("⏳ Já está gerando, ignorando...");
+        return;
+    }
 
-    const xmlProg = resultados
-        .filter(Boolean)
-        .join("\n");
+    gerando = true;
 
-    const agora = new Date().toISOString().replace("T", " ").split(".")[0];
+    try {
 
-    const xml = `<?xml version="1.0" encoding="utf-8"?>
+        console.log("🚀 Gerando EPG...");
+
+        const resultados = await processar();
+
+        const xmlProg = resultados
+            .filter(Boolean)
+            .join("\n");
+
+        const agora = new Date().toISOString().replace("T", " ").split(".")[0];
+
+        const xml = `<?xml version="1.0" encoding="utf-8"?>
 <tv generator-info-name="EPG mi.tv PRO - ${agora}">
 
 ${gerarCanais()}
@@ -227,9 +224,15 @@ ${xmlProg}
 
 </tv>`;
 
-    fs.writeFileSync("programacao.xml", xml, "utf-8");
+        fs.writeFileSync("programacao.xml", xml, "utf-8");
 
-    console.log("✅ EPG GERADO");
+        console.log("✅ EPG GERADO");
+
+    } catch (e) {
+        console.log("❌ ERRO AO GERAR XML");
+    }
+
+    gerando = false;
 }
 
 // ========================
@@ -240,18 +243,26 @@ app.get("/", (req, res) => {
 });
 
 app.get("/programacao.xml", (req, res) => {
-    res.set("Content-Type", "application/xml; charset=utf-8");
-    res.sendFile(__dirname + "/programacao.xml");
+
+    const path = __dirname + "/programacao.xml";
+
+    if (fs.existsSync(path)) {
+        res.set("Content-Type", "application/xml; charset=utf-8");
+        return res.sendFile(path);
+    }
+
+    res.send("⏳ EPG sendo gerado...");
 });
 
 // ========================
-// START
+// START (BACKGROUND)
 // ========================
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    await gerarXML();
+    // roda sem travar
+    gerarXML();
 
-    // Atualiza a cada 24h
+    // agenda
     setInterval(gerarXML, 1000 * 60 * 60 * 24);
 });
