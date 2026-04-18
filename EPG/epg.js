@@ -30,31 +30,87 @@ function escapeXML(str){
 // ========================
 function formatXMLTV(dateStr){
     const d = new Date(dateStr.replace(" ","T"));
-    const pad = n=>String(n).padStart(2,"0");
+    const pad = n => String(n).padStart(2,"0");
 
-    return d.getFullYear()+
-        pad(d.getMonth()+1)+
-        pad(d.getDate())+
-        pad(d.getHours())+
-        pad(d.getMinutes())+
-        pad(d.getSeconds())+
+    return d.getFullYear() +
+        pad(d.getMonth()+1) +
+        pad(d.getDate()) +
+        pad(d.getHours()) +
+        pad(d.getMinutes()) +
+        pad(d.getSeconds()) +
         " -0300";
 }
 
 // ========================
-// DESCOBRIR CANAIS (NOVO MÉTODO)
+// DESCOBRIR CANAIS (VERSÃO ROBUSTA)
 // ========================
 async function descobrirCanais(){
 
-    console.log("🔍 descobrindo canais via links reais...");
+    console.log("🔍 tentando API alternativa...");
 
     try{
+
         const res = await fetch(BASE, {
-            headers:{'User-Agent':'Mozilla/5.0'}
+            headers:{
+                "User-Agent":"Mozilla/5.0",
+                "Accept":"application/json, text/html, */*"
+            }
         });
 
-        const html = await res.text();
-        const dom = new JSDOM(html);
+        const text = await res.text();
+
+        // =========================
+        // 1. tenta JSON embutido
+        // =========================
+        const jsonMatch =
+            text.match(/__NEXT_DATA__[^>]*>(.*?)<\/script>/s) ||
+            text.match(/\{[\s\S]*"canais"[\s\S]*\}/) ||
+            text.match(/\{[\s\S]*"channels"[\s\S]*\}/) ||
+            text.match(/\{[\s\S]*"programacao"[\s\S]*\}/);
+
+        if(jsonMatch){
+
+            try{
+                const json = JSON.parse(
+                    jsonMatch[1] || jsonMatch[0]
+                );
+
+                const lista =
+                    json?.canais ||
+                    json?.channels ||
+                    json?.props?.pageProps?.canais ||
+                    [];
+
+                const canaisMap = {};
+
+                lista.forEach(c => {
+                    if(c?.id || c?.slug){
+
+                        const id = c.id || c.slug;
+
+                        canaisMap[id] = {
+                            id: id,
+                            nome: (c.nome || c.name || id).toUpperCase()
+                        };
+                    }
+                });
+
+                const canais = Object.values(canaisMap);
+
+                console.log(`🎯 ${canais.length} canais via JSON`);
+
+                CACHE.canais = canais;
+                return canais;
+
+            }catch(e){
+                console.log("⚠️ JSON encontrado mas inválido");
+            }
+        }
+
+        // =========================
+        // 2. fallback HTML
+        // =========================
+        const dom = new JSDOM(text);
         const doc = dom.window.document;
 
         const links = [...doc.querySelectorAll("a")];
@@ -62,29 +118,27 @@ async function descobrirCanais(){
         let canaisMap = {};
 
         links.forEach(a => {
-            const href = a.getAttribute("href");
 
+            const href = a.getAttribute("href");
             if(!href) return;
 
             if(href.includes("/programacao_tv/") && href !== "/programacao_tv/"){
 
                 const parts = href.split("/").filter(Boolean);
-                const slug = parts[1]; // canal
+                const slug = parts[1];
 
                 if(!slug) return;
 
-                if(!canaisMap[slug]){
-                    canaisMap[slug] = {
-                        id: slug,
-                        nome: slug.replace(/-/g," ").toUpperCase()
-                    };
-                }
+                canaisMap[slug] = {
+                    id: slug,
+                    nome: slug.replace(/-/g," ").toUpperCase()
+                };
             }
         });
 
         const canais = Object.values(canaisMap);
 
-        console.log(`🎯 ${canais.length} canais descobertos`);
+        console.log(`🎯 ${canais.length} canais via HTML fallback`);
 
         CACHE.canais = canais;
 
@@ -143,7 +197,7 @@ function parseGrade(html, canalId){
 }
 
 // ========================
-// CAPTURAR MULTI DIA
+// CAPTURA MULTI DIA
 // ========================
 async function capturarMultiDia(canal){
 
@@ -167,7 +221,7 @@ async function capturarMultiDia(canal){
             todos.push(...lista);
 
         }catch(err){
-            console.log("erro canal:", canal.id, err.message);
+            console.log("erro canal:", canal.id);
         }
     }
 
@@ -185,6 +239,11 @@ async function gerarXML(){
 
     if(!CACHE.canais.length){
         await descobrirCanais();
+    }
+
+    if(!CACHE.canais.length){
+        console.log("❌ nenhum canal encontrado - abortando EPG");
+        return;
     }
 
     let xmlCanais = CACHE.canais.map(c=>`
