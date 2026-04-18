@@ -6,55 +6,78 @@ const { JSDOM } = require("jsdom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// =============================
-// CONFIG
-// =============================
-const CONCURRENCY = 5; // quantidade de requisições simultâneas
-const PING_INTERVAL = 5000;
+const BASE_URL = "https://tvinside.com.br/programacao_tv/";
+const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 
-// =============================
-// CANAIS
-// =============================
 const canais = [
     { id: 'gnt', nome: 'GNT' },
     { id: 'hgtv', nome: 'HGTV' },
-    { id: 'off', nome: 'Canal OFF' },
-    { id: 'mtv', nome: 'MTV' },
     { id: 'multishow', nome: 'Multishow' },
-    { id: 'cartoon', nome: 'Cartoon Network' },
-    { id: 'discoverykids', nome: 'Discovery Kids' },
+    { id: 'cartoon-network', nome: 'Cartoon Network' },
+    { id: 'discovery-kids', nome: 'Discovery Kids' },
     { id: 'sportv', nome: 'SPORTV' },
     { id: 'espn', nome: 'ESPN' },
     // continua sua lista...
 ];
 
-// =============================
-// FETCH COM HEADER (ANTI BLOQUEIO)
-// =============================
-async function fetchHTML() {
-    const res = await fetch("https://tvinside.com.br/programacao_tv/", {
-        headers: {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "text/html"
-        }
-    });
+// ========================
+// FORMATAR DATA XMLTV
+// ========================
+function formatXMLTV(dateStr) {
+    const d = new Date(dateStr.replace(" ", "T"));
 
-    return await res.text();
+    const pad = n => String(n).padStart(2, "0");
+
+    return d.getFullYear() +
+        pad(d.getMonth()+1) +
+        pad(d.getDate()) +
+        pad(d.getHours()) +
+        pad(d.getMinutes()) +
+        pad(d.getSeconds()) +
+        " -0300";
 }
 
-// =============================
-// CAPTURA INDIVIDUAL
-// =============================
-async function capturar(canal, html) {
+// ========================
+// PARSE HTML (SEU MODELO)
+// ========================
+function parseGrade(html, canalId) {
+    const dom = new JSDOM(html);
+    const doc = dom.window.document;
+
+    const regs = [...doc.querySelectorAll('.registro.programa_data')];
+
+    return regs.map(el => {
+        const titulo = el.querySelector('.titulo')?.textContent?.trim();
+        const dti = el.getAttribute('dti');
+        const dtf = el.getAttribute('dtf');
+
+        if (!titulo || !dti) return "";
+
+        return `
+<programme channel="${canalId}" start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}">
+    <title>${titulo}</title>
+</programme>`;
+    }).join("\n");
+}
+
+// ========================
+// CAPTURA POR CANAL
+// ========================
+async function capturar(canal, dia) {
     try {
         console.log(`📡 ${canal.nome}`);
 
-        const dom = new JSDOM(html);
+        const url = `${BASE_URL}${canal.id}/${dia}`;
 
-        // SUA LÓGICA REAL AQUI
-        return `<programme channel="${canal.id}" start="20260418000000 -0300">
-                    <title>${canal.nome}</title>
-                </programme>`;
+        const res = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0"
+            }
+        });
+
+        const html = await res.text();
+
+        return parseGrade(html, canal.id);
 
     } catch (e) {
         console.log(`❌ ${canal.nome}`);
@@ -62,47 +85,27 @@ async function capturar(canal, html) {
     }
 }
 
-// =============================
-// POOL DE CONCORRÊNCIA (ESSENCIAL)
-// =============================
-async function processarEmLotes(lista, limite, handler, html) {
-    const resultados = [];
-    let index = 0;
-
-    async function worker() {
-        while (index < lista.length) {
-            const atual = index++;
-            resultados[atual] = await handler(lista[atual], html);
-        }
-    }
-
-    const workers = [];
-    for (let i = 0; i < limite; i++) {
-        workers.push(worker());
-    }
-
-    await Promise.all(workers);
-    return resultados;
+// ========================
+// PARALELISMO CONTROLADO
+// ========================
+async function processar(canais, dia) {
+    const promises = canais.map(c => capturar(c, dia));
+    return await Promise.all(promises);
 }
 
-// =============================
-// GERAR XML (PARALELO CONTROLADO)
-// =============================
+// ========================
+// GERAR XML
+// ========================
 async function gerarXML() {
     console.log("🚀 Gerando EPG...");
 
-    const html = await fetchHTML(); // UMA REQUISIÇÃO só
+    const dia = dias[new Date().getDay()];
 
-    const programas = await processarEmLotes(
-        canais,
-        CONCURRENCY,
-        capturar,
-        html
-    );
+    const resultados = await processar(canais, dia);
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <tv>
-${programas.join("\n")}
+${resultados.join("\n")}
 </tv>`;
 
     fs.writeFileSync("programacao.xml", xml);
@@ -110,53 +113,41 @@ ${programas.join("\n")}
     console.log("✅ EPG atualizado!");
 }
 
-// =============================
-// AGENDAR 03:00 EXATO
-// =============================
-function agendarEPG() {
+// ========================
+// AGENDAR 03:00
+// ========================
+function agendar() {
     const agora = new Date();
-
     const proxima = new Date();
-    proxima.setHours(3, 0, 0, 0);
 
-    if (agora >= proxima) {
-        proxima.setDate(proxima.getDate() + 1);
-    }
+    proxima.setHours(3,0,0,0);
+    if (agora >= proxima) proxima.setDate(proxima.getDate()+1);
 
     const delay = proxima - agora;
 
-    console.log(`⏰ Próxima atualização em ${Math.round(delay / 1000)}s`);
-
     setTimeout(async () => {
         await gerarXML();
-        agendarEPG(); // loop diário perfeito
+        agendar();
     }, delay);
 }
 
-// =============================
-// PING INTERNO (LEVE)
-// =============================
-setInterval(() => {
-    console.log("🏓 ping...");
-}, PING_INTERVAL);
-
-// =============================
+// ========================
 // ROTAS
-// =============================
+// ========================
 app.get("/", (req, res) => {
     res.send("EPG ONLINE 🚀");
 });
 
-app.get("/epg.xml", (req, res) => {
+app.get("/programacao.xml", (req, res) => {
     res.sendFile(__dirname + "/programacao.xml");
 });
 
-// =============================
+// ========================
 // START
-// =============================
+// ========================
 app.listen(PORT, async () => {
-    console.log(`🔥 Rodando na porta ${PORT}`);
+    console.log(`🔥 Porta ${PORT}`);
 
-    await gerarXML(); // primeira execução
-    agendarEPG();    // agenda automático
+    await gerarXML();
+    agendar();
 });
