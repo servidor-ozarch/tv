@@ -58,7 +58,7 @@ const canais = [
     { id: 'DIK', nome: 'Discovery Kids' },
     { id: 'GOB', nome: 'Gloob' },
     { id: '135', nome: 'Combate' },
-    { id: '121', nome: 'Premiere' },
+    { id: '121', nome: 'Premiere Clubes' },
     { id: 'SPO', nome: 'SporTV' },
     { id: 'SP2', nome: 'SporTV 2' },
     { id: 'ESP', nome: 'ESPN' },
