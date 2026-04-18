@@ -6,52 +6,25 @@ const { JSDOM } = require("jsdom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL = "https://mi.tv/br/canais/";
+const BASE_URL = "https://meuguia.tv/programacao/canal/";
 
-let xmlCache = null;
+// ========================
+// CONTROLE
+// ========================
 let gerando = false;
 
+// ========================
+// CANAIS (AJUSTE AQUI)
+// ========================
 const canais = [
-    { id: 'cinemax', nome: 'Cinemax' },
-    { id: 'hbo', nome: 'HBO' },
-    { id: 'hbo-2', nome: 'HBO 2' },
-    { id: 'hbo-family', nome: 'HBO Family' },
-    { id: 'hbo-mundi', nome: 'HBO Mundi' },
-    { id: 'hbo-pop', nome: 'HBO Pop' },
-    { id: 'hbo-plus', nome: 'HBO Plus' },
-    { id: 'hbo-xtreme', nome: 'HBO Xtreme' },
-    { id: 'tnt', nome: 'TNT' },
-    { id: 'tnt-series', nome: 'TNT Series' },
-    { id: 'space', nome: 'SPACE' },
-    { id: 'warner-channel', nome: 'Warner Channel' },
-    { id: 'sony', nome: 'Sony Channel' },
-    { id: 'axn', nome: 'AXN' },
-    { id: 'amc', nome: 'AMC' },
-    { id: 'megapix', nome: 'Megapix' }
+    { id: 'MNX', nome: 'Cinemax' }
 ];
 
-const dias = ["", "/amanha"];
-
+// ========================
+// UTILS
+// ========================
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ========================
-// XML BASE (instantâneo)
-// ========================
-function gerarXMLBase() {
-    return `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG carregando...">
-
-${canais.map(c => `
-<channel id="${c.id}">
-  <display-name lang="pt">${c.nome}</display-name>
-</channel>`).join("\n")}
-
-</tv>`;
-}
-
-// ========================
-// ESCAPE XML
-// ========================
 function escapeXML(str) {
     return str
         ?.replace(/&/g, "&amp;")
@@ -61,120 +34,134 @@ function escapeXML(str) {
         .replace(/'/g, "&apos;") || "";
 }
 
-// ========================
-// FORMAT XMLTV
-// ========================
 function formatXMLTV(date) {
-    const d = new Date(date);
     const pad = n => String(n).padStart(2, "0");
 
-    return d.getFullYear() +
-        pad(d.getMonth() + 1) +
-        pad(d.getDate()) +
-        pad(d.getHours()) +
-        pad(d.getMinutes()) +
-        pad(d.getSeconds()) +
+    return date.getFullYear() +
+        pad(date.getMonth() + 1) +
+        pad(date.getDate()) +
+        pad(date.getHours()) +
+        pad(date.getMinutes()) +
+        pad(date.getSeconds()) +
         " -0300";
 }
 
 // ========================
-// PARSER FINAL
+// GERAR CANAIS XML
 // ========================
-function parseGrade(html, canalId, diaOffset) {
+function gerarCanais() {
+    return canais.map(c => `
+<channel id="${c.id}">
+  <display-name lang="pt">${escapeXML(c.nome)}</display-name>
+</channel>`).join("\n");
+}
+
+// ========================
+// PARSER NOVO (MEUGUIA)
+// ========================
+function parseGrade(html, canalId) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
+    const items = [...doc.querySelectorAll(".mw li")];
+
     let programas = [];
-
-    let items = [...doc.querySelectorAll('ul.broadcasts > li')];
-
-    if (items.length === 0) {
-        items = [...doc.querySelectorAll('.broadcasts li')];
-    }
-
-    if (items.length === 0) {
-        console.log(`❌ sem itens para ${canalId}`);
-        return "";
-    }
+    let dataAtual = new Date();
 
     for (let i = 0; i < items.length; i++) {
 
         const el = items[i];
 
-        const hora = el.querySelector('.time')?.textContent?.trim();
+        // =========================
+        // 🔥 DETECTA TROCA DE DIA
+        // =========================
+        if (el.classList.contains("subheader")) {
 
-        let titulo = el.querySelector('h2, h3')?.textContent?.trim();
-        if (titulo) titulo = titulo.replace(/\s+/g, " ");
+            const texto = el.textContent.trim();
 
-        let desc =
-            el.querySelector('.synopsis')?.textContent?.trim() ||
-            el.querySelector('.sub-title')?.textContent?.trim() ||
-            titulo;
+            const match = texto.match(/(\d{1,2})\/(\d{1,2})/);
 
-        if (!hora || !titulo || !hora.includes(":")) continue;
+            if (match) {
+                const dia = parseInt(match[1]);
+                const mes = parseInt(match[2]) - 1;
 
-        const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
+                dataAtual = new Date();
+                dataAtual.setDate(dia);
+                dataAtual.setMonth(mes);
+            }
+
+            continue;
+        }
+
+        const hora = el.querySelector(".time")?.textContent?.trim();
+        const titulo = el.querySelector("h2")?.textContent?.trim();
+        const desc = el.querySelector("h3")?.textContent?.trim();
+
+        if (!hora || !titulo) continue;
 
         const [h, m] = hora.split(":");
 
-        const inicio = new Date();
+        const inicio = new Date(dataAtual);
         inicio.setHours(parseInt(h), parseInt(m), 0);
-        inicio.setDate(inicio.getDate() + diaOffset);
 
+        // =========================
+        // 🔥 calcula fim pelo próximo
+        // =========================
         let fim = new Date(inicio);
 
-        if (proxHora && proxHora.includes(":")) {
-            const [ph, pm] = proxHora.split(":");
-            fim.setHours(parseInt(ph), parseInt(pm), 0);
-            if (fim <= inicio) fim.setDate(fim.getDate() + 1);
-        } else {
+        for (let j = i + 1; j < items.length; j++) {
+
+            const prox = items[j];
+
+            const proxHora = prox.querySelector(".time")?.textContent?.trim();
+
+            if (proxHora && proxHora.includes(":")) {
+
+                const [ph, pm] = proxHora.split(":");
+
+                fim.setHours(parseInt(ph), parseInt(pm), 0);
+
+                if (fim <= inicio) {
+                    fim.setDate(fim.getDate() + 1);
+                }
+
+                break;
+            }
+        }
+
+        // fallback duração
+        if (fim.getTime() === inicio.getTime()) {
             fim.setHours(inicio.getHours() + 2);
         }
 
         programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
-  <desc lang="pt">${escapeXML(desc)}</desc>
+  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
 </programme>`);
     }
 
-    if (programas.length > 0) {
-        console.log(`✅ ${canalId} -> ${programas.length}`);
-        return programas.join("\n");
-    }
+    console.log(`✅ ${canalId} -> ${programas.length} programas`);
 
-    return "";
+    return programas.join("\n");
 }
 
 // ========================
-// FETCH COM ANTI-BLOQUEIO
+// FETCH (SIMPLES E FUNCIONA)
 // ========================
 async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-                "Referer": "https://mi.tv/",
-                "Upgrade-Insecure-Requests": "1"
+                "User-Agent": "Mozilla/5.0",
+                "Accept-Language": "pt-BR"
             }
         });
 
         if (!res.ok) return null;
 
-        const html = await res.text();
-
-        if (!html.includes("broadcasts")) {
-            console.log("🚫 BLOQUEADO");
-            return null;
-        }
-
-        return html;
+        return await res.text();
 
     } catch {
-        console.log("❌ fetch erro");
         return null;
     }
 }
@@ -184,29 +171,18 @@ async function fetchPage(url) {
 // ========================
 async function capturar(canal) {
 
-    let resultado = "";
+    const url = `${BASE_URL}${canal.id}`;
 
-    for (let i = 0; i < dias.length; i++) {
+    console.log(`🔎 ${url}`);
 
-        const url = `${BASE_URL}${canal.id}${dias[i]}`;
+    const html = await fetchPage(url);
 
-        let html = await fetchPage(url);
-
-        if (!html) {
-            console.log(`🔁 retry ${canal.id}`);
-            await sleep(2000);
-            html = await fetchPage(url);
-        }
-
-        if (!html) continue;
-
-        resultado += parseGrade(html, canal.id, i);
-
-        // 🔥 ANTI-BAN
-        await sleep(2000);
+    if (!html) {
+        console.log(`❌ erro ${canal.nome}`);
+        return "";
     }
 
-    return resultado;
+    return parseGrade(html, canal.id);
 }
 
 // ========================
@@ -215,37 +191,40 @@ async function capturar(canal) {
 async function gerarXML() {
 
     if (gerando) return;
+
     gerando = true;
 
     try {
-        console.log("🚀 Atualizando EPG...");
 
-        const resultados = await Promise.all(
-            canais.map(c => capturar(c))
-        );
+        console.log("🚀 Gerando EPG...");
 
-        const programas = resultados.join("\n");
+        let resultados = [];
+
+        for (const canal of canais) {
+            const res = await capturar(canal);
+            resultados.push(res);
+            await sleep(500);
+        }
+
+        const xmlProg = resultados.filter(Boolean).join("\n");
 
         const agora = new Date().toISOString();
 
-        xmlCache = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG atualizado - ${agora}">
+        const xml = `<?xml version="1.0" encoding="utf-8"?>
+<tv generator-info-name="EPG MeuGuia - ${agora}">
 
-${canais.map(c => `
-<channel id="${c.id}">
-  <display-name lang="pt">${c.nome}</display-name>
-</channel>`).join("\n")}
+${gerarCanais()}
 
-${programas}
+${xmlProg}
 
 </tv>`;
 
-        fs.writeFileSync("programacao.xml", xmlCache);
+        fs.writeFileSync("programacao.xml", xml, "utf-8");
 
         console.log("✅ EPG GERADO");
 
     } catch (e) {
-        console.log("❌ erro geral", e);
+        console.log("❌ erro geral");
     }
 
     gerando = false;
@@ -260,11 +239,19 @@ app.get("/", (req, res) => {
 
 app.get("/programacao.xml", (req, res) => {
 
+    const path = __dirname + "/programacao.xml";
+
+    if (fs.existsSync(path)) {
+        res.set("Content-Type", "application/xml; charset=utf-8");
+        return res.sendFile(path);
+    }
+
     res.set("Content-Type", "application/xml; charset=utf-8");
 
-    if (xmlCache) return res.send(xmlCache);
-
-    return res.send(gerarXMLBase());
+    return res.send(`<?xml version="1.0" encoding="utf-8"?>
+<tv>
+${gerarCanais()}
+</tv>`);
 });
 
 // ========================
@@ -273,9 +260,7 @@ app.get("/programacao.xml", (req, res) => {
 app.listen(PORT, () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    xmlCache = gerarXMLBase();
-
     gerarXML();
 
-    setInterval(gerarXML, 1000 * 60 * 60 * 24);
+    setInterval(gerarXML, 1000 * 60 * 60 * 12);
 });
