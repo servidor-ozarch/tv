@@ -6,24 +6,16 @@ const { JSDOM } = require("jsdom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========================
-// CONFIG
-// ========================
-const BASE_URL = "https://tvinside.com.br/programacao_tv/";
-const FALLBACK_SITES = [
-    "https://tvinside.com.br/programacao_tv/",
-    "https://meuguia.tv/programacao/"
-];
+const BASE = "https://tvinside.com.br/programacao_tv/";
+const dias = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"];
 
-const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
-
-const EPG_DIAS = 2;
-const CACHE_FILE = "cache_epg.json";
-const CACHE_CANAIS = "cache_canais.json";
-const M3U_URL = process.env.M3U_URL || "";
+let CACHE = {
+    canais: [],
+    programas: {}
+};
 
 // ========================
-// UTILS
+// XML SAFE
 // ========================
 function escapeXML(str){
     return str?.replace(/&/g,"&amp;")
@@ -33,273 +25,201 @@ function escapeXML(str){
         .replace(/'/g,"&apos;") || "";
 }
 
+// ========================
+// DATA XMLTV
+// ========================
 function formatXMLTV(dateStr){
     const d = new Date(dateStr.replace(" ","T"));
-    const pad=n=>String(n).padStart(2,"0");
-    return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+
-        pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+" -0300";
+    const pad = n=>String(n).padStart(2,"0");
+
+    return d.getFullYear()+
+        pad(d.getMonth()+1)+
+        pad(d.getDate())+
+        pad(d.getHours())+
+        pad(d.getMinutes())+
+        pad(d.getSeconds())+
+        " -0300";
 }
 
 // ========================
-// CACHE
+// DESCOBRIR CANAIS REAL
 // ========================
-function loadJSON(file){
-    return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : null;
-}
-function saveJSON(file,data){
-    fs.writeFileSync(file,JSON.stringify(data,null,2));
-}
+async function descobrirCanais(){
 
-// ========================
-// SCRAPING PROFUNDO (SEM BRUTE)
-// ========================
-async function extrairCanais(){
+    console.log("🔍 descoberta real...");
 
-    const cache = loadJSON(CACHE_CANAIS);
-    if(cache){
-        console.log("⚡ canais via cache");
-        return cache;
-    }
+    const seeds = ["gnt","hgtv","multishow"]; // apenas ponto de entrada
 
-    console.log("🔍 scraping profundo...");
+    let canaisMap = {};
 
-    let encontrados = [];
+    await Promise.all(seeds.map(async seed => {
 
-    try{
-        const res = await fetch(BASE_URL);
-        const html = await res.text();
+        try{
+            const url = `${BASE}${seed}/segunda`;
 
-        const dom = new JSDOM(html);
-        const links = [...dom.window.document.querySelectorAll("a")];
+            const res = await fetch(url,{
+                headers:{'User-Agent':'Mozilla/5.0'}
+            });
 
-        links.forEach(a=>{
-            const href = a.getAttribute("href");
+            const html = await res.text();
 
-            if(href && href.includes("/programacao_tv/")){
-                const match = href.match(/programacao_tv\/([^/]+)/);
-                if(match){
-                    const id = match[1];
-                    encontrados.push({
-                        id,
-                        nome: id.toUpperCase()
-                    });
+            const dom = new JSDOM(html);
+            const doc = dom.window.document;
+
+            const eventos = [...doc.querySelectorAll(".evento_box.programa_data")];
+
+            eventos.forEach(el => {
+
+                const hash = el.getAttribute("data-canal");
+                const nome = seed;
+
+                if(hash && !canaisMap[hash]){
+                    canaisMap[hash] = {
+                        id: hash,
+                        nome: nome.toUpperCase()
+                    };
                 }
-            }
-        });
+            });
 
-    }catch{}
+        }catch{}
+    }));
 
-    encontrados = [...new Map(encontrados.map(c=>[c.id,c])).values()];
+    const canais = Object.values(canaisMap);
 
-    console.log(`🎯 ${encontrados.length} canais descobertos`);
+    console.log(`🎯 ${canais.length} canais descobertos`);
 
-    saveJSON(CACHE_CANAIS,encontrados);
+    CACHE.canais = canais;
 
-    return encontrados;
+    return canais;
 }
 
 // ========================
-// PARSER UNIVERSAL
+// PARSE PROGRAMAÇÃO
 // ========================
 function parseGrade(html, canalId){
 
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    let programas = [];
-
-    // formato completo
-    doc.querySelectorAll('.registro.programa_data').forEach(el=>{
-        const titulo = el.querySelector('.titulo')?.textContent?.trim();
-        const desc = el.querySelector('.descricao_programa')?.textContent?.trim() || titulo;
-        const dti = el.getAttribute('dti');
-        const dtf = el.getAttribute('dtf');
-
-        if(!titulo||!dti||!dtf) return;
-
-        programas.push({
-            start: formatXMLTV(dti),
-            stop: formatXMLTV(dtf),
-            title: titulo,
-            desc
-        });
-    });
-
-    // fallback evento_box
     const eventos = [...doc.querySelectorAll('.evento_box.programa_data')];
 
-    eventos.forEach((el,i)=>{
+    let programas = [];
+
+    eventos.forEach((el, i)=>{
+
         const titulo = el.querySelector('.titulo')?.textContent?.trim();
-        const time = el.querySelector('time')?.getAttribute("datetime");
+        const timeEl = el.querySelector('time');
 
-        if(!titulo||!time) return;
+        if(!titulo || !timeEl) return;
 
-        const inicio = new Date(time.replace(" ","T"));
+        const inicio = new Date(timeEl.getAttribute("datetime").replace(" ","T"));
 
         let fim;
+
         if(eventos[i+1]){
             const prox = eventos[i+1].querySelector('time')?.getAttribute("datetime");
-            if(prox) fim = new Date(prox.replace(" ","T"));
+            if(prox){
+                fim = new Date(prox.replace(" ","T"));
+            }
         }
 
-        if(!fim) fim = new Date(inicio.getTime()+3600000);
+        if(!fim){
+            fim = new Date(inicio.getTime()+3600000);
+        }
 
         programas.push({
-            start: formatXMLTV(inicio.toISOString().slice(0,19).replace("T"," ")),
-            stop: formatXMLTV(fim.toISOString().slice(0,19).replace("T"," ")),
+            start: formatXMLTV(inicio.toISOString().replace("T"," ").substring(0,19)),
+            stop: formatXMLTV(fim.toISOString().replace("T"," ").substring(0,19)),
             title: titulo,
             desc: titulo
         });
+
     });
 
     return programas;
 }
 
 // ========================
-// MATCH INTELIGENTE M3U
+// CAPTURAR MULTI DIA
 // ========================
-async function mapearM3U(){
+async function capturarMultiDia(canal){
 
-    if(!M3U_URL) return {};
+    let todos = [];
 
-    try{
-        const txt = await (await fetch(M3U_URL)).text();
-        const map = {};
-
-        txt.split("\n").forEach(l=>{
-            if(l.includes("#EXTINF")){
-                const name = l.split(",")[1]?.toLowerCase();
-                const id = l.match(/tvg-id="([^"]+)"/)?.[1];
-                if(name && id) map[name]=id;
-            }
-        });
-
-        return map;
-
-    }catch{
-        return {};
-    }
-}
-
-// ========================
-// MATCH FUZZY
-// ========================
-function similar(a,b){
-    a=a.toLowerCase(); b=b.toLowerCase();
-    return a.includes(b)||b.includes(a);
-}
-
-// ========================
-// CAPTURA COM FALLBACK
-// ========================
-async function capturar(canal){
-
-    let programas=[];
-
-    for(let i=0;i<EPG_DIAS;i++){
-
+    for(let i=0;i<2;i++){ // 48h
         const dia = dias[(new Date().getDay()+i)%7];
 
-        for(let base of FALLBACK_SITES){
+        try{
+            const url = `${BASE}${canal.nome.toLowerCase()}/${dia}`;
 
-            try{
-                const res = await fetch(`${base}${canal.id}/${dia}`);
-                const html = await res.text();
+            const res = await fetch(url,{
+                headers:{'User-Agent':'Mozilla/5.0'}
+            });
 
-                const parsed = parseGrade(html, canal.id);
+            const html = await res.text();
 
-                if(parsed.length){
-                    programas.push(...parsed);
-                    break;
-                }
+            const lista = parseGrade(html, canal.id);
 
-            }catch{}
-        }
+            todos.push(...lista);
+
+        }catch{}
     }
 
-    return programas;
+    CACHE.programas[canal.id] = todos;
+
+    return todos;
 }
 
 // ========================
-// INCREMENTAL
+// GERAR XML
 // ========================
 async function gerarXML(){
 
-    console.log("🚀 EPG incremental");
+    console.log("🚀 gerando epg...");
 
-    const cache = loadJSON(CACHE_FILE) || {};
-    const canais = await extrairCanais();
-    const m3uMap = await mapearM3U();
-
-    let canaisXML="";
-    let programasXML="";
-
-    for(let canal of canais){
-
-        const tvg =
-            Object.keys(m3uMap).find(n=>similar(n,canal.nome.toLowerCase()))
-            ? m3uMap[Object.keys(m3uMap).find(n=>similar(n,canal.nome.toLowerCase()))]
-            : canal.id;
-
-        canaisXML += `<channel id="${tvg}">
-  <display-name lang="pt">${escapeXML(canal.nome)}</display-name>
-</channel>\n`;
-
-        // incremental
-        if(cache[canal.id]){
-            console.log("⚡ cache", canal.id);
-            programasXML += cache[canal.id];
-            continue;
-        }
-
-        const programas = await capturar(canal);
-
-        const xml = programas.map(p=>`
-<programme start="${p.start}" stop="${p.stop}" channel="${tvg}">
-  <title lang="pt">${escapeXML(p.title)}</title>
-  <desc lang="pt">${escapeXML(p.desc)}</desc>
-</programme>`).join("");
-
-        cache[canal.id]=xml;
-        programasXML += xml;
+    if(!CACHE.canais.length){
+        await descobrirCanais();
     }
 
-    saveJSON(CACHE_FILE,cache);
+    let xmlCanais = CACHE.canais.map(c=>`
+<channel id="${c.id}">
+  <display-name lang="pt">${escapeXML(c.nome)}</display-name>
+</channel>`).join("");
 
-    const agora = new Date().toISOString();
+    let xmlProg = "";
 
-    const xmlFinal = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG PRO MAX ${agora}">
-${canaisXML}
-${programasXML}
+    for(let c of CACHE.canais){
+
+        const lista = await capturarMultiDia(c);
+
+        lista.forEach(p=>{
+            xmlProg += `
+<programme start="${p.start}" stop="${p.stop}" channel="${c.id}">
+  <title lang="pt">${escapeXML(p.title)}</title>
+  <desc lang="pt">${escapeXML(p.desc)}</desc>
+</programme>`;
+        });
+    }
+
+    const agora = new Date().toISOString().replace("T"," ").split(".")[0];
+
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<tv generator-info-name="EPG AUTO ${agora}">
+
+${xmlCanais}
+
+${xmlProg}
+
 </tv>`;
 
-    fs.writeFileSync("programacao.xml",xmlFinal);
+    fs.writeFileSync("programacao.xml", xml);
 
-    console.log("✅ EPG FULL GERADO");
-}
-
-// ========================
-// AGENDAR
-// ========================
-function agendar(){
-    const agora = new Date();
-    const proxima = new Date();
-
-    proxima.setHours(3,0,0,0);
-    if(agora>=proxima) proxima.setDate(proxima.getDate()+1);
-
-    setTimeout(async()=>{
-        await gerarXML();
-        agendar();
-    },proxima-agora);
+    console.log("✅ EPG GERADO");
 }
 
 // ========================
 // ROTAS
 // ========================
-app.get("/",(req,res)=>res.send("EPG PRO MAX 🚀"));
-
 app.get("/programacao.xml",(req,res)=>{
     res.set("Content-Type","application/xml");
     res.sendFile(__dirname+"/programacao.xml");
@@ -308,9 +228,11 @@ app.get("/programacao.xml",(req,res)=>{
 // ========================
 // START
 // ========================
-app.listen(PORT,async()=>{
+app.listen(PORT, async ()=>{
+
     console.log("🔥 servidor online");
 
     await gerarXML();
-    agendar();
+
+    setInterval(gerarXML, 1000*60*60*24); // 24h
 });
