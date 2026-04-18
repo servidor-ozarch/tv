@@ -42,55 +42,58 @@ function formatXMLTV(dateStr){
 }
 
 // ========================
-// DESCOBRIR CANAIS REAL
+// DESCOBRIR CANAIS (NOVO MÉTODO)
 // ========================
 async function descobrirCanais(){
 
-    console.log("🔍 descoberta real...");
+    console.log("🔍 descobrindo canais via links reais...");
 
-    const seeds = ["gnt","hgtv","multishow"]; // apenas ponto de entrada
+    try{
+        const res = await fetch(BASE, {
+            headers:{'User-Agent':'Mozilla/5.0'}
+        });
 
-    let canaisMap = {};
+        const html = await res.text();
+        const dom = new JSDOM(html);
+        const doc = dom.window.document;
 
-    await Promise.all(seeds.map(async seed => {
+        const links = [...doc.querySelectorAll("a")];
 
-        try{
-            const url = `${BASE}${seed}/segunda`;
+        let canaisMap = {};
 
-            const res = await fetch(url,{
-                headers:{'User-Agent':'Mozilla/5.0'}
-            });
+        links.forEach(a => {
+            const href = a.getAttribute("href");
 
-            const html = await res.text();
+            if(!href) return;
 
-            const dom = new JSDOM(html);
-            const doc = dom.window.document;
+            if(href.includes("/programacao_tv/") && href !== "/programacao_tv/"){
 
-            const eventos = [...doc.querySelectorAll(".evento_box.programa_data")];
+                const parts = href.split("/").filter(Boolean);
+                const slug = parts[1]; // canal
 
-            eventos.forEach(el => {
+                if(!slug) return;
 
-                const hash = el.getAttribute("data-canal");
-                const nome = seed;
-
-                if(hash && !canaisMap[hash]){
-                    canaisMap[hash] = {
-                        id: hash,
-                        nome: nome.toUpperCase()
+                if(!canaisMap[slug]){
+                    canaisMap[slug] = {
+                        id: slug,
+                        nome: slug.replace(/-/g," ").toUpperCase()
                     };
                 }
-            });
+            }
+        });
 
-        }catch{}
-    }));
+        const canais = Object.values(canaisMap);
 
-    const canais = Object.values(canaisMap);
+        console.log(`🎯 ${canais.length} canais descobertos`);
 
-    console.log(`🎯 ${canais.length} canais descobertos`);
+        CACHE.canais = canais;
 
-    CACHE.canais = canais;
+        return canais;
 
-    return canais;
+    }catch(err){
+        console.log("❌ erro descoberta:", err.message);
+        return [];
+    }
 }
 
 // ========================
@@ -146,11 +149,12 @@ async function capturarMultiDia(canal){
 
     let todos = [];
 
-    for(let i=0;i<2;i++){ // 48h
+    for(let i=0;i<2;i++){
+
         const dia = dias[(new Date().getDay()+i)%7];
 
         try{
-            const url = `${BASE}${canal.nome.toLowerCase()}/${dia}`;
+            const url = `${BASE}${canal.id}/${dia}`;
 
             const res = await fetch(url,{
                 headers:{'User-Agent':'Mozilla/5.0'}
@@ -162,7 +166,9 @@ async function capturarMultiDia(canal){
 
             todos.push(...lista);
 
-        }catch{}
+        }catch(err){
+            console.log("erro canal:", canal.id, err.message);
+        }
     }
 
     CACHE.programas[canal.id] = todos;
@@ -234,5 +240,5 @@ app.listen(PORT, async ()=>{
 
     await gerarXML();
 
-    setInterval(gerarXML, 1000*60*60*24); // 24h
+    setInterval(gerarXML, 1000*60*60*24);
 });
