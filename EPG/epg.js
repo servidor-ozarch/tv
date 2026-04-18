@@ -36,12 +36,11 @@ const canais = [
     { id: 'megapix', nome: 'Megapix' }
 ];
 
-const dias = ["", "/amanha", "/segunda", "/terca", "/quarta", "/quinta", "/sexta"];
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// 🔥 reduzir pra acelerar (pode voltar depois)
+const dias = ["", "/amanha"];
 
 // ========================
-// XML BASE (INSTANTÂNEO)
+// XML BASE INSTANTÂNEO
 // ========================
 function gerarXMLBase() {
     return `<?xml version="1.0" encoding="utf-8"?>
@@ -84,7 +83,7 @@ function formatXMLTV(date) {
 }
 
 // ========================
-// PARSER (ROBUSTO)
+// PARSER ROBUSTO
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
@@ -141,16 +140,15 @@ function parseGrade(html, canalId, diaOffset) {
 }
 
 // ========================
-// FETCH (ANTI-BLOQUEIO)
+// FETCH MELHORADO
 // ========================
 async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                "User-Agent": "Mozilla/5.0",
                 "Accept": "text/html",
-                "Accept-Language": "pt-BR,pt;q=0.9",
-                "Cache-Control": "no-cache"
+                "Accept-Language": "pt-BR"
             }
         });
 
@@ -158,10 +156,7 @@ async function fetchPage(url) {
 
         const html = await res.text();
 
-        if (!html.includes("broadcasts") && !html.includes("time")) {
-            console.log("⚠️ página sem conteúdo válido");
-            return null;
-        }
+        if (!html.includes("time")) return null;
 
         return html;
 
@@ -171,10 +166,11 @@ async function fetchPage(url) {
 }
 
 // ========================
-// CAPTURAR (COM RETRY)
+// CAPTURAR COM RETRY
 // ========================
 async function capturar(canal) {
-    let resultadoFinal = "";
+
+    let resultado = "";
 
     for (let i = 0; i < dias.length; i++) {
 
@@ -183,46 +179,34 @@ async function capturar(canal) {
         let html = await fetchPage(url);
 
         if (!html) {
-            console.log(`🔁 retry ${canal.nome}`);
-            await sleep(2000);
-
             const retry = await fetchPage(url);
             if (!retry) continue;
-
             html = retry;
         }
 
-        const programas = parseGrade(html, canal.id, i);
-
-        if (programas.length > 0) {
-            resultadoFinal += programas + "\n";
-        }
-
-        await sleep(800);
+        resultado += parseGrade(html, canal.id, i);
     }
 
-    return resultadoFinal;
+    return resultado;
 }
 
 // ========================
-// GERAR XML COMPLETO
+// GERAR XML (PARALELO)
 // ========================
 async function gerarXML() {
 
     if (gerando) return;
-
     gerando = true;
 
     try {
 
         console.log("🚀 Atualizando EPG...");
 
-        let programas = "";
+        const resultados = await Promise.all(
+            canais.map(c => capturar(c))
+        );
 
-        for (const canal of canais) {
-            programas += await capturar(canal);
-            await sleep(1000);
-        }
+        const programas = resultados.join("\n");
 
         const agora = new Date().toISOString();
 
@@ -242,8 +226,8 @@ ${programas}
 
         console.log("✅ EPG ATUALIZADO");
 
-    } catch {
-        console.log("❌ erro ao atualizar");
+    } catch (e) {
+        console.log("❌ erro ao gerar", e);
     }
 
     gerando = false;
