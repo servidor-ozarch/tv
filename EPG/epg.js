@@ -13,12 +13,12 @@ const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 // LISTA DE CANAIS
 // ========================
 const canais = [
-    { id: 'aee', nome: 'A&E' },
-    { id: 'amc', nome: 'AMC' },
-    { id: 'axn', nome: 'AXN' },
-    { id: 'cinemax', nome: 'Cinemax' },
-    { id: 'hbo', nome: 'HBO' },
-    { id: 'hbo2', nome: 'HBO 2' },
+    { id: 'AEBrasil.us', nome: 'A&E' },
+    { id: 'AMCBrasil.us', nome: 'AMC' },
+    { id: 'AXNBrazil.us', nome: 'AXN' },
+    { id: 'CinemaxBrasil.us', nome: 'Cinemax' },
+    { id: 'HBOBrasil.us', nome: 'HBO' },
+    { id: 'HBO2Brasil.us', nome: 'HBO 2' },
     { id: 'hbofamily', nome: 'HBO Family' },
     { id: 'hbomundi', nome: 'HBO Mundi' },
     { id: 'hbopop', nome: 'HBO Pop' },
