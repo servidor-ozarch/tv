@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// CACHE + CONTROLE
+// CONTROLE
 // ========================
 let xmlCache = null;
 let gerando = false;
@@ -36,7 +36,7 @@ const canais = [
     { id: 'megapix', nome: 'Megapix' }
 ];
 
-// 🔥 rápido (depois pode expandir)
+// 🔥 rápido (pode expandir depois)
 const dias = ["", "/amanha"];
 
 // ========================
@@ -83,7 +83,7 @@ function formatXMLTV(date) {
 }
 
 // ========================
-// PARSER COMPLETO
+// PARSER FINAL (SEU MODELO)
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
@@ -91,65 +91,71 @@ function parseGrade(html, canalId, diaOffset) {
 
     let programas = [];
 
-    // =========================
-    // LISTA NORMAL
-    // =========================
     let items = [...doc.querySelectorAll('ul.broadcasts > li')];
 
     if (items.length === 0) {
         items = [...doc.querySelectorAll('.broadcasts li')];
     }
 
-    if (items.length > 0) {
+    if (items.length === 0) {
+        console.log(`❌ sem itens para ${canalId}`);
+        return "";
+    }
 
-        for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < items.length; i++) {
 
-            const el = items[i];
+        const el = items[i];
 
-            const hora = el.querySelector('.time')?.textContent?.trim();
-            const titulo = el.querySelector('h2, h3')?.textContent?.trim();
-            const desc = el.querySelector('.synopsis, p')?.textContent?.trim();
+        const hora = el.querySelector('.time')?.textContent?.trim();
 
-            if (!hora || !titulo || !hora.includes(":")) continue;
-
-            const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
-
-            const [h, m] = hora.split(":");
-
-            const inicio = new Date();
-            inicio.setHours(parseInt(h), parseInt(m), 0);
-            inicio.setDate(inicio.getDate() + diaOffset);
-
-            let fim = new Date(inicio);
-
-            if (proxHora && proxHora.includes(":")) {
-                const [ph, pm] = proxHora.split(":");
-                fim.setHours(parseInt(ph), parseInt(pm), 0);
-                if (fim <= inicio) fim.setDate(fim.getDate() + 1);
-            } else {
-                fim.setHours(inicio.getHours() + 2);
-            }
-
-            programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
-  <title lang="pt">${escapeXML(titulo)}</title>
-  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
-</programme>`);
+        let titulo = el.querySelector('h2, h3')?.textContent?.trim();
+        if (titulo) {
+            titulo = titulo.replace(/\s+/g, " ");
         }
 
+        let desc =
+            el.querySelector('.synopsis')?.textContent?.trim() ||
+            el.querySelector('.sub-title')?.textContent?.trim() ||
+            titulo;
+
+        if (!hora || !titulo || !hora.includes(":")) continue;
+
+        const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
+
+        const [h, m] = hora.split(":");
+
+        const inicio = new Date();
+        inicio.setHours(parseInt(h), parseInt(m), 0);
+        inicio.setDate(inicio.getDate() + diaOffset);
+
+        let fim = new Date(inicio);
+
+        if (proxHora && proxHora.includes(":")) {
+            const [ph, pm] = proxHora.split(":");
+            fim.setHours(parseInt(ph), parseInt(pm), 0);
+
+            if (fim <= inicio) fim.setDate(fim.getDate() + 1);
+        } else {
+            fim.setHours(inicio.getHours() + 2);
+        }
+
+        programas.push(`<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
+  <title lang="pt">${escapeXML(titulo)}</title>
+  <desc lang="pt">${escapeXML(desc)}</desc>
+</programme>`);
+    }
+
+    if (programas.length > 0) {
+        console.log(`✅ ${canalId} -> ${programas.length}`);
         return programas.join("\n");
     }
 
-    // =========================
-    // FALLBACK
-    // =========================
-
+    // 🔥 fallback
     const titulo = doc.querySelector('h1.impact-medium')?.textContent?.trim();
-    const desc = doc.querySelector('.sinopsis, p')?.textContent?.trim();
+    const desc = doc.querySelector('p')?.textContent?.trim();
     const hora = doc.querySelector('.time')?.textContent?.trim();
 
-    if (!titulo || !hora) {
-        return "";
-    }
+    if (!titulo || !hora) return "";
 
     const [h, m] = hora.split(":");
 
@@ -160,7 +166,7 @@ function parseGrade(html, canalId, diaOffset) {
     const fim = new Date(inicio);
     fim.setHours(inicio.getHours() + 2);
 
-    console.log(`⚠️ fallback → ${titulo}`);
+    console.log(`⚠️ fallback ${canalId}`);
 
     return `<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
@@ -254,10 +260,10 @@ ${programas}
 
         fs.writeFileSync("programacao.xml", xmlCache);
 
-        console.log("✅ EPG ATUALIZADO");
+        console.log("✅ EPG GERADO");
 
     } catch (e) {
-        console.log("❌ erro ao gerar", e);
+        console.log("❌ erro", e);
     }
 
     gerando = false;
@@ -274,9 +280,7 @@ app.get("/programacao.xml", (req, res) => {
 
     res.set("Content-Type", "application/xml; charset=utf-8");
 
-    if (xmlCache) {
-        return res.send(xmlCache);
-    }
+    if (xmlCache) return res.send(xmlCache);
 
     return res.send(gerarXMLBase());
 });
