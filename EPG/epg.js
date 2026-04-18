@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// CACHE EM MEMÓRIA
+// CACHE + CONTROLE
 // ========================
 let xmlCache = null;
 let gerando = false;
@@ -41,7 +41,7 @@ const dias = ["", "/amanha", "/segunda", "/terca", "/quarta", "/quinta", "/sexta
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ========================
-// XML BASE INSTANTÂNEO
+// XML BASE (INSTANTÂNEO)
 // ========================
 function gerarXMLBase() {
     return `<?xml version="1.0" encoding="utf-8"?>
@@ -56,7 +56,7 @@ ${canais.map(c => `
 }
 
 // ========================
-// ESCAPE
+// ESCAPE XML
 // ========================
 function escapeXML(str) {
     return str
@@ -68,7 +68,7 @@ function escapeXML(str) {
 }
 
 // ========================
-// FORMAT
+// FORMAT XMLTV
 // ========================
 function formatXMLTV(date) {
     const d = new Date(date);
@@ -84,13 +84,21 @@ function formatXMLTV(date) {
 }
 
 // ========================
-// PARSER
+// PARSER (ROBUSTO)
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    const items = [...doc.querySelectorAll('ul.broadcasts > li')];
+    let items = [...doc.querySelectorAll('ul.broadcasts > li')];
+
+    if (items.length === 0) {
+        items = [...doc.querySelectorAll('.broadcasts li')];
+    }
+
+    if (items.length === 0) {
+        items = [...doc.querySelectorAll('li')];
+    }
 
     let programas = [];
 
@@ -99,10 +107,10 @@ function parseGrade(html, canalId, diaOffset) {
         const el = items[i];
 
         const hora = el.querySelector('.time')?.textContent?.trim();
-        const titulo = el.querySelector('h2')?.textContent?.trim();
-        const desc = el.querySelector('.synopsis')?.textContent?.trim();
+        const titulo = el.querySelector('h2, h3')?.textContent?.trim();
+        const desc = el.querySelector('.synopsis, p')?.textContent?.trim();
 
-        if (!hora || !titulo) continue;
+        if (!hora || !titulo || !hora.includes(":")) continue;
 
         const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
 
@@ -114,7 +122,7 @@ function parseGrade(html, canalId, diaOffset) {
 
         let fim = new Date(inicio);
 
-        if (proxHora) {
+        if (proxHora && proxHora.includes(":")) {
             const [ph, pm] = proxHora.split(":");
             fim.setHours(parseInt(ph), parseInt(pm), 0);
 
@@ -133,20 +141,29 @@ function parseGrade(html, canalId, diaOffset) {
 }
 
 // ========================
-// FETCH
+// FETCH (ANTI-BLOQUEIO)
 // ========================
 async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0",
-                "Accept-Language": "pt-BR"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                "Accept": "text/html",
+                "Accept-Language": "pt-BR,pt;q=0.9",
+                "Cache-Control": "no-cache"
             }
         });
 
         if (!res.ok) return null;
 
-        return await res.text();
+        const html = await res.text();
+
+        if (!html.includes("broadcasts") && !html.includes("time")) {
+            console.log("⚠️ página sem conteúdo válido");
+            return null;
+        }
+
+        return html;
 
     } catch {
         return null;
@@ -154,18 +171,32 @@ async function fetchPage(url) {
 }
 
 // ========================
-// CAPTURAR
+// CAPTURAR (COM RETRY)
 // ========================
 async function capturar(canal) {
     let resultadoFinal = "";
 
     for (let i = 0; i < dias.length; i++) {
 
-        const html = await fetchPage(`${BASE_URL}${canal.id}${dias[i]}`);
+        const url = `${BASE_URL}${canal.id}${dias[i]}`;
 
-        if (!html) continue;
+        let html = await fetchPage(url);
 
-        resultadoFinal += parseGrade(html, canal.id, i) + "\n";
+        if (!html) {
+            console.log(`🔁 retry ${canal.nome}`);
+            await sleep(2000);
+
+            const retry = await fetchPage(url);
+            if (!retry) continue;
+
+            html = retry;
+        }
+
+        const programas = parseGrade(html, canal.id, i);
+
+        if (programas.length > 0) {
+            resultadoFinal += programas + "\n";
+        }
 
         await sleep(800);
     }
@@ -229,12 +260,10 @@ app.get("/programacao.xml", (req, res) => {
 
     res.set("Content-Type", "application/xml; charset=utf-8");
 
-    // 🔥 resposta instantânea
     if (xmlCache) {
         return res.send(xmlCache);
     }
 
-    // fallback inicial
     return res.send(gerarXMLBase());
 });
 
@@ -244,10 +273,8 @@ app.get("/programacao.xml", (req, res) => {
 app.listen(PORT, () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    // 🔥 já cria XML base instantâneo
     xmlCache = gerarXMLBase();
 
-    // 🔥 atualiza em background
     gerarXML();
 
     setInterval(gerarXML, 1000 * 60 * 60 * 24);
