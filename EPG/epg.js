@@ -10,7 +10,7 @@ const BASE_URL = "https://tvinside.com.br/programacao_tv/";
 const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 
 // ========================
-// LISTA DE CANAIS (AJUSTE CONFORME SUA M3U)
+// LISTA DE CANAIS
 // ========================
 const canais = [
     { id: 'gnt', nome: 'GNT' },
@@ -23,7 +23,7 @@ const canais = [
 ];
 
 // ========================
-// ESCAPE XML (EVITA QUEBRAR)
+// ESCAPE XML
 // ========================
 function escapeXML(str) {
     return str
@@ -35,11 +35,10 @@ function escapeXML(str) {
 }
 
 // ========================
-// FORMATAR DATA XMLTV
+// FORMATO XMLTV
 // ========================
 function formatXMLTV(dateStr) {
     const d = new Date(dateStr.replace(" ", "T"));
-
     const pad = n => String(n).padStart(2, "0");
 
     return d.getFullYear() +
@@ -52,7 +51,7 @@ function formatXMLTV(dateStr) {
 }
 
 // ========================
-// GERAR <channel>
+// GERAR CANAIS
 // ========================
 function gerarCanais() {
     return canais.map(c => `<channel id="${c.id}">
@@ -61,7 +60,7 @@ function gerarCanais() {
 }
 
 // ========================
-// PARSE HTML → XMLTV
+// PARSE HTML → XMLTV (COMPLETO)
 // ========================
 function parseGrade(html, canalId) {
     const dom = new JSDOM(html);
@@ -70,15 +69,26 @@ function parseGrade(html, canalId) {
     const regs = [...doc.querySelectorAll('.registro.programa_data')];
 
     return regs.map(el => {
+
         const titulo = el.querySelector('.titulo')?.textContent?.trim();
-        const desc = el.querySelector('.descricao_programa')?.textContent?.trim();
-        const classificacao = el.querySelector('.classificacao')?.textContent?.trim();
-        const faixa = el.querySelector('.faixa_etaria')?.textContent?.trim();
+
+        const descRaw =
+            el.querySelector('.descricao_programa')?.textContent?.trim() ||
+            el.querySelector('.sinopse')?.textContent?.trim() ||
+            el.querySelector('.evento_box')?.textContent?.trim();
+
+        const classificacao =
+            el.querySelector('.classificacao')?.textContent?.trim();
+
+        const faixa =
+            el.querySelector('.faixa_etaria')?.textContent?.trim();
 
         const dti = el.getAttribute('dti');
         const dtf = el.getAttribute('dtf');
 
         if (!titulo || !dti || !dtf) return "";
+
+        const descricaoFinal = descRaw || titulo;
 
         let rating = "";
         if (classificacao || faixa) {
@@ -89,9 +99,10 @@ function parseGrade(html, canalId) {
 
         return `<programme start="${formatXMLTV(dti)}" stop="${formatXMLTV(dtf)}" channel="${canalId}">
   <title lang="pt">${escapeXML(titulo)}</title>
-  ${desc ? `<desc lang="pt">${escapeXML(desc)}</desc>` : ""}
+  <desc lang="pt">${escapeXML(descricaoFinal)}</desc>
   ${rating}
 </programme>`;
+
     }).join("\n");
 }
 
@@ -105,9 +116,7 @@ async function capturar(canal, dia) {
         const url = `${BASE_URL}${canal.id}/${dia}`;
 
         const res = await fetch(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0"
-            }
+            headers: { "User-Agent": "Mozilla/5.0" }
         });
 
         if (!res.ok) {
@@ -119,14 +128,14 @@ async function capturar(canal, dia) {
 
         return parseGrade(html, canal.id);
 
-    } catch (e) {
+    } catch {
         console.log(`❌ ${canal.nome}`);
         return "";
     }
 }
 
 // ========================
-// PROCESSAMENTO PARALELO
+// PARALELO
 // ========================
 async function processar(canais, dia) {
     return await Promise.all(canais.map(c => capturar(c, dia)));
@@ -154,11 +163,11 @@ ${resultados.join("\n")}
 
     fs.writeFileSync("programacao.xml", xml, "utf-8");
 
-    console.log("✅ EPG PROFISSIONAL GERADO");
+    console.log("✅ EPG GERADO");
 }
 
 // ========================
-// AGENDAR PARA 03:00
+// AGENDAR 03:00
 // ========================
 function agendar() {
     const agora = new Date();
@@ -195,6 +204,6 @@ app.get("/programacao.xml", (req, res) => {
 app.listen(PORT, async () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    await gerarXML(); // gera ao iniciar
+    await gerarXML(); // gera na inicialização
     agendar();        // agenda atualização
 });
