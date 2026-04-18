@@ -6,32 +6,39 @@ const { JSDOM } = require("jsdom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========================
-// NOVA BASE (MI.TV)
-// ========================
 const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// LISTA DE CANAIS (AJUSTADA)
+// CANAIS (CONFIRMADOS)
 // ========================
 const canais = [
     { id: 'cinemax', nome: 'Cinemax' },
     { id: 'hbo', nome: 'HBO' },
-    { id: 'hbo2', nome: 'HBO 2' },
-    { id: 'hbofamily', nome: 'HBO Family' },
-    { id: 'hbomundi', nome: 'HBO Mundi' },
-    { id: 'hbopop', nome: 'HBO Pop' },
-    { id: 'hboplus', nome: 'HBO Plus' },
-    { id: 'hboxtreme', nome: 'HBO Xtreme' },
+    { id: 'hbo-2', nome: 'HBO 2' },
+    { id: 'hbo-family', nome: 'HBO Family' },
+    { id: 'hbo-mundi', nome: 'HBO Mundi' },
+    { id: 'hbo-pop', nome: 'HBO Pop' },
+    { id: 'hbo-plus', nome: 'HBO Plus' },
+    { id: 'hbo-xtreme', nome: 'HBO Xtreme' },
     { id: 'tnt', nome: 'TNT' },
-    { id: 'tntseries', nome: 'TNT Series' },
+    { id: 'tnt-series', nome: 'TNT Series' },
     { id: 'space', nome: 'SPACE' },
-    { id: 'warner', nome: 'Warner Channel' },
+    { id: 'warner-channel', nome: 'Warner Channel' },
     { id: 'sony', nome: 'Sony Channel' },
     { id: 'axn', nome: 'AXN' },
     { id: 'amc', nome: 'AMC' },
     { id: 'megapix', nome: 'Megapix' }
 ];
+
+// ========================
+// DIAS (7 DIAS)
+// ========================
+const dias = ["", "/amanha", "/segunda", "/terca", "/quarta", "/quinta", "/sexta"];
+
+// ========================
+// UTIL DELAY (ANTI-BAN)
+// ========================
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ========================
 // ESCAPE XML
@@ -46,7 +53,7 @@ function escapeXML(str) {
 }
 
 // ========================
-// FORMATO XMLTV
+// FORMAT XMLTV
 // ========================
 function formatXMLTV(date) {
     const d = new Date(date);
@@ -72,13 +79,13 @@ function gerarCanais() {
 }
 
 // ========================
-// PARSE MI.TV
+// PARSER MI.TV (ROBUSTO)
 // ========================
-function parseGrade(html, canalId) {
+function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    const items = [...doc.querySelectorAll('#listings ul.broadcasts li')];
+    const items = [...doc.querySelectorAll('ul.broadcasts > li')];
 
     let programas = [];
 
@@ -92,13 +99,13 @@ function parseGrade(html, canalId) {
 
         if (!hora || !titulo) continue;
 
-        // PRÓXIMO HORÁRIO
         const proxHora = items[i + 1]?.querySelector('.time')?.textContent?.trim();
 
         const [h, m] = hora.split(":");
 
         const inicio = new Date();
         inicio.setHours(parseInt(h), parseInt(m), 0);
+        inicio.setDate(inicio.getDate() + diaOffset);
 
         let fim = new Date(inicio);
 
@@ -106,7 +113,7 @@ function parseGrade(html, canalId) {
             const [ph, pm] = proxHora.split(":");
             fim.setHours(parseInt(ph), parseInt(pm), 0);
 
-            // VIRADA DE DIA
+            // 🔥 VIRADA PERFEITA
             if (fim <= inicio) {
                 fim.setDate(fim.getDate() + 1);
             }
@@ -125,47 +132,76 @@ function parseGrade(html, canalId) {
 }
 
 // ========================
-// CAPTURAR
+// FETCH COM ANTI-BLOQUEIO
 // ========================
-async function capturar(canal) {
+async function fetchPage(url) {
     try {
-
-        const url = `${BASE_URL}${canal.id}`;
-
         const res = await fetch(url, {
-            headers: { "User-Agent": "Mozilla/5.0" }
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                "Accept-Language": "pt-BR,pt;q=0.9"
+            }
         });
 
-        if (!res.ok) {
-            console.log(`❌ erro HTTP ${canal.nome}`);
-            return "";
+        if (!res.ok) return null;
+
+        return await res.text();
+
+    } catch {
+        return null;
+    }
+}
+
+// ========================
+// CAPTURAR 7 DIAS
+// ========================
+async function capturar(canal) {
+    let resultadoFinal = "";
+
+    for (let i = 0; i < dias.length; i++) {
+
+        const url = `${BASE_URL}${canal.id}${dias[i]}`;
+
+        console.log(`🔎 ${canal.nome} (${dias[i] || "hoje"})`);
+
+        const html = await fetchPage(url);
+
+        if (!html) {
+            console.log(`❌ erro ${canal.nome}`);
+            continue;
         }
 
-        const html = await res.text();
-
-        const programas = parseGrade(html, canal.id);
+        const programas = parseGrade(html, canal.id, i);
 
         if (programas.length > 0) {
-            console.log(`✔ ${canal.nome} OK`);
-            return programas;
+            console.log(`✔ ${canal.nome} OK (${dias[i] || "hoje"})`);
+            resultadoFinal += programas + "\n";
+        } else {
+            console.log(`⚠️ ${canal.nome} vazio (${dias[i] || "hoje"})`);
         }
 
-        console.log(`⚠️ ${canal.nome} vazio`);
-        return "";
-
-    } catch (e) {
-        console.log(`❌ erro ${canal.nome}`);
-        return "";
+        // 🔥 ANTI-BAN
+        await sleep(1200);
     }
+
+    return resultadoFinal;
 }
 
 // ========================
 // PROCESSAR
 // ========================
 async function processar() {
-    return await Promise.all(
-        canais.map(c => capturar(c))
-    );
+    let resultados = [];
+
+    for (const canal of canais) {
+        const res = await capturar(canal);
+        resultados.push(res);
+
+        // 🔥 ANTI-BAN ENTRE CANAIS
+        await sleep(1500);
+    }
+
+    return resultados;
 }
 
 // ========================
@@ -183,7 +219,7 @@ async function gerarXML() {
     const agora = new Date().toISOString().replace("T", " ").split(".")[0];
 
     const xml = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG mi.tv - ${agora}">
+<tv generator-info-name="EPG mi.tv PRO - ${agora}">
 
 ${gerarCanais()}
 
