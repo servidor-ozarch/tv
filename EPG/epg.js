@@ -17,7 +17,14 @@ let gerando = false;
 // CANAIS (AJUSTE AQUI)
 // ========================
 const canais = [
-    { id: 'MNX', nome: 'Cinemax' }
+    { id: 'MDO', nome: 'A&E' },
+    { id: 'MGM', nome: 'AMC' },
+    { id: 'AXN', nome: 'AXN' },
+    { id: 'MNX', nome: 'Cinemax' },
+    { id: 'HBO', nome: 'HBO' },
+    { id: 'HB2', nome: 'HBO 2' },
+    { id: 'HFA', nome: 'HBO Family' }
+
 ];
 
 // ========================
