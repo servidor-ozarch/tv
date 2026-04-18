@@ -8,15 +8,9 @@ const PORT = process.env.PORT || 3000;
 
 const BASE_URL = "https://mi.tv/br/canais/";
 
-// ========================
-// CONTROLE
-// ========================
 let xmlCache = null;
 let gerando = false;
 
-// ========================
-// CANAIS
-// ========================
 const canais = [
     { id: 'cinemax', nome: 'Cinemax' },
     { id: 'hbo', nome: 'HBO' },
@@ -36,11 +30,12 @@ const canais = [
     { id: 'megapix', nome: 'Megapix' }
 ];
 
-// 🔥 rápido (pode expandir depois)
 const dias = ["", "/amanha"];
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 // ========================
-// XML BASE
+// XML BASE (instantâneo)
 // ========================
 function gerarXMLBase() {
     return `<?xml version="1.0" encoding="utf-8"?>
@@ -83,7 +78,7 @@ function formatXMLTV(date) {
 }
 
 // ========================
-// PARSER FINAL (SEU MODELO)
+// PARSER FINAL
 // ========================
 function parseGrade(html, canalId, diaOffset) {
     const dom = new JSDOM(html);
@@ -109,9 +104,7 @@ function parseGrade(html, canalId, diaOffset) {
         const hora = el.querySelector('.time')?.textContent?.trim();
 
         let titulo = el.querySelector('h2, h3')?.textContent?.trim();
-        if (titulo) {
-            titulo = titulo.replace(/\s+/g, " ");
-        }
+        if (titulo) titulo = titulo.replace(/\s+/g, " ");
 
         let desc =
             el.querySelector('.synopsis')?.textContent?.trim() ||
@@ -133,7 +126,6 @@ function parseGrade(html, canalId, diaOffset) {
         if (proxHora && proxHora.includes(":")) {
             const [ph, pm] = proxHora.split(":");
             fim.setHours(parseInt(ph), parseInt(pm), 0);
-
             if (fim <= inicio) fim.setDate(fim.getDate() + 1);
         } else {
             fim.setHours(inicio.getHours() + 2);
@@ -150,41 +142,23 @@ function parseGrade(html, canalId, diaOffset) {
         return programas.join("\n");
     }
 
-    // 🔥 fallback
-    const titulo = doc.querySelector('h1.impact-medium')?.textContent?.trim();
-    const desc = doc.querySelector('p')?.textContent?.trim();
-    const hora = doc.querySelector('.time')?.textContent?.trim();
-
-    if (!titulo || !hora) return "";
-
-    const [h, m] = hora.split(":");
-
-    const inicio = new Date();
-    inicio.setHours(parseInt(h), parseInt(m), 0);
-    inicio.setDate(inicio.getDate() + diaOffset);
-
-    const fim = new Date(inicio);
-    fim.setHours(inicio.getHours() + 2);
-
-    console.log(`⚠️ fallback ${canalId}`);
-
-    return `<programme start="${formatXMLTV(inicio)}" stop="${formatXMLTV(fim)}" channel="${canalId}">
-  <title lang="pt">${escapeXML(titulo)}</title>
-  <desc lang="pt">${escapeXML(desc || titulo)}</desc>
-</programme>`;
+    return "";
 }
 
 // ========================
-// FETCH
+// FETCH COM ANTI-BLOQUEIO
 // ========================
 async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Linux; Android 10)",
-                "Accept": "text/html",
-                "Accept-Language": "pt-BR",
-                "Referer": "https://mi.tv/"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "Referer": "https://mi.tv/",
+                "Upgrade-Insecure-Requests": "1"
             }
         });
 
@@ -192,11 +166,15 @@ async function fetchPage(url) {
 
         const html = await res.text();
 
-        if (!html.includes("time")) return null;
+        if (!html.includes("broadcasts")) {
+            console.log("🚫 BLOQUEADO");
+            return null;
+        }
 
         return html;
 
     } catch {
+        console.log("❌ fetch erro");
         return null;
     }
 }
@@ -215,19 +193,24 @@ async function capturar(canal) {
         let html = await fetchPage(url);
 
         if (!html) {
-            const retry = await fetchPage(url);
-            if (!retry) continue;
-            html = retry;
+            console.log(`🔁 retry ${canal.id}`);
+            await sleep(2000);
+            html = await fetchPage(url);
         }
 
+        if (!html) continue;
+
         resultado += parseGrade(html, canal.id, i);
+
+        // 🔥 ANTI-BAN
+        await sleep(2000);
     }
 
     return resultado;
 }
 
 // ========================
-// GERAR XML (PARALELO)
+// GERAR XML
 // ========================
 async function gerarXML() {
 
@@ -235,7 +218,6 @@ async function gerarXML() {
     gerando = true;
 
     try {
-
         console.log("🚀 Atualizando EPG...");
 
         const resultados = await Promise.all(
@@ -263,7 +245,7 @@ ${programas}
         console.log("✅ EPG GERADO");
 
     } catch (e) {
-        console.log("❌ erro", e);
+        console.log("❌ erro geral", e);
     }
 
     gerando = false;
