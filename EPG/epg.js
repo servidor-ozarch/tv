@@ -49,7 +49,7 @@ function formatXMLTV(dateStr) {
 // ========================
 function gerarCandidatos(){
     const base = [
-        "gnt","ea","hgtv","multishow","sportv","sportv2","sportv3",
+        "gnt","ea","hgtv","History","multishow","sportv","sportv2","sportv3",
         "espn","espn2","espn3","espn4","espn5","espn6",
         "premiere","premiere2","premiere3","premiere4","premiere5","premiere6",
         "cartoonnetwork","cartoonito","discoverykids",
