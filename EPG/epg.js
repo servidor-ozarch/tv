@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = "https://mi.tv/br/canais/";
 
 // ========================
-// CONTROLE DE EXECUÇÃO
+// CACHE EM MEMÓRIA
 // ========================
+let xmlCache = null;
 let gerando = false;
 
 // ========================
@@ -40,7 +41,22 @@ const dias = ["", "/amanha", "/segunda", "/terca", "/quarta", "/quinta", "/sexta
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ========================
-// ESCAPE XML
+// XML BASE INSTANTÂNEO
+// ========================
+function gerarXMLBase() {
+    return `<?xml version="1.0" encoding="utf-8"?>
+<tv generator-info-name="EPG carregando...">
+
+${canais.map(c => `
+<channel id="${c.id}">
+  <display-name lang="pt">${c.nome}</display-name>
+</channel>`).join("\n")}
+
+</tv>`;
+}
+
+// ========================
+// ESCAPE
 // ========================
 function escapeXML(str) {
     return str
@@ -52,7 +68,7 @@ function escapeXML(str) {
 }
 
 // ========================
-// FORMAT XMLTV
+// FORMAT
 // ========================
 function formatXMLTV(date) {
     const d = new Date(date);
@@ -65,16 +81,6 @@ function formatXMLTV(date) {
         pad(d.getMinutes()) +
         pad(d.getSeconds()) +
         " -0300";
-}
-
-// ========================
-// GERAR CANAIS XML
-// ========================
-function gerarCanais() {
-    return canais.map(c => `
-<channel id="${c.id}">
-  <display-name lang="pt">${escapeXML(c.nome)}</display-name>
-</channel>`).join("\n");
 }
 
 // ========================
@@ -112,10 +118,7 @@ function parseGrade(html, canalId, diaOffset) {
             const [ph, pm] = proxHora.split(":");
             fim.setHours(parseInt(ph), parseInt(pm), 0);
 
-            if (fim <= inicio) {
-                fim.setDate(fim.getDate() + 1);
-            }
-
+            if (fim <= inicio) fim.setDate(fim.getDate() + 1);
         } else {
             fim.setHours(inicio.getHours() + 2);
         }
@@ -136,8 +139,8 @@ async function fetchPage(url) {
     try {
         const res = await fetch(url, {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "Accept-Language": "pt-BR,pt;q=0.9"
+                "User-Agent": "Mozilla/5.0",
+                "Accept-Language": "pt-BR"
             }
         });
 
@@ -158,78 +161,58 @@ async function capturar(canal) {
 
     for (let i = 0; i < dias.length; i++) {
 
-        const url = `${BASE_URL}${canal.id}${dias[i]}`;
-
-        const html = await fetchPage(url);
+        const html = await fetchPage(`${BASE_URL}${canal.id}${dias[i]}`);
 
         if (!html) continue;
 
-        const programas = parseGrade(html, canal.id, i);
+        resultadoFinal += parseGrade(html, canal.id, i) + "\n";
 
-        if (programas.length > 0) {
-            resultadoFinal += programas + "\n";
-        }
-
-        await sleep(1200);
+        await sleep(800);
     }
 
     return resultadoFinal;
 }
 
 // ========================
-// PROCESSAR
-// ========================
-async function processar() {
-    let resultados = [];
-
-    for (const canal of canais) {
-        const res = await capturar(canal);
-        resultados.push(res);
-        await sleep(1500);
-    }
-
-    return resultados;
-}
-
-// ========================
-// GERAR XML (COM LOCK)
+// GERAR XML COMPLETO
 // ========================
 async function gerarXML() {
 
-    if (gerando) {
-        console.log("⏳ Já está gerando, ignorando...");
-        return;
-    }
+    if (gerando) return;
 
     gerando = true;
 
     try {
 
-        console.log("🚀 Gerando EPG...");
+        console.log("🚀 Atualizando EPG...");
 
-        const resultados = await processar();
+        let programas = "";
 
-        const xmlProg = resultados
-            .filter(Boolean)
-            .join("\n");
+        for (const canal of canais) {
+            programas += await capturar(canal);
+            await sleep(1000);
+        }
 
-        const agora = new Date().toISOString().replace("T", " ").split(".")[0];
+        const agora = new Date().toISOString();
 
-        const xml = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG mi.tv PRO - ${agora}">
+        xmlCache = `<?xml version="1.0" encoding="utf-8"?>
+<tv generator-info-name="EPG atualizado - ${agora}">
 
-${gerarCanais()}
+${canais.map(c => `
+<channel id="${c.id}">
+  <display-name lang="pt">${c.nome}</display-name>
+</channel>`).join("\n")}
 
-${xmlProg}
+${programas}
 
 </tv>`;
 
-        fs.writeFileSync("programacao.xml", xml, "utf-8");
+        fs.writeFileSync("programacao.xml", xmlCache);
 
-        console.log("✅ EPG GERADO");
+        console.log("✅ EPG ATUALIZADO");
 
-    } catch (e) {
-        console.log("❌ ERRO AO GERAR XML");
+    } catch {
+        console.log("❌ erro ao atualizar");
     }
 
     gerando = false;
@@ -244,25 +227,28 @@ app.get("/", (req, res) => {
 
 app.get("/programacao.xml", (req, res) => {
 
-    const path = __dirname + "/programacao.xml";
+    res.set("Content-Type", "application/xml; charset=utf-8");
 
-    if (fs.existsSync(path)) {
-        res.set("Content-Type", "application/xml; charset=utf-8");
-        return res.sendFile(path);
+    // 🔥 resposta instantânea
+    if (xmlCache) {
+        return res.send(xmlCache);
     }
 
-    res.send("⏳ EPG sendo gerado...");
+    // fallback inicial
+    return res.send(gerarXMLBase());
 });
 
 // ========================
-// START (BACKGROUND)
+// START
 // ========================
 app.listen(PORT, () => {
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    // roda sem travar
+    // 🔥 já cria XML base instantâneo
+    xmlCache = gerarXMLBase();
+
+    // 🔥 atualiza em background
     gerarXML();
 
-    // agenda
     setInterval(gerarXML, 1000 * 60 * 60 * 24);
 });
