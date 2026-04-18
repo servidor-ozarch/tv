@@ -56,8 +56,21 @@ const canais = [
     { id: 'DIK', nome: 'Discovery Kids' },
     { id: 'GOB', nome: 'Gloob' },
     { id: '135', nome: 'Combate' },
-    { id: 'MDO', nome: 'A&E' }
-
+    { id: '121', nome: 'Premiere Clubes' },
+    { id: 'SPO', nome: 'SporTV' },
+    { id: 'SP2', nome: 'SporTV 2' },
+    { id: 'ESP', nome: 'ESPN' },
+    { id: 'ES2', nome: 'ESPN 2' },
+    { id: 'ES3', nome: 'ESPN 3' },
+    { id: 'ES4', nome: 'ESPN 4' },
+    { id: 'ES5', nome: 'ESPN 5' },
+    { id: 'GRD', nome: 'Globo RJ' },
+    { id: 'GLN', nome: 'Globo News' },
+    { id: 'SBT', nome: 'SBT' },
+    { id: 'REC', nome: 'RecordTV' },
+    { id: 'BAN', nome: 'Band' },
+    { id: 'NEW', nome: 'Band News' },
+    { id: 'CUL', nome: 'TV Cultura' }
 
 ];
 
