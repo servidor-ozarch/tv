@@ -47,7 +47,9 @@ const canais = [
     { id: 'TNT', nome: 'TNT' },
     { id: 'TNS', nome: 'TNT Series' },
     { id: 'TRV', nome: 'TLC' },
+    { id: 'CCE', nome: 'Comedy Central' },
     { id: 'HIS', nome: 'History' },
+    { id: 'TCM', nome: 'TCM' },
     { id: 'GNT', nome: 'GNT' },
     { id: 'OFF', nome: 'Canal OFF' },
     { id: 'MTV', nome: 'MTV' },
@@ -66,9 +68,9 @@ const canais = [
     { id: 'ES5', nome: 'ESPN 5' },
     { id: 'GRD', nome: 'Globo RJ' },
     { id: 'GLN', nome: 'Globo News' },
-    { id: 'SBT', nome: 'SBT' },
-    { id: 'REC', nome: 'RecordTV' },
-    { id: 'BAN', nome: 'Band' },
+    { id: 'SBT', nome: 'SBT RJ' },
+    { id: 'REC', nome: 'Record RJ' },
+    { id: 'BAN', nome: 'Band RJ' },
     { id: 'NEW', nome: 'Band News' },
     { id: 'CUL', nome: 'TV Cultura' }
 
