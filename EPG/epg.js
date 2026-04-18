@@ -22,7 +22,7 @@ function escapeXML(str){
 }
 
 // ========================
-// FORMATAR DATA XMLTV
+// DATA XMLTV
 // ========================
 function formatXMLTV(dateStr){
     const d = new Date(dateStr.replace(" ","T"));
@@ -38,54 +38,90 @@ function formatXMLTV(dateStr){
 }
 
 // ========================
-// GERAR CANDIDATOS (BRUTE FORCE)
+// SLUG (nome → tvg-id)
 // ========================
-function gerarCandidatos(){
+function slug(str){
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .replace(/[^a-z0-9]/g,"");
+}
+
+// ========================
+// EXTRAIR NOMES DO SITE
+// ========================
+async function extrairNomes(){
+
+    try{
+        const res = await fetch(BASE,{
+            headers:{'User-Agent':'Mozilla/5.0'}
+        });
+
+        const html = await res.text();
+
+        const dom = new JSDOM(html);
+        const doc = dom.window.document;
+
+        const textos = [...doc.querySelectorAll("a, span, div")]
+            .map(el => el.textContent.trim())
+            .filter(t => t.length > 2 && t.length < 30);
+
+        return [...new Set(textos)];
+
+    }catch{
+        return [];
+    }
+}
+
+// ========================
+// GERAR CANDIDATOS (FALLBACK)
+// ========================
+function gerarFallback(){
 
     const letras = "abcdefghijklmnopqrstuvwxyz";
+    let lista = [];
 
-    let candidatos = [];
-
-    // letras simples
     for(let l of letras){
-        candidatos.push(l);
+        lista.push(l);
     }
 
-    // palavras comuns IPTV
-    candidatos.push(
-        "gnt","hbo","hbo2","hbo3",
-        "telecine","telecinepremium",
+    lista.push(
+        "gnt","hgtv","multishow",
         "sportv","sportv2","sportv3",
         "espn","espn2","espn3","espn4",
         "premiere","premiere2","premiere3","premiere4",
         "cartoonnetwork","discoverykids",
         "globo","sbt","record","band",
         "cnnbrasil","globonews","bandnews",
-        "nick","nickjr","discovery","tlc","history"
+        "nick","nickjr","tlc","history"
     );
 
-    // remove duplicados
-    return [...new Set(candidatos)];
+    return lista;
 }
 
 // ========================
-// DESCOBRIR CANAIS (VALIDAÇÃO REAL)
+// DESCOBRIR CANAIS (COMPLETO)
 // ========================
 async function descobrirCanais(){
 
     console.log("🔍 Descobrindo canais...");
 
-    const candidatos = gerarCandidatos();
     const dia = dias[new Date().getDay()];
+    const encontrados = new Map();
 
-    const encontrados = [];
+    // 1️⃣ nomes reais
+    const nomes = await extrairNomes();
 
-    await Promise.all(candidatos.map(async (id)=>{
+    console.log(`📺 ${nomes.length} nomes encontrados`);
+
+    await Promise.all(nomes.map(async nome=>{
+
+        const id = slug(nome);
+        if(!id || id.length < 3) return;
 
         try{
-            const url = `${BASE}${id}/${dia}`;
-
-            const res = await fetch(url,{
+            const res = await fetch(`${BASE}${id}/${dia}`,{
                 headers:{'User-Agent':'Mozilla/5.0'}
             });
 
@@ -93,22 +129,43 @@ async function descobrirCanais(){
 
             const html = await res.text();
 
-            // valida se existe programação real
             if(html.includes("registro programa_data")){
-                console.log("✅", id);
-
-                encontrados.push({
-                    id,
-                    nome: id.toUpperCase()
-                });
+                console.log("✅", nome, "→", id);
+                encontrados.set(id, nome);
             }
 
         }catch{}
     }));
 
-    console.log(`🎯 ${encontrados.length} canais válidos`);
+    // 2️⃣ fallback brute force
+    const fallback = gerarFallback();
 
-    return encontrados;
+    await Promise.all(fallback.map(async id=>{
+
+        if(encontrados.has(id)) return;
+
+        try{
+            const res = await fetch(`${BASE}${id}/${dia}`,{
+                headers:{'User-Agent':'Mozilla/5.0'}
+            });
+
+            if(!res.ok) return;
+
+            const html = await res.text();
+
+            if(html.includes("registro programa_data")){
+                console.log("⚡ fallback:", id);
+                encontrados.set(id, id.toUpperCase());
+            }
+
+        }catch{}
+    }));
+
+    const lista = [...encontrados.entries()].map(([id,nome])=>({id,nome}));
+
+    console.log(`🎯 ${lista.length} canais válidos`);
+
+    return lista;
 }
 
 // ========================
@@ -163,9 +220,7 @@ function parseGrade(html, canalId){
 async function capturar(canal, dia){
 
     try{
-        const url = `${BASE}${canal.id}/${dia}`;
-
-        const res = await fetch(url,{
+        const res = await fetch(`${BASE}${canal.id}/${dia}`,{
             headers:{'User-Agent':'Mozilla/5.0'}
         });
 
@@ -181,7 +236,7 @@ async function capturar(canal, dia){
 }
 
 // ========================
-// GERAR XML COMPLETO
+// GERAR XML FINAL
 // ========================
 async function gerarXML(){
 
@@ -196,13 +251,13 @@ async function gerarXML(){
 
     const canaisXML = canais.map(c=>`
 <channel id="${c.id}">
-  <display-name lang="pt">${c.nome}</display-name>
+  <display-name lang="pt">${escapeXML(c.nome)}</display-name>
 </channel>`).join("\n");
 
     const agora = new Date().toISOString().replace("T"," ").split(".")[0];
 
     const xml = `<?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="EPG AUTO - ${agora}">
+<tv generator-info-name="EPG FINAL - ${agora}">
 
 ${canaisXML}
 
@@ -254,6 +309,6 @@ app.get("/programacao.xml", (req,res)=>{
 app.listen(PORT, async ()=>{
     console.log(`🔥 Servidor rodando na porta ${PORT}`);
 
-    await gerarXML(); // gera ao iniciar
-    agendar();        // agenda 03:00
+    await gerarXML();
+    agendar();
 });
