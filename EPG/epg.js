@@ -14,7 +14,7 @@ const BASE_URL = "https://meuguia.tv/programacao/canal/";
 let gerando = false;
 
 // ========================
-// CANAIS (AJUSTE AQUI)
+// CANAIS
 // ========================
 const canais = [
     { id: 'MDO', nome: 'A&E' },
@@ -23,7 +23,26 @@ const canais = [
     { id: 'MNX', nome: 'Cinemax' },
     { id: 'HBO', nome: 'HBO' },
     { id: 'HB2', nome: 'HBO 2' },
-    { id: 'HFA', nome: 'HBO Family' }
+    { id: 'HFA', nome: 'HBO Family' },
+    { id: 'HPL', nome: 'HBO Plus' },
+    { id: 'MPX', nome: 'Megapix' },
+    { id: 'SET', nome: 'Sony' },
+    { id: 'SPA', nome: 'SPACE' },
+    { id: 'HAL', nome: 'Studio Universal' },
+    { id: 'TC2', nome: 'Telecine Action' },
+    { id: 'TC5', nome: 'Telecine Cult' },
+    { id: 'TC6', nome: 'Telecine Fun' },
+    { id: 'TC4', nome: 'Telecine Pipoca' },
+    { id: 'TC1', nome: 'Telecine Premium' },
+    { id: 'TC3', nome: 'Telecine Touch' },
+    { id: 'USA', nome: 'Universal TV' },
+    { id: 'WBT', nome: 'Warner Channel' },
+    { id: 'APL', nome: 'Animal Planet' },
+    { id: 'DHD', nome: 'Discovery Theater' },
+    { id: 'TNT', nome: 'TNT' },
+    { id: 'TNS', nome: 'TNT Series' },
+    { id: 'MDO', nome: 'A&E' }
+
 
 ];
 
