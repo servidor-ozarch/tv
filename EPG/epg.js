@@ -19,7 +19,7 @@ const canais = [
     { id: 'cartoonnetwork', nome: 'Cartoon Network' },
     { id: 'discoverykids', nome: 'Discovery Kids' },
     { id: 'sportv', nome: 'SPORTV' },
-    { id: 'espn', nome: 'ESPN' }
+    { id: 'espn', nome: 'ESPN' },
     { id: 'ae', nome: 'A&E' }
 ];
 
