@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "epg.js",
   "scripts": {
-    "start": "node EPG/epg.js"
+    "start": "node epg.js"
   },
   "dependencies": {
     "express": "^4.18.2",
