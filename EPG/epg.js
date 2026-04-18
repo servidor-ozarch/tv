@@ -13,6 +13,7 @@ const dias = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 // LISTA DE CANAIS
 // ========================
 const canais = [
+    { id: 'ae', nome: 'A&E' },
     { id: 'gnt', nome: 'GNT' },
     { id: 'hgtv', nome: 'HGTV' },
     { id: 'multishow', nome: 'Multishow' },
