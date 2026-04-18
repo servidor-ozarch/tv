@@ -17,7 +17,8 @@ const canais = [
     { id: 'hgtv', nome: 'HGTV' },
     { id: 'multishow', nome: 'Multishow' },
     { id: 'cartoonnetwork', nome: 'Cartoon Network' },
-    { id: 'discoverykids', nome: 'Discovery Kids' },
+    { id: 'discovery_kids', nome: 'Discovery Kids' },
+    { id: 'discovery.kids', nome: 'Discovery Kids' },
     { id: 'sportv', nome: 'SPORTV' },
     { id: 'espn', nome: 'ESPN' }
 ];
