@@ -20,6 +20,7 @@ const canais = [
     { id: 'discoverykids', nome: 'Discovery Kids' },
     { id: 'sportv', nome: 'SPORTV' },
     { id: 'espn', nome: 'ESPN' }
+    { id: 'ae', nome: 'A&E' },
 ];
 
 // ========================
